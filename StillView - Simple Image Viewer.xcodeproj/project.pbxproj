@@ -36,11 +36,13 @@
 		A10000A4 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A2 /* AppCoordinator.swift */; };
 		A10000A5 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A3 /* WindowAccessor.swift */; };
 		A10000A6 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A7 /* AboutView.swift */; };
+		A10000A8 /* SecurityScopedAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A9 /* SecurityScopedAccessManager.swift */; };
 		FB5D39042E355791004B9D85 /* ImageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39032E355791004B9D85 /* ImageMetadataService.swift */; };
 		FB5D39062E35579D004B9D85 /* AccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39052E35579D004B9D85 /* AccessibilityService.swift */; };
+		FBA046082E36DBA8006F9C47 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA046072E36DBA8006F9C47 /* HelpView.swift */; };
+		FBA0460A2E36DC34006F9C47 /* HelpContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA046092E36DC34006F9C47 /* HelpContent.swift */; };
 		FBC4F84D2E35215F00AE62AA /* ErrorHandlingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */; };
 		FBC4F84F2E35216900AE62AA /* KeyboardHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC4F84E2E35216900AE62AA /* KeyboardHandler.swift */; };
-		A10000A8 /* SecurityScopedAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A9 /* SecurityScopedAccessManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -75,11 +77,13 @@
 		A10000A2 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
 		A10000A3 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
 		A10000A7 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		A10000A9 /* SecurityScopedAccessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedAccessManager.swift; sourceTree = "<group>"; };
 		FB5D39032E355791004B9D85 /* ImageMetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataService.swift; sourceTree = "<group>"; };
 		FB5D39052E35579D004B9D85 /* AccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityService.swift; sourceTree = "<group>"; };
+		FBA046072E36DBA8006F9C47 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
+		FBA046092E36DC34006F9C47 /* HelpContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpContent.swift; sourceTree = "<group>"; };
 		FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorHandlingService.swift; sourceTree = "<group>"; };
 		FBC4F84E2E35216900AE62AA /* KeyboardHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHandler.swift; sourceTree = "<group>"; };
-		A10000A9 /* SecurityScopedAccessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedAccessManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,6 +156,7 @@
 		A100000B /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				FBA046072E36DBA8006F9C47 /* HelpView.swift */,
 				A1000015 /* ImageDisplayView.swift */,
 				A1000092 /* NavigationControlsView.swift */,
 				A1000093 /* FolderSelectionView.swift */,
@@ -175,6 +180,7 @@
 		A100000D /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				FBA046092E36DC34006F9C47 /* HelpContent.swift */,
 				A100000F /* ImageFile.swift */,
 				A1000086 /* FolderContent.swift */,
 				A100002D /* ImageViewerError.swift */,
@@ -295,12 +301,14 @@
 				FB5D39062E35579D004B9D85 /* AccessibilityService.swift in Sources */,
 				A1000087 /* FolderContent.swift in Sources */,
 				A100002E /* ImageViewerError.swift in Sources */,
+				FBA0460A2E36DC34006F9C47 /* HelpContent.swift in Sources */,
 				A1000012 /* FolderScanner.swift in Sources */,
 				A1000014 /* ImageViewerViewModel.swift in Sources */,
 				A1000016 /* ImageDisplayView.swift in Sources */,
 				A1000018 /* ImageLoaderService.swift in Sources */,
 				A100001A /* FileSystemService.swift in Sources */,
 				A100001C /* PreferencesService.swift in Sources */,
+				FBA046082E36DBA8006F9C47 /* HelpView.swift in Sources */,
 				A100004D /* UTType+ImageSupport.swift in Sources */,
 				A1000088 /* ImageCache.swift in Sources */,
 				A100008A /* ImageMemoryManager.swift in Sources */,
@@ -454,7 +462,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -492,7 +500,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;

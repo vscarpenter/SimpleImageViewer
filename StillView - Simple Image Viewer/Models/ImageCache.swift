@@ -2,23 +2,30 @@ import Foundation
 import AppKit
 
 /// Cache for storing loaded images in memory with intelligent memory management
-final class ImageCache {
+final class ImageCache: NSObject {
     private let cache = NSCache<NSURL, NSImage>()
     private let maxCacheSize: Int
     private let memoryPressureSource: DispatchSourceMemoryPressure
     private let cacheQueue = DispatchQueue(label: "com.simpleimageviewer.imagecache", qos: .utility)
+    private var memoryManager: ImageMemoryManager?
+    private var cachedImageSizes: [NSURL: Int] = [:]
     
     /// Initialize the image cache
     /// - Parameter maxCacheSize: Maximum number of images to cache (default: 50)
-    init(maxCacheSize: Int = 50) {
+    /// - Parameter memoryManager: Optional memory manager for tracking cache memory usage
+    init(maxCacheSize: Int = 50, memoryManager: ImageMemoryManager? = nil) {
         self.maxCacheSize = maxCacheSize
+        self.memoryManager = memoryManager
+        
+        // Set up memory pressure monitoring
+        self.memoryPressureSource = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: cacheQueue)
+        
+        super.init()
         
         // Configure NSCache
         cache.countLimit = maxCacheSize
         cache.totalCostLimit = 150_000_000 // 150MB limit
-        
-        // Set up memory pressure monitoring
-        memoryPressureSource = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: cacheQueue)
+        cache.delegate = self
         
         memoryPressureSource.setEventHandler { [weak self] in
             self?.handleMemoryPressure()
@@ -54,17 +61,28 @@ final class ImageCache {
     ///   - url: The URL key for the image
     func setImage(_ image: NSImage, for url: URL) {
         let cost = estimateImageMemoryUsage(image)
+        cachedImageSizes[url as NSURL] = cost
         cache.setObject(image, forKey: url as NSURL, cost: cost)
     }
     
     /// Remove an image from the cache
     /// - Parameter url: The URL of the image to remove
     func removeImage(for url: URL) {
-        cache.removeObject(forKey: url as NSURL)
+        let nsurl = url as NSURL
+        if let size = cachedImageSizes[nsurl] {
+            memoryManager?.didUnloadImage(size: size)
+            cachedImageSizes.removeValue(forKey: nsurl)
+        }
+        cache.removeObject(forKey: nsurl)
     }
     
     /// Clear all cached images
     func clearCache() {
+        // Notify memory manager of all cleared images
+        for (_, size) in cachedImageSizes {
+            memoryManager?.didUnloadImage(size: size)
+        }
+        cachedImageSizes.removeAll()
         cache.removeAllObjects()
     }
     
@@ -160,5 +178,21 @@ final class ImageCache {
     func resetStatistics() {
         hitCount = 0
         missCount = 0
+    }
+}
+
+// MARK: - NSCache Delegate
+extension ImageCache: NSCacheDelegate {
+    func cache(_ cache: NSCache<AnyObject, AnyObject>, willEvictObject obj: AnyObject) {
+        // Find the URL for this object and notify memory manager
+        if let image = obj as? NSImage {
+            for (url, size) in cachedImageSizes {
+                if cache.object(forKey: url) === image {
+                    memoryManager?.didUnloadImage(size: size)
+                    cachedImageSizes.removeValue(forKey: url)
+                    break
+                }
+            }
+        }
     }
 }

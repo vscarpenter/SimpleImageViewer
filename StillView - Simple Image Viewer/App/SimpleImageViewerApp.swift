@@ -16,6 +16,7 @@ import AppKit
 struct SimpleImageViewerApp: App {
     @State private var window: NSWindow?
     @State private var showingAbout = false
+    @State private var showingHelp = false
     
     var body: some Scene {
         WindowGroup {
@@ -26,6 +27,9 @@ struct SimpleImageViewerApp: App {
                 }
                 .sheet(isPresented: $showingAbout) {
                     AboutView()
+                }
+                .sheet(isPresented: $showingHelp) {
+                    HelpView()
                 }
         }
         .applyWindowResizability()
@@ -43,6 +47,27 @@ struct SimpleImageViewerApp: App {
                     // This will be handled by the ContentView
                 }
                 .keyboardShortcut("o", modifiers: .command)
+            }
+            
+            // Add Help menu commands
+            CommandGroup(replacing: .help) {
+                Button("StillView Help") {
+                    showingHelp = true
+                }
+                .keyboardShortcut("/", modifiers: [.command, .shift])
+                
+                Divider()
+                
+                Button("Keyboard Shortcuts") {
+                    showingHelp = true
+                }
+                .keyboardShortcut("?", modifiers: .command)
+                
+                Button("Visit GitHub Repository") {
+                    if let url = URL(string: "https://github.com/vscarpenter/SimpleImageViewer") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
             }
         }
     }

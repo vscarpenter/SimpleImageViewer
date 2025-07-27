@@ -401,6 +401,14 @@ class ImageViewerViewModel: ObservableObject {
     
     /// Clear all content and prepare for navigation back to folder selection
     func clearContent() {
+        // Cancel any ongoing loading
+        if let currentImageFile = currentImageFile {
+            imageLoaderService.cancelLoading(for: currentImageFile.url)
+        }
+        
+        // Clear the image cache to free memory
+        imageLoaderService.clearCache()
+        
         currentImage = nil
         imageFiles = []
         folderContent = nil

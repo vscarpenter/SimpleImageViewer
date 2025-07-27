@@ -10,8 +10,8 @@ final class ImageMemoryManager {
     private var isUnderMemoryPressure: Bool = false
     
     /// Initialize the memory manager
-    /// - Parameter maxMemoryUsage: Maximum memory usage in bytes (default: 200MB)
-    init(maxMemoryUsage: Int = 200_000_000) {
+    /// - Parameter maxMemoryUsage: Maximum memory usage in bytes (default: 1GB)
+    init(maxMemoryUsage: Int = 1_000_000_000) {
         self.maxMemoryUsage = maxMemoryUsage
         
         // Set up memory pressure monitoring
@@ -124,15 +124,20 @@ final class ImageMemoryManager {
     }
     
     private func estimateImageMemoryUsage(fileSize: Int) -> Int {
-        // More conservative estimation: uncompressed image memory usage
-        // Based on typical JPEG compression ratios (10-20:1) and memory overhead
-        // For very large files, use more conservative multiplier
-        if fileSize > 50_000_000 { // Files > 50MB
-            return fileSize * 2
-        } else if fileSize > 10_000_000 { // Files > 10MB
-            return fileSize * 3
+        // More realistic estimation based on modern image formats
+        // HEIC/WebP have very high compression ratios (20-50:1)
+        // JPEG typically 10-15:1, PNG varies widely
+        
+        // Use more realistic multipliers based on file size patterns
+        if fileSize > 50_000_000 { // Files > 50MB - likely already uncompressed or minimally compressed
+            return Int(Double(fileSize) * 1.2) // 20% overhead for processing
+        } else if fileSize > 10_000_000 { // Files > 10MB - moderate compression
+            return fileSize * 2 // 2x for decompression
+        } else if fileSize > 1_000_000 { // Files > 1MB - good compression
+            return fileSize * 3 // 3x for decompression
         } else {
-            return fileSize * 4
+            // Small files may be thumbnails or highly compressed
+            return fileSize * 8 // Higher ratio for very compressed images
         }
     }
 }

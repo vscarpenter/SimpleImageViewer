@@ -62,9 +62,9 @@ final class DefaultImageLoaderService: ImageLoaderService {
     private var loadingCancellables: [URL: AnyCancellable] = [:]
     private let cancellablesQueue = DispatchQueue(label: "com.simpleimageviewer.cancellables")
     
-    init(imageCache: ImageCache = ImageCache(), memoryManager: ImageMemoryManager = ImageMemoryManager()) {
-        self.imageCache = imageCache
+    init(imageCache: ImageCache? = nil, memoryManager: ImageMemoryManager = ImageMemoryManager()) {
         self.memoryManager = memoryManager
+        self.imageCache = imageCache ?? ImageCache(memoryManager: memoryManager)
     }
     
     func loadImage(from url: URL) -> AnyPublisher<NSImage, Error> {
