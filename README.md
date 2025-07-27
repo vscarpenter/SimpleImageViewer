@@ -116,7 +116,7 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## 📞 Support
 
-- Create an [issue](https://github.com/yourusername/SimpleImageViewer/issues) for bug reports
+- Create an [issue](https://github.com/vscarpenter/SimpleImageViewer/issues) for bug reports
 - Star ⭐ this repository if you find it useful
 
 ---
