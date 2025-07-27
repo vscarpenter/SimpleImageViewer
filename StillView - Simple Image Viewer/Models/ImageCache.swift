@@ -15,7 +15,7 @@ final class ImageCache {
         
         // Configure NSCache
         cache.countLimit = maxCacheSize
-        cache.totalCostLimit = 500_000_000 // 500MB limit
+        cache.totalCostLimit = 150_000_000 // 150MB limit
         
         // Set up memory pressure monitoring
         memoryPressureSource = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: cacheQueue)
@@ -25,10 +25,20 @@ final class ImageCache {
         }
         
         memoryPressureSource.resume()
+        
+        // Listen for memory warnings from other components
+        NotificationCenter.default.addObserver(
+            forName: .memoryWarning,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.clearCache()
+        }
     }
     
     deinit {
         memoryPressureSource.cancel()
+        NotificationCenter.default.removeObserver(self)
     }
     
     /// Retrieve an image from the cache
@@ -91,9 +101,31 @@ final class ImageCache {
     }
     
     private func estimateImageMemoryUsage(_ image: NSImage) -> Int {
-        let size = image.size
-        let bytesPerPixel = 4 // RGBA
-        return Int(size.width * size.height) * bytesPerPixel
+        // Get actual image representations for more accurate memory calculation
+        var totalMemory = 0
+        
+        for representation in image.representations {
+            if let bitmapRep = representation as? NSBitmapImageRep {
+                // Use actual bitmap data size
+                let bytesPerPixel = bitmapRep.bitsPerPixel / 8
+                let memoryUsage = bitmapRep.pixelsWide * bitmapRep.pixelsHigh * bytesPerPixel
+                totalMemory += memoryUsage
+            } else {
+                // Fallback to size-based estimation
+                let size = representation.size
+                let bytesPerPixel = 4 // RGBA
+                totalMemory += Int(size.width * size.height) * bytesPerPixel
+            }
+        }
+        
+        // If no representations, use image size as fallback
+        if totalMemory == 0 {
+            let size = image.size
+            let bytesPerPixel = 4 // RGBA
+            totalMemory = Int(size.width * size.height) * bytesPerPixel
+        }
+        
+        return totalMemory
     }
     
     // MARK: - Cache Statistics

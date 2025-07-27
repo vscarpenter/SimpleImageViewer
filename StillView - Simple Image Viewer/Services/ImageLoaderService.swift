@@ -162,7 +162,18 @@ final class DefaultImageLoaderService: ImageLoaderService {
         // Get file size for memory management
         let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
         
-        // Check if we have enough memory
+        // For very large files, do additional memory check
+        if fileSize > 100_000_000 { // Files > 100MB
+            // Check available system memory
+            let physicalMemory = ProcessInfo.processInfo.physicalMemory
+            let availableMemory = physicalMemory / 4 // Use only 25% of system memory
+            
+            if fileSize > Int(availableMemory) {
+                throw ImageLoaderError.insufficientMemory
+            }
+        }
+        
+        // Check if we have enough memory based on our tracking
         guard memoryManager.shouldLoadImage(size: fileSize) else {
             throw ImageLoaderError.insufficientMemory
         }
@@ -177,11 +188,17 @@ final class DefaultImageLoaderService: ImageLoaderService {
             throw ImageLoaderError.corruptedImage
         }
         
-        // Create image with options for better performance
-        let options: [CFString: Any] = [
-            kCGImageSourceShouldCache: true,
-            kCGImageSourceShouldAllowFloat: true
+        // Create image with options for better performance and memory efficiency
+        var options: [CFString: Any] = [
+            kCGImageSourceShouldCache: false, // Don't cache at ImageIO level to save memory
+            kCGImageSourceShouldAllowFloat: false // Use integer values to save memory
         ]
+        
+        // For very large images, add memory-saving options
+        if fileSize > 50_000_000 { // Files > 50MB
+            options[kCGImageSourceCreateThumbnailFromImageIfAbsent] = true
+            options[kCGImageSourceThumbnailMaxPixelSize] = 4096 // Limit to 4K resolution
+        }
         
         guard let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, options as CFDictionary) else {
             throw ImageLoaderError.corruptedImage

@@ -66,6 +66,9 @@ class ImageViewerViewModel: ObservableObject {
         
         // Set up preferences binding
         setupPreferencesBinding()
+        
+        // Set up memory warning handling
+        setupMemoryWarningHandling()
     }
     
     // MARK: - Public Methods
@@ -245,6 +248,31 @@ class ImageViewerViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
+    private func setupMemoryWarningHandling() {
+        NotificationCenter.default
+            .publisher(for: .memoryWarning)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.handleMemoryWarning()
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func handleMemoryWarning() {
+        // Clear the image loader cache
+        imageLoaderService.clearCache()
+        
+        // Show warning to user
+        errorMessage = "Memory Warning. Not enough memory to load image"
+        
+        // Auto-clear the warning after 5 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+            if self?.errorMessage == "Memory Warning. Not enough memory to load image" {
+                self?.errorMessage = nil
+            }
+        }
+    }
+    
     private func loadCurrentImage() {
         guard let imageFile = currentImageFile else {
             currentImage = nil
@@ -298,13 +326,9 @@ class ImageViewerViewModel: ObservableObject {
             urlsToPreload.append(previousImageFile.url)
         }
         
-        // Add next 2 images for better performance
-        if currentIndex + 2 < imageFiles.count {
-            urlsToPreload.append(imageFiles[currentIndex + 2].url)
-        }
-        
-        // Preload images
-        imageLoaderService.preloadImages(urlsToPreload, maxCount: 3)
+        // Only preload adjacent images to save memory
+        // Preload images with reduced count for memory efficiency
+        imageLoaderService.preloadImages(urlsToPreload, maxCount: 2)
     }
     
     private func handleImageLoadingError(_ error: Error, for imageFile: ImageFile) {

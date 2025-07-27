@@ -10,8 +10,8 @@ final class ImageMemoryManager {
     private var isUnderMemoryPressure: Bool = false
     
     /// Initialize the memory manager
-    /// - Parameter maxMemoryUsage: Maximum memory usage in bytes (default: 500MB)
-    init(maxMemoryUsage: Int = 500_000_000) {
+    /// - Parameter maxMemoryUsage: Maximum memory usage in bytes (default: 200MB)
+    init(maxMemoryUsage: Int = 200_000_000) {
         self.maxMemoryUsage = maxMemoryUsage
         
         // Set up memory pressure monitoring
@@ -73,8 +73,13 @@ final class ImageMemoryManager {
             self?.currentMemoryUsage = 0
             self?.isUnderMemoryPressure = true
             
+            // Post notification for other components to clear their caches
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .memoryWarning, object: nil)
+            }
+            
             // Reset memory pressure flag after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
                 self?.memoryQueue.async {
                     self?.isUnderMemoryPressure = false
                 }
@@ -119,9 +124,16 @@ final class ImageMemoryManager {
     }
     
     private func estimateImageMemoryUsage(fileSize: Int) -> Int {
-        // Rough estimation: uncompressed image in memory is typically 3-5x the file size
-        // This accounts for decompression and potential multiple representations
-        return fileSize * 4
+        // More conservative estimation: uncompressed image memory usage
+        // Based on typical JPEG compression ratios (10-20:1) and memory overhead
+        // For very large files, use more conservative multiplier
+        if fileSize > 50_000_000 { // Files > 50MB
+            return fileSize * 2
+        } else if fileSize > 10_000_000 { // Files > 10MB
+            return fileSize * 3
+        } else {
+            return fileSize * 4
+        }
     }
 }
 
@@ -164,4 +176,9 @@ extension ImageMemoryManager {
             )
         }
     }
+}
+
+// MARK: - Notification Extensions
+extension Notification.Name {
+    static let memoryWarning = Notification.Name("com.simpleimageviewer.memoryWarning")
 }
