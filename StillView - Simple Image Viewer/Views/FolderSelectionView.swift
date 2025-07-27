@@ -65,7 +65,7 @@ struct FolderSelectionView: View {
             Text("Select Image Folder")
                 .font(.title2)
                 .fontWeight(.medium)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .accessibilityAddTraits(.isHeader)
             
             Text("Choose a folder containing images to browse")
@@ -149,7 +149,7 @@ struct FolderSelectionView: View {
             HStack {
                 Text("Recent Folders")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .accessibilityAddTraits(.isHeader)
                 
                 Spacer()
@@ -194,7 +194,7 @@ private struct RecentFolderRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(folderURL.lastPathComponent)
                     .font(.body)
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 

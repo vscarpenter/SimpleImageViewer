@@ -3,6 +3,7 @@ import Foundation
 /// Errors that can occur in the Image Viewer application
 enum ImageViewerError: LocalizedError, Equatable {
     case folderAccessDenied
+    case bookmarkResolutionFailed(URL)
     case noImagesFound
     case imageLoadingFailed(URL)
     case corruptedImage(URL)
@@ -21,6 +22,11 @@ enum ImageViewerError: LocalizedError, Equatable {
                 "Unable to access the selected folder. Please check permissions and try again.",
                 comment: "Error message when folder access is denied"
             )
+        case .bookmarkResolutionFailed(let url):
+            return String(format: NSLocalizedString(
+                "Failed to scan folder: The file \"%@\" couldn't be opened because you don't have permission to view it.",
+                comment: "Error message when security-scoped bookmark resolution fails"
+            ), url.lastPathComponent)
         case .noImagesFound:
             return NSLocalizedString(
                 "No supported images found in the selected folder. Please select a different folder.",
@@ -74,6 +80,8 @@ enum ImageViewerError: LocalizedError, Equatable {
         switch self {
         case .folderAccessDenied:
             return "The application does not have permission to access the selected folder."
+        case .bookmarkResolutionFailed(let url):
+            return "Security-scoped bookmark resolution failed for folder: \(url.path)"
         case .noImagesFound:
             return "The selected folder does not contain any supported image files."
         case .imageLoadingFailed(let url):
@@ -102,6 +110,11 @@ enum ImageViewerError: LocalizedError, Equatable {
             return NSLocalizedString(
                 "Try selecting a different folder or check the folder permissions in Finder.",
                 comment: "Recovery suggestion for folder access denied"
+            )
+        case .bookmarkResolutionFailed:
+            return NSLocalizedString(
+                "Please select the folder again to restore access. This is required due to macOS security restrictions.",
+                comment: "Recovery suggestion for bookmark resolution failure"
             )
         case .noImagesFound:
             return NSLocalizedString(
@@ -153,6 +166,8 @@ enum ImageViewerError: LocalizedError, Equatable {
              (.noImagesFound, .noImagesFound),
              (.insufficientMemory, .insufficientMemory):
             return true
+        case (.bookmarkResolutionFailed(let lhsURL), .bookmarkResolutionFailed(let rhsURL)):
+            return lhsURL == rhsURL
         case (.imageLoadingFailed(let lhsURL), .imageLoadingFailed(let rhsURL)):
             return lhsURL == rhsURL
         case (.corruptedImage(let lhsURL), .corruptedImage(let rhsURL)):

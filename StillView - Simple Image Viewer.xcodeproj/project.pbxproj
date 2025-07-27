@@ -35,10 +35,12 @@
 		A10000A1 /* KeyCaptureViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100009E /* KeyCaptureViewRepresentable.swift */; };
 		A10000A4 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A2 /* AppCoordinator.swift */; };
 		A10000A5 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A3 /* WindowAccessor.swift */; };
+		A10000A6 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A7 /* AboutView.swift */; };
 		FB5D39042E355791004B9D85 /* ImageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39032E355791004B9D85 /* ImageMetadataService.swift */; };
 		FB5D39062E35579D004B9D85 /* AccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39052E35579D004B9D85 /* AccessibilityService.swift */; };
 		FBC4F84D2E35215F00AE62AA /* ErrorHandlingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */; };
 		FBC4F84F2E35216900AE62AA /* KeyboardHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC4F84E2E35216900AE62AA /* KeyboardHandler.swift */; };
+		A10000A8 /* SecurityScopedAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A9 /* SecurityScopedAccessManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -72,10 +74,12 @@
 		A100009E /* KeyCaptureViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCaptureViewRepresentable.swift; sourceTree = "<group>"; };
 		A10000A2 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
 		A10000A3 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
+		A10000A7 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		FB5D39032E355791004B9D85 /* ImageMetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataService.swift; sourceTree = "<group>"; };
 		FB5D39052E35579D004B9D85 /* AccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityService.swift; sourceTree = "<group>"; };
 		FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorHandlingService.swift; sourceTree = "<group>"; };
 		FBC4F84E2E35216900AE62AA /* KeyboardHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHandler.swift; sourceTree = "<group>"; };
+		A10000A9 /* SecurityScopedAccessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedAccessManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -140,6 +144,7 @@
 				A1000017 /* ImageLoaderService.swift */,
 				A1000019 /* FileSystemService.swift */,
 				A100001B /* PreferencesService.swift */,
+				A10000A9 /* SecurityScopedAccessManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -153,6 +158,7 @@
 				A100009C /* ErrorDialogView.swift */,
 				A100009D /* NotificationView.swift */,
 				A100009E /* KeyCaptureViewRepresentable.swift */,
+				A10000A7 /* AboutView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -309,6 +315,8 @@
 				A100009F /* ErrorDialogView.swift in Sources */,
 				A10000A0 /* NotificationView.swift in Sources */,
 				A10000A1 /* KeyCaptureViewRepresentable.swift in Sources */,
+				A10000A6 /* AboutView.swift in Sources */,
+				A10000A8 /* SecurityScopedAccessManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -446,17 +454,22 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "StillView - Image Viewer";
+				INFOPLIST_KEY_CFBundleDocumentTypes = "";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_LSMinimumSystemVersion = 12.0;
+				INFOPLIST_KEY_NSContactsUsageDescription = "";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableDescription = "A lightweight, distraction-free image viewer for macOS by Vinny Carpenter (https://vinny.dev). Source code available at https://github.com/vscarpenter/SimpleImageViewer";
+				INFOPLIST_KEY_NSSupportsAutomaticTermination = YES;
+				INFOPLIST_KEY_NSSupportsSuddenTermination = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -479,17 +492,22 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "StillView - Image Viewer";
+				INFOPLIST_KEY_CFBundleDocumentTypes = "";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_LSMinimumSystemVersion = 12.0;
+				INFOPLIST_KEY_NSContactsUsageDescription = "";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableDescription = "A lightweight, distraction-free image viewer for macOS by Vinny Carpenter (https://vinny.dev). Source code available at https://github.com/vscarpenter/SimpleImageViewer";
+				INFOPLIST_KEY_NSSupportsAutomaticTermination = YES;
+				INFOPLIST_KEY_NSSupportsSuddenTermination = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

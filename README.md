@@ -121,4 +121,19 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ---
 
-**Simple Image Viewer** - Elegant folder-based image browsing for macOS
+## 👨‍💻 Author
+
+**Vinny Carpenter**  
+🌐 Website: [https://vinny.dev](https://vinny.dev)  
+📧 Contact: Available through GitHub  
+🐙 GitHub: [@vscarpenter](https://github.com/vscarpenter)
+
+## 🔗 Source Code
+
+This project is open source and available on GitHub:  
+**Repository**: [https://github.com/vscarpenter/SimpleImageViewer](https://github.com/vscarpenter/SimpleImageViewer)
+
+---
+
+**Simple Image Viewer** - Elegant folder-based image browsing for macOS  
+Created with ❤️ by [Vinny Carpenter](https://vinny.dev)

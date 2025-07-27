@@ -96,6 +96,17 @@ class ErrorHandlingService: ObservableObject {
                 secondaryAction: PermissionAction(title: "Cancel", action: {})
             ))
             
+        case .bookmarkResolutionFailed(let url):
+            showPermissionRequest(PermissionRequestInfo(
+                title: "Folder Access Expired",
+                message: "Access to \"\(url.lastPathComponent)\" has expired and needs to be restored.",
+                explanation: "macOS security requires apps to periodically renew access to folders outside the app sandbox.",
+                primaryAction: PermissionAction(title: "Select Folder Again", action: {
+                    NotificationCenter.default.post(name: .requestFolderSelection, object: nil)
+                }),
+                secondaryAction: PermissionAction(title: "Cancel", action: {})
+            ))
+            
         case .noImagesFound:
             showNotification(
                 "No supported images found in the selected folder. Please select a folder containing JPEG, PNG, GIF, HEIF, or other supported image files.",

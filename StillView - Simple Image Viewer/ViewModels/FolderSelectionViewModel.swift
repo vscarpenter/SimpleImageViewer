@@ -36,8 +36,10 @@ class FolderSelectionViewModel: ObservableObject {
     private let fileSystemService: FileSystemService
     private var preferencesService: PreferencesService
     private let errorHandlingService: ErrorHandlingService
+    private let accessManager = SecurityScopedAccessManager.shared
     private var cancellables = Set<AnyCancellable>()
     private var scanTask: Task<Void, Never>?
+    private var currentSecurityScopedURL: URL?
     
     // MARK: - Initialization
     
@@ -59,6 +61,7 @@ class FolderSelectionViewModel: ObservableObject {
     
     deinit {
         scanTask?.cancel()
+        // The SecurityScopedAccessManager will handle cleanup
     }
     
     // MARK: - Public Methods
@@ -100,22 +103,63 @@ class FolderSelectionViewModel: ObservableObject {
     func selectRecentFolder(_ url: URL) {
         currentError = nil
         
-        // Check if folder still exists
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            let error = ImageViewerError.folderNotFound(url)
+        // Find the corresponding bookmark for this URL
+        let storedFolders = preferencesService.recentFolders
+        let storedBookmarks = preferencesService.folderBookmarks
+        
+        guard let index = storedFolders.firstIndex(of: url),
+              index < storedBookmarks.count else {
+            // No bookmark found, try direct access
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                let error = ImageViewerError.folderNotFound(url)
+                currentError = error
+                errorHandlingService.handleImageViewerError(error)
+                removeRecentFolder(url)
+                return
+            }
+            handleFolderSelection(url)
+            return
+        }
+        
+        // Try to resolve the security-scoped bookmark
+        let bookmarkData = storedBookmarks[index]
+        guard let resolvedURL = fileSystemService.resolveSecurityScopedBookmark(bookmarkData) else {
+            // Bookmark resolution failed
+            let error = ImageViewerError.bookmarkResolutionFailed(url)
             currentError = error
             errorHandlingService.handleImageViewerError(error)
             removeRecentFolder(url)
             return
         }
         
-        handleFolderSelection(url)
+        // Use the resolved URL for folder selection
+        // Important: resolvedURL already has security-scoped access started
+        // handleFolderSelection will register this access with the SecurityScopedAccessManager
+        handleFolderSelection(resolvedURL)
     }
     
     /// Remove a folder from the recent folders list
     /// - Parameter url: The folder URL to remove
     func removeRecentFolder(_ url: URL) {
-        preferencesService.removeRecentFolder(url)
+        // Find the index of the folder to remove
+        let storedFolders = preferencesService.recentFolders
+        let storedBookmarks = preferencesService.folderBookmarks
+        
+        if let index = storedFolders.firstIndex(of: url) {
+            // Remove both folder and corresponding bookmark
+            var updatedFolders = storedFolders
+            var updatedBookmarks = storedBookmarks
+            
+            updatedFolders.remove(at: index)
+            if index < updatedBookmarks.count {
+                updatedBookmarks.remove(at: index)
+            }
+            
+            preferencesService.recentFolders = updatedFolders
+            preferencesService.folderBookmarks = updatedBookmarks
+            preferencesService.savePreferences()
+        }
+        
         loadRecentFolders()
     }
     
@@ -158,16 +202,116 @@ class FolderSelectionViewModel: ObservableObject {
     }
     
     private func loadRecentFolders() {
-        recentFolders = preferencesService.recentFolders
+        // Load both recent folders and their bookmarks
+        let storedFolders = preferencesService.recentFolders
+        let storedBookmarks = preferencesService.folderBookmarks
+        
+        var validFolders: [URL] = []
+        var validBookmarks: [Data] = []
+        
+        // Try to resolve each bookmark to verify folder access
+        for (index, folderURL) in storedFolders.enumerated() {
+            if index < storedBookmarks.count {
+                let bookmarkData = storedBookmarks[index]
+                if let resolvedURL = fileSystemService.resolveSecurityScopedBookmark(bookmarkData),
+                   resolvedURL == folderURL {
+                    validFolders.append(folderURL)
+                    validBookmarks.append(bookmarkData)
+                    // Stop accessing the resource immediately after verification
+                    // This is just for validation, not for actual use
+                    resolvedURL.stopAccessingSecurityScopedResource()
+                }
+            } else {
+                // No bookmark for this folder, check if it exists normally
+                if FileManager.default.fileExists(atPath: folderURL.path) {
+                    validFolders.append(folderURL)
+                    // Keep the valid bookmark data array in sync
+                    if validBookmarks.count < validFolders.count {
+                        // This folder doesn't have a bookmark, we'll handle it later
+                    }
+                }
+            }
+        }
+        
+        // Update preferences with only valid folders and bookmarks
+        if validFolders.count != storedFolders.count {
+            preferencesService.recentFolders = validFolders
+            preferencesService.folderBookmarks = validBookmarks
+            preferencesService.savePreferences()
+        }
+        
+        recentFolders = validFolders
     }
     
     private func handleFolderSelection(_ url: URL) {
+        // Let SecurityScopedAccessManager handle stopping previous access
+        // It will stop any existing access and register the new one
+        _ = accessManager.startAccess(for: url)
+        
         selectedFolderURL = url
         
-        // Add to recent folders
-        preferencesService.addRecentFolder(url)
-        preferencesService.lastSelectedFolder = url
-        preferencesService.savePreferences()
+        // Track this URL for security-scoped access management
+        // This ensures we maintain access throughout the session
+        currentSecurityScopedURL = url
+        
+        // Check if this URL already exists in recent folders with a bookmark
+        let storedFolders = preferencesService.recentFolders
+        let storedBookmarks = preferencesService.folderBookmarks
+        let existingIndex = storedFolders.firstIndex(of: url)
+        
+        // Create security-scoped bookmark for future access
+        // Skip bookmark creation if we already have one and this URL has active security access
+        let shouldCreateBookmark = existingIndex == nil || existingIndex! >= storedBookmarks.count
+        
+        if shouldCreateBookmark, let bookmarkData = fileSystemService.createSecurityScopedBookmark(for: url) {
+            // Remove existing entry if it exists
+            var updatedFolders = storedFolders
+            var updatedBookmarks = storedBookmarks
+            
+            if let existingIndex = updatedFolders.firstIndex(of: url) {
+                updatedFolders.remove(at: existingIndex)
+                if existingIndex < updatedBookmarks.count {
+                    updatedBookmarks.remove(at: existingIndex)
+                }
+            }
+            
+            // Add to beginning of list
+            updatedFolders.insert(url, at: 0)
+            updatedBookmarks.insert(bookmarkData, at: 0)
+            
+            // Limit to 10 entries
+            updatedFolders = Array(updatedFolders.prefix(10))
+            updatedBookmarks = Array(updatedBookmarks.prefix(10))
+            
+            // Update preferences
+            preferencesService.recentFolders = updatedFolders
+            preferencesService.folderBookmarks = updatedBookmarks
+            preferencesService.lastSelectedFolder = url
+            preferencesService.savePreferences()
+        } else if let existingIndex = existingIndex, existingIndex < storedBookmarks.count {
+            // We already have a bookmark for this URL, just reorder it
+            var updatedFolders = storedFolders
+            var updatedBookmarks = storedBookmarks
+            
+            // Move existing entry to the front
+            let folder = updatedFolders.remove(at: existingIndex)
+            let bookmark = updatedBookmarks.remove(at: existingIndex)
+            
+            updatedFolders.insert(folder, at: 0)
+            updatedBookmarks.insert(bookmark, at: 0)
+            
+            // Update preferences
+            preferencesService.recentFolders = updatedFolders
+            preferencesService.folderBookmarks = updatedBookmarks
+            preferencesService.lastSelectedFolder = url
+            preferencesService.savePreferences()
+        } else {
+            // If bookmark creation failed, still update recent folders
+            // This might happen if we already have active security-scoped access
+            preferencesService.addRecentFolder(url)
+            preferencesService.lastSelectedFolder = url
+            preferencesService.savePreferences()
+        }
         
         // Update recent folders list
         loadRecentFolders()
@@ -187,15 +331,6 @@ class FolderSelectionViewModel: ObservableObject {
         
         scanTask = Task { [weak self] in
             do {
-                // Create security-scoped bookmark for sandboxed access
-                if let bookmarkData = await self?.fileSystemService.createSecurityScopedBookmark(for: url) {
-                    await MainActor.run {
-                        var bookmarks = self?.preferencesService.folderBookmarks ?? []
-                        bookmarks.append(bookmarkData)
-                        self?.preferencesService.folderBookmarks = bookmarks
-                    }
-                }
-                
                 // Update progress to show scanning started
                 await MainActor.run {
                     self?.scanProgress = 0.1

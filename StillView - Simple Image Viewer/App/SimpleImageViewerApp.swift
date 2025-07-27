@@ -1,9 +1,21 @@
+//
+//  SimpleImageViewerApp.swift
+//  StillView - Simple Image Viewer
+//
+//  Created by Vinny Carpenter
+//  Copyright © 2025 Vinny Carpenter. All rights reserved.
+//  
+//  Author: Vinny Carpenter (https://vinny.dev)
+//  Source: https://github.com/vscarpenter/SimpleImageViewer
+//
+
 import SwiftUI
 import AppKit
 
 @main
 struct SimpleImageViewerApp: App {
     @State private var window: NSWindow?
+    @State private var showingAbout = false
     
     var body: some Scene {
         WindowGroup {
@@ -12,9 +24,19 @@ struct SimpleImageViewerApp: App {
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     handleAppWillTerminate()
                 }
+                .sheet(isPresented: $showingAbout) {
+                    AboutView()
+                }
         }
         .applyWindowResizability()
         .commands {
+            // Add About menu command
+            CommandGroup(replacing: .appInfo) {
+                Button("About StillView") {
+                    showingAbout = true
+                }
+            }
+            
             // Add File menu commands
             CommandGroup(replacing: .newItem) {
                 Button("Open Folder...") {

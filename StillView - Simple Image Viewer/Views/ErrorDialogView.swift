@@ -57,6 +57,8 @@ struct ErrorDialogView: View {
         switch error {
         case .folderAccessDenied:
             return "lock.fill"
+        case .bookmarkResolutionFailed:
+            return "key.fill"
         case .noImagesFound:
             return "photo.on.rectangle"
         case .imageLoadingFailed, .corruptedImage:
@@ -76,6 +78,8 @@ struct ErrorDialogView: View {
         switch error {
         case .folderAccessDenied:
             return "Access Denied"
+        case .bookmarkResolutionFailed:
+            return "Access Expired"
         case .noImagesFound:
             return "No Images Found"
         case .imageLoadingFailed:

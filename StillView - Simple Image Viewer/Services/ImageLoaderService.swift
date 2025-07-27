@@ -57,6 +57,7 @@ enum ImageLoaderError: LocalizedError {
 final class DefaultImageLoaderService: ImageLoaderService {
     private let imageCache: ImageCache
     private let memoryManager: ImageMemoryManager
+    private let accessManager = SecurityScopedAccessManager.shared
     private let loadingQueue = DispatchQueue(label: "com.simpleimageviewer.imageloading", qos: .userInitiated)
     private var loadingCancellables: [URL: AnyCancellable] = [:]
     private let cancellablesQueue = DispatchQueue(label: "com.simpleimageviewer.cancellables")
@@ -147,6 +148,12 @@ final class DefaultImageLoaderService: ImageLoaderService {
     // MARK: - Private Methods
     
     private func loadImageFromDisk(url: URL) throws -> NSImage {
+        // Ensure we have security-scoped access to this file
+        guard accessManager.ensureAccess(to: url) else {
+            print("❌ ImageLoaderService: No security-scoped access to \(url.path)")
+            throw ImageLoaderError.fileNotFound
+        }
+        
         // Check if file exists
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw ImageLoaderError.fileNotFound

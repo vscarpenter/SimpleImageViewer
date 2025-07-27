@@ -9,7 +9,7 @@ struct ContentView: View {
     // MARK: - Body
     var body: some View {
         mainContent
-            .background(Color.black)
+            .background(Color(NSColor.windowBackgroundColor))
             .overlay(alignment: .topTrailing) {
                 notificationOverlay
             }

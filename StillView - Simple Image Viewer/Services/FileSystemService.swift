@@ -58,6 +58,9 @@ class DefaultFileSystemService: FileSystemService, @unchecked Sendable {
             throw FileSystemError.folderNotFound
         }
         
+        // Ensure we have security-scoped access to the folder during scanning
+        // Note: The caller should have already started accessing the security-scoped resource
+        // We just need to verify we can access the folder
         var imageFiles: [ImageFile] = []
         
         do {
@@ -229,6 +232,8 @@ class DefaultFileSystemService: FileSystemService, @unchecked Sendable {
                 return nil
             }
             
+            // Note: The caller is responsible for calling stopAccessingSecurityScopedResource()
+            // when done with the URL
             return url
         } catch {
             return nil
