@@ -37,6 +37,19 @@ struct NotificationView: View {
                 return "checkmark.circle.fill"
             }
         }
+        
+        var accessibilityPrefix: String {
+            switch self {
+            case .info:
+                return "Information"
+            case .warning:
+                return "Warning"
+            case .error:
+                return "Error"
+            case .success:
+                return "Success"
+            }
+        }
     }
     
     var body: some View {
