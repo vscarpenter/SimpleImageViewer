@@ -1,7 +1,7 @@
 import Foundation
 import CoreGraphics
 
-/// Protocol defining preferences management for the Simple Image Viewer
+/// Protocol defining preferences management for StillView - Simple Image Viewer
 protocol PreferencesService {
     /// List of recently accessed folders (maximum 10 entries)
     var recentFolders: [URL] { get set }

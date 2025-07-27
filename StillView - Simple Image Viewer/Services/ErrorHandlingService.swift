@@ -88,7 +88,7 @@ class ErrorHandlingService: ObservableObject {
         case .folderAccessDenied:
             showPermissionRequest(PermissionRequestInfo(
                 title: "Folder Access Required",
-                message: "Simple Image Viewer needs permission to access the selected folder to display images.",
+                message: "StillView - Simple Image Viewer needs permission to access the selected folder to display images.",
                 explanation: "This app is sandboxed for your security and can only access folders you explicitly select.",
                 primaryAction: PermissionAction(title: "Select Different Folder", action: {
                     NotificationCenter.default.post(name: .requestFolderSelection, object: nil)

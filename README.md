@@ -1,4 +1,4 @@
-# Simple Image Viewer
+# StillView - Simple Image Viewer
 
 > **"Because sometimes, simple is perfect."**
 

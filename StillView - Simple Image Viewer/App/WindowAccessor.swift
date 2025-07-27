@@ -44,7 +44,7 @@ class WindowAccessor: ObservableObject {
         guard let window = window else { return }
         
         // Configure window properties
-        window.title = "Simple Image Viewer"
+        window.title = "StillView - Simple Image Viewer"
         window.titlebarAppearsTransparent = false
         window.titleVisibility = .visible
         

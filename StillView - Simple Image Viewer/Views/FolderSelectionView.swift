@@ -98,6 +98,7 @@ struct FolderSelectionView: View {
         }
         .buttonStyle(.plain)
         .disabled(viewModel.isScanning)
+        .help("Select a folder containing images to browse")
         .accessibilityLabel("Browse for folder")
         .accessibilityHint("Opens a dialog to select a folder containing images")
     }
@@ -134,6 +135,7 @@ struct FolderSelectionView: View {
             }
             .font(.caption)
             .foregroundColor(.secondary)
+            .help("Stop scanning the current folder")
             .accessibilityLabel("Cancel scanning")
         }
         .padding()
@@ -157,6 +159,7 @@ struct FolderSelectionView: View {
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .help("Remove all folders from the recent list")
                 .accessibilityLabel("Clear all recent folders")
             }
             
@@ -210,6 +213,7 @@ private struct RecentFolderRow: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .help("Remove \(folderURL.lastPathComponent) from recent folders")
                 .accessibilityLabel("Remove \(folderURL.lastPathComponent) from recent folders")
             }
         }
@@ -228,6 +232,7 @@ private struct RecentFolderRow: View {
                 isHovered = hovering
             }
         }
+        .help("Click to open \(folderURL.lastPathComponent)")
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Recent folder: \(folderURL.lastPathComponent)")
         .accessibilityHint("Double-tap to select this folder")

@@ -9,8 +9,6 @@
 /* Begin PBXBuildFile section */
 		A1000001 /* SimpleImageViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000 /* SimpleImageViewerApp.swift */; };
 		A1000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002 /* ContentView.swift */; };
-		A10000A4 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A2 /* AppCoordinator.swift */; };
-		A10000A5 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A3 /* WindowAccessor.swift */; };
 		A1000005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000004 /* Assets.xcassets */; };
 		A1000008 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000007 /* Preview Assets.xcassets */; };
 		A1000010 /* ImageFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000F /* ImageFile.swift */; };
@@ -31,9 +29,12 @@
 		A1000095 /* NavigationControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000092 /* NavigationControlsView.swift */; };
 		A1000096 /* FolderSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000093 /* FolderSelectionView.swift */; };
 		A1000097 /* FolderSelectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000094 /* FolderSelectionViewModel.swift */; };
+		A100009B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A100009A /* PrivacyInfo.xcprivacy */; };
 		A100009F /* ErrorDialogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100009C /* ErrorDialogView.swift */; };
 		A10000A0 /* NotificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100009D /* NotificationView.swift */; };
 		A10000A1 /* KeyCaptureViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100009E /* KeyCaptureViewRepresentable.swift */; };
+		A10000A4 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A2 /* AppCoordinator.swift */; };
+		A10000A5 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A3 /* WindowAccessor.swift */; };
 		FB5D39042E355791004B9D85 /* ImageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39032E355791004B9D85 /* ImageMetadataService.swift */; };
 		FB5D39062E35579D004B9D85 /* AccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39052E35579D004B9D85 /* AccessibilityService.swift */; };
 		FBC4F84D2E35215F00AE62AA /* ErrorHandlingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */; };
@@ -41,15 +42,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A0FFFFFD /* Simple Image Viewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Simple Image Viewer.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A0FFFFFD /* StillView - Simple Image Viewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "StillView - Simple Image Viewer.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000000 /* SimpleImageViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleImageViewerApp.swift; sourceTree = "<group>"; };
 		A1000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		A10000A2 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
-		A10000A3 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
 		A1000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000007 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		A1000009 /* Simple_Image_Viewer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Simple_Image_Viewer.entitlements; sourceTree = "<group>"; };
-		A100009A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A100000F /* ImageFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageFile.swift; sourceTree = "<group>"; };
 		A1000011 /* FolderScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderScanner.swift; sourceTree = "<group>"; };
 		A1000013 /* ImageViewerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewerViewModel.swift; sourceTree = "<group>"; };
@@ -67,15 +65,17 @@
 		A1000091 /* Bundle+Resources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bundle+Resources.swift"; sourceTree = "<group>"; };
 		A1000092 /* NavigationControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationControlsView.swift; sourceTree = "<group>"; };
 		A1000093 /* FolderSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSelectionView.swift; sourceTree = "<group>"; };
+		A1000094 /* FolderSelectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSelectionViewModel.swift; sourceTree = "<group>"; };
+		A100009A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A100009C /* ErrorDialogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorDialogView.swift; sourceTree = "<group>"; };
 		A100009D /* NotificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationView.swift; sourceTree = "<group>"; };
 		A100009E /* KeyCaptureViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCaptureViewRepresentable.swift; sourceTree = "<group>"; };
-		A1000094 /* FolderSelectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSelectionViewModel.swift; sourceTree = "<group>"; };
+		A10000A2 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
+		A10000A3 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
 		FB5D39032E355791004B9D85 /* ImageMetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataService.swift; sourceTree = "<group>"; };
 		FB5D39052E35579D004B9D85 /* AccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityService.swift; sourceTree = "<group>"; };
 		FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorHandlingService.swift; sourceTree = "<group>"; };
 		FBC4F84E2E35216900AE62AA /* KeyboardHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHandler.swift; sourceTree = "<group>"; };
-		A100009B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A100009A /* PrivacyInfo.xcprivacy */; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -92,7 +92,7 @@
 		A0FFFFF4 = {
 			isa = PBXGroup;
 			children = (
-				A0FFFFF9 /* Simple Image Viewer */,
+				A0FFFFF9 /* StillView - Simple Image Viewer */,
 				A0FFFFF8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -100,12 +100,12 @@
 		A0FFFFF8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A0FFFFFD /* Simple Image Viewer.app */,
+				A0FFFFFD /* StillView - Simple Image Viewer.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A0FFFFF9 /* Simple Image Viewer */ = {
+		A0FFFFF9 /* StillView - Simple Image Viewer */ = {
 			isa = PBXGroup;
 			children = (
 				A100000E /* App */,
@@ -119,7 +119,7 @@
 				A1000009 /* Simple_Image_Viewer.entitlements */,
 				A100009A /* PrivacyInfo.xcprivacy */,
 			);
-			path = "Simple Image Viewer";
+			path = "StillView - Simple Image Viewer";
 			sourceTree = "<group>";
 		};
 		A1000006 /* Preview Content */ = {
@@ -212,9 +212,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A0FFFFFC /* Simple Image Viewer */ = {
+		A0FFFFFC /* StillView - Simple Image Viewer */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A100001E /* Build configuration list for PBXNativeTarget "Simple Image Viewer" */;
+			buildConfigurationList = A100001E /* Build configuration list for PBXNativeTarget "StillView - Simple Image Viewer" */;
 			buildPhases = (
 				A0FFFFF7 /* Sources */,
 				A0FFFFFA /* Frameworks */,
@@ -224,9 +224,9 @@
 			);
 			dependencies = (
 			);
-			name = "Simple Image Viewer";
-			productName = "Simple Image Viewer";
-			productReference = A0FFFFFD /* Simple Image Viewer.app */;
+			name = "StillView - Simple Image Viewer";
+			productName = "StillView - Simple Image Viewer";
+			productReference = A0FFFFFD /* StillView - Simple Image Viewer.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -237,14 +237,14 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					A0FFFFFC = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
 			};
-			buildConfigurationList = A0FFFFF6 /* Build configuration list for PBXProject "Simple Image Viewer" */;
+			buildConfigurationList = A0FFFFF6 /* Build configuration list for PBXProject "StillView - Simple Image Viewer" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -257,7 +257,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A0FFFFFC /* Simple Image Viewer */,
+				A0FFFFFC /* StillView - Simple Image Viewer */,
 			);
 		};
 /* End PBXProject section */
@@ -349,7 +349,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 52HVJ3VDSM;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -368,7 +370,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -412,7 +414,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 52HVJ3VDSM;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -425,7 +429,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -438,28 +442,28 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Simple Image Viewer/Simple_Image_Viewer.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "StillView - Simple Image Viewer/Simple_Image_Viewer.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"Simple Image Viewer/Preview Content\"";
-				DEVELOPMENT_TEAM = 52HVJ3VDSM;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Simple Image Viewer";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
+				INFOPLIST_KEY_CFBundleDisplayName = "StillView - Image Viewer";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
-				INFOPLIST_KEY_LSMinimumSystemVersion = "12.0";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
+				INFOPLIST_KEY_LSMinimumSystemVersion = 12.0;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.Simple-Image-Viewer";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -471,28 +475,28 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Simple Image Viewer/Simple_Image_Viewer.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "StillView - Simple Image Viewer/Simple_Image_Viewer.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"Simple Image Viewer/Preview Content\"";
-				DEVELOPMENT_TEAM = 52HVJ3VDSM;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Simple Image Viewer";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
+				INFOPLIST_KEY_CFBundleDisplayName = "StillView - Image Viewer";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
-				INFOPLIST_KEY_LSMinimumSystemVersion = "12.0";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
+				INFOPLIST_KEY_LSMinimumSystemVersion = 12.0;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.Simple-Image-Viewer";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -502,7 +506,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A0FFFFF6 /* Build configuration list for PBXProject "Simple Image Viewer" */ = {
+		A0FFFFF6 /* Build configuration list for PBXProject "StillView - Simple Image Viewer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A0FFFFBB /* Debug */,
@@ -511,7 +515,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A100001E /* Build configuration list for PBXNativeTarget "Simple Image Viewer" */ = {
+		A100001E /* Build configuration list for PBXNativeTarget "StillView - Simple Image Viewer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A0FFFFDD /* Debug */,

@@ -71,6 +71,7 @@ struct NavigationControlsView: View {
                 }
             }
             .foregroundColor(.primary)
+            .help("Return to folder selection")
             .accessibilityLabel("Back to folder selection")
             .accessibilityHint("Returns to the main folder selection screen")
             
@@ -78,6 +79,9 @@ struct NavigationControlsView: View {
             imageCounterView
             
             Spacer()
+            
+            // Share button
+            shareButton
             
             // Zoom controls
             zoomControlsView
@@ -90,6 +94,22 @@ struct NavigationControlsView: View {
         )
         .padding(.horizontal, 16)
         .padding(.top, 8)
+    }
+    
+    // MARK: - Share Button
+    private var shareButton: some View {
+        Button(action: {
+            shareCurrentImage()
+            showControlsTemporarily()
+        }) {
+            Image(systemName: "square.and.arrow.up")
+                .font(.system(size: 14, weight: .medium))
+        }
+        .buttonStyle(ToolbarButtonStyle())
+        .help("Share current image")
+        .accessibilityLabel("Share image")
+        .accessibilityHint("Share the current image using system sharing options")
+        .disabled(!viewModel.canShareCurrentImage)
     }
     
     // MARK: - Image Counter View
@@ -125,6 +145,7 @@ struct NavigationControlsView: View {
                     .font(.system(size: 14, weight: .medium))
             }
             .buttonStyle(ToolbarButtonStyle())
+            .help("Zoom out")
             .accessibilityLabel("Zoom out")
             .accessibilityHint("Decrease zoom level")
             
@@ -140,6 +161,7 @@ struct NavigationControlsView: View {
                     .font(.system(size: 14, weight: .medium))
             }
             .buttonStyle(ToolbarButtonStyle())
+            .help("Zoom in")
             .accessibilityLabel("Zoom in")
             .accessibilityHint("Increase zoom level")
             
@@ -155,6 +177,7 @@ struct NavigationControlsView: View {
                     .font(.system(size: 14, weight: .medium))
             }
             .buttonStyle(ToolbarButtonStyle())
+            .help("Fit to window")
             .accessibilityLabel("Fit to window")
             .accessibilityHint("Zoom to fit image in window")
             
@@ -167,6 +190,7 @@ struct NavigationControlsView: View {
                     .font(.system(size: 14, weight: .medium))
             }
             .buttonStyle(ToolbarButtonStyle())
+            .help("Actual size (100%)")
             .accessibilityLabel("Actual size")
             .accessibilityHint("Zoom to 100% actual size")
         }
@@ -199,6 +223,7 @@ struct NavigationControlsView: View {
             RoundedRectangle(cornerRadius: 4)
                 .fill(Color(NSColor.controlBackgroundColor).opacity(0.8))
         )
+        .help("Current zoom: \(viewModel.zoomPercentageText). Click to cycle through zoom levels.")
         .accessibilityLabel("Zoom level: \(viewModel.zoomPercentageText)")
         .accessibilityHint("Tap to cycle through zoom levels")
     }
@@ -260,6 +285,7 @@ struct NavigationControlsView: View {
                 .foregroundColor(viewModel.showFileName ? .accentColor : .secondary)
         }
         .buttonStyle(ToolbarButtonStyle())
+        .help(viewModel.showFileName ? "Hide file name" : "Show file name")
         .accessibilityLabel(viewModel.showFileName ? "Hide file name" : "Show file name")
         .accessibilityHint("Toggle file name display")
     }
@@ -300,6 +326,16 @@ struct NavigationControlsView: View {
     private func stopAutoHideTimer() {
         hideControlsTimer?.invalidate()
         hideControlsTimer = nil
+    }
+    
+    private func shareCurrentImage() {
+        // Find the share button view to use as the source for the share sheet
+        if let window = NSApplication.shared.mainWindow,
+           let contentView = window.contentView {
+            viewModel.shareCurrentImage(from: contentView)
+        } else {
+            viewModel.shareCurrentImage()
+        }
     }
 }
 

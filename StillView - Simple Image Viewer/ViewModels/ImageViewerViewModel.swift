@@ -393,6 +393,82 @@ class ImageViewerViewModel: ObservableObject {
     func navigateToFolderSelection() {
         shouldNavigateToFolderSelection = true
     }
+    
+    // MARK: - Share Methods
+    
+    /// Share the current image using the system share sheet
+    /// - Parameter sourceView: The view to present the share sheet from (for positioning)
+    func shareCurrentImage(from sourceView: NSView? = nil) {
+        guard let currentImageFile = currentImageFile else {
+            errorHandlingService.showNotification("No image to share", type: .warning)
+            return
+        }
+        
+        // Create sharing service picker
+        let sharingServicePicker = NSSharingServicePicker(items: [currentImageFile.url])
+        
+        // Set delegate for customization if needed
+        sharingServicePicker.delegate = SharingServiceDelegate()
+        
+        // Show the sharing picker
+        if let sourceView = sourceView {
+            sharingServicePicker.show(relativeTo: sourceView.bounds, of: sourceView, preferredEdge: .minY)
+        } else {
+            // Fallback: try to find the main window and show from center
+            if let window = NSApplication.shared.mainWindow {
+                let centerRect = NSRect(
+                    x: window.frame.width / 2 - 50,
+                    y: window.frame.height / 2 - 25,
+                    width: 100,
+                    height: 50
+                )
+                sharingServicePicker.show(relativeTo: centerRect, of: window.contentView!, preferredEdge: .minY)
+            }
+        }
+    }
+    
+    /// Get available sharing services for the current image
+    var availableSharingServices: [NSSharingService] {
+        guard let currentImageFile = currentImageFile else { return [] }
+        return NSSharingService.sharingServices(forItems: [currentImageFile.url])
+    }
+    
+    /// Check if sharing is available for the current image
+    var canShareCurrentImage: Bool {
+        return currentImageFile != nil && !availableSharingServices.isEmpty
+    }
+}
+
+// MARK: - Sharing Service Delegate
+private class SharingServiceDelegate: NSObject, NSSharingServicePickerDelegate {
+    func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker, delegateFor sharingService: NSSharingService) -> NSSharingServiceDelegate? {
+        return SharingDelegate()
+    }
+}
+
+private class SharingDelegate: NSObject, NSSharingServiceDelegate {
+    func sharingService(_ sharingService: NSSharingService, willShareItems items: [Any]) {
+        // Optional: Log or track sharing events
+        print("Sharing image via \(sharingService.title)")
+    }
+    
+    func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: Error) {
+        DispatchQueue.main.async {
+            ErrorHandlingService.shared.showNotification(
+                "Failed to share image: \(error.localizedDescription)",
+                type: .error
+            )
+        }
+    }
+    
+    func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
+        DispatchQueue.main.async {
+            ErrorHandlingService.shared.showNotification(
+                "Image shared successfully",
+                type: .success
+            )
+        }
+    }
 }
 
 // MARK: - Array Safe Subscript Extension

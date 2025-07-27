@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import UniformTypeIdentifiers
 
-/// Protocol defining file system operations for the Simple Image Viewer
+/// Protocol defining file system operations for StillView - Simple Image Viewer
 protocol FileSystemService {
     /// Scan a folder for supported image files
     /// - Parameters:

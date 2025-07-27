@@ -1,7 +1,7 @@
 import UniformTypeIdentifiers
 
 extension UTType {
-    /// All image types supported by the Simple Image Viewer
+    /// All image types supported by StillView - Simple Image Viewer
     static let supportedImageTypes: [UTType] = [
         // Primary formats
         .jpeg,

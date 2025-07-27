@@ -4,7 +4,7 @@ import Combine
 import UniformTypeIdentifiers
 import ImageIO
 
-/// Protocol defining image loading capabilities for the Simple Image Viewer
+/// Protocol defining image loading capabilities for StillView - Simple Image Viewer
 protocol ImageLoaderService {
     /// Load an image from the specified URL
     /// - Parameter url: The file URL of the image to load

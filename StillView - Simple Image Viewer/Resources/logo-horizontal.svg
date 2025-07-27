@@ -12,6 +12,6 @@
                         <polygon points="22,55 30,47 38,52 48,42 78,55 78,64 22,64" fill="#667eea" opacity="0.6"/>
                         <rect x="27" y="70" width="46" height="5" rx="2.5" fill="white" opacity="0.8"/>
                         
-                        <text x="110" y="35" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="24" font-weight="300" fill="#333" letter-spacing="-0.5px">Simple Image Viewer</text>
+                        <text x="110" y="35" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="24" font-weight="300" fill="#333" letter-spacing="-0.5px">StillView - Simple Image Viewer</text>
                         <text x="110" y="55" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" fill="#666">Fast &amp; Elegant Image Browsing</text>
                     </svg>

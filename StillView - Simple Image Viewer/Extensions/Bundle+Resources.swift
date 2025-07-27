@@ -56,7 +56,7 @@ final class AppBranding {
     }
     
     /// App name for display
-    static let appName = "Simple Image Viewer"
+    static let appName = "StillView - Simple Image Viewer"
     
     /// App tagline
     static let tagline = "Fast & Elegant Image Browsing"
