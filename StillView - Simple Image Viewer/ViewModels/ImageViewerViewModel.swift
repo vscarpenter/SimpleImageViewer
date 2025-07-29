@@ -2,6 +2,35 @@ import SwiftUI
 import Combine
 import AppKit
 
+/// View modes for the image viewer
+enum ViewMode: String, CaseIterable {
+    case normal = "normal"
+    case thumbnailStrip = "thumbnailStrip"
+    case grid = "grid"
+    
+    var displayName: String {
+        switch self {
+        case .normal:
+            return "Normal View"
+        case .thumbnailStrip:
+            return "Thumbnail Strip"
+        case .grid:
+            return "Grid View"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .normal:
+            return "photo"
+        case .thumbnailStrip:
+            return "rectangle.grid.1x2"
+        case .grid:
+            return "square.grid.3x3"
+        }
+    }
+}
+
 /// ViewModel for the main image viewer interface
 class ImageViewerViewModel: ObservableObject {
     // MARK: - Published Properties
@@ -15,6 +44,10 @@ class ImageViewerViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var showFileName: Bool = false
     @Published var shouldNavigateToFolderSelection: Bool = false
+    @Published var showImageInfo: Bool = false
+    @Published var isSlideshow: Bool = false
+    @Published var slideshowInterval: Double = 3.0
+    @Published var viewMode: ViewMode = .normal
     
     // MARK: - Computed Properties
     var hasNext: Bool {
@@ -41,6 +74,10 @@ class ImageViewerViewModel: ObservableObject {
         return currentImageFile?.displayName ?? ""
     }
     
+    var allImageFiles: [ImageFile] {
+        return imageFiles
+    }
+    
     // MARK: - Private Properties
     private var imageFiles: [ImageFile] = []
     private var folderContent: FolderContent?
@@ -48,6 +85,9 @@ class ImageViewerViewModel: ObservableObject {
     private let imageLoaderService: ImageLoaderService
     private var preferencesService: PreferencesService
     private let errorHandlingService: ErrorHandlingService
+    private var slideshowTimer: Timer?
+    private let thumbnailCache = NSCache<NSURL, NSImage>()
+    private let sharingDelegate = SharingServiceDelegate()
     
     // Zoom levels for quick access
     private let zoomLevels: [Double] = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 5.0]
@@ -61,8 +101,14 @@ class ImageViewerViewModel: ObservableObject {
         self.preferencesService = preferencesService
         self.errorHandlingService = errorHandlingService
         
+        // Setup thumbnail cache
+        thumbnailCache.countLimit = 100
+        thumbnailCache.totalCostLimit = 25 * 1024 * 1024 // 25MB
+        
         // Load preferences
         self.showFileName = preferencesService.showFileName
+        self.showImageInfo = preferencesService.showImageInfo
+        self.slideshowInterval = preferencesService.slideshowInterval
         
         // Set up preferences binding
         setupPreferencesBinding()
@@ -246,6 +292,24 @@ class ImageViewerViewModel: ObservableObject {
                 self?.preferencesService.savePreferences()
             }
             .store(in: &cancellables)
+        
+        // Update preferences when showImageInfo changes
+        $showImageInfo
+            .dropFirst() // Skip initial value
+            .sink { [weak self] newValue in
+                self?.preferencesService.showImageInfo = newValue
+                self?.preferencesService.savePreferences()
+            }
+            .store(in: &cancellables)
+        
+        // Update preferences when slideshowInterval changes
+        $slideshowInterval
+            .dropFirst() // Skip initial value
+            .sink { [weak self] newValue in
+                self?.preferencesService.slideshowInterval = newValue
+                self?.preferencesService.savePreferences()
+            }
+            .store(in: &cancellables)
     }
     
     private func setupMemoryWarningHandling() {
@@ -401,6 +465,9 @@ class ImageViewerViewModel: ObservableObject {
     
     /// Clear all content and prepare for navigation back to folder selection
     func clearContent() {
+        // Stop slideshow if running
+        stopSlideshow()
+        
         // Cancel any ongoing loading
         if let currentImageFile = currentImageFile {
             imageLoaderService.cancelLoading(for: currentImageFile.url)
@@ -419,11 +486,130 @@ class ImageViewerViewModel: ObservableObject {
         errorMessage = nil
         zoomLevel = 1.0
         isFullscreen = false
+        showImageInfo = false
+        viewMode = .normal
+        
+        // Clear thumbnail cache
+        thumbnailCache.removeAllObjects()
     }
     
     /// Navigate back to folder selection
     func navigateToFolderSelection() {
         shouldNavigateToFolderSelection = true
+    }
+    
+    // MARK: - Image Info Methods
+    
+    /// Toggle the image info overlay
+    func toggleImageInfo() {
+        showImageInfo.toggle()
+    }
+    
+    // MARK: - Slideshow Methods
+    
+    /// Start the slideshow
+    func startSlideshow() {
+        guard totalImages > 1 else {
+            errorHandlingService.showNotification("Need at least 2 images for slideshow", type: .warning)
+            return
+        }
+        
+        isSlideshow = true
+        startSlideshowTimer()
+    }
+    
+    /// Stop the slideshow
+    func stopSlideshow() {
+        isSlideshow = false
+        stopSlideshowTimer()
+    }
+    
+    /// Toggle slideshow on/off
+    func toggleSlideshow() {
+        if isSlideshow {
+            stopSlideshow()
+        } else {
+            startSlideshow()
+        }
+    }
+    
+    /// Set slideshow interval
+    /// - Parameter interval: Time in seconds between slides
+    func setSlideshowInterval(_ interval: Double) {
+        slideshowInterval = max(1.0, min(30.0, interval)) // Clamp between 1-30 seconds
+        
+        // Restart timer if slideshow is active
+        if isSlideshow {
+            stopSlideshowTimer()
+            startSlideshowTimer()
+        }
+    }
+    
+    private func startSlideshowTimer() {
+        slideshowTimer?.invalidate()
+        slideshowTimer = Timer.scheduledTimer(withTimeInterval: slideshowInterval, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.advanceSlideshow()
+            }
+        }
+    }
+    
+    private func stopSlideshowTimer() {
+        slideshowTimer?.invalidate()
+        slideshowTimer = nil
+    }
+    
+    private func advanceSlideshow() {
+        if hasNext {
+            nextImage()
+        } else {
+            // Loop back to first image
+            goToFirst()
+        }
+    }
+    
+    // MARK: - View Mode Methods
+    
+    /// Toggle between normal and grid view
+    func toggleGridView() {
+        switch viewMode {
+        case .normal, .thumbnailStrip:
+            viewMode = .grid
+        case .grid:
+            viewMode = .normal
+        }
+    }
+    
+    /// Toggle thumbnail strip visibility
+    func toggleThumbnailStrip() {
+        switch viewMode {
+        case .normal, .grid:
+            viewMode = .thumbnailStrip
+        case .thumbnailStrip:
+            viewMode = .normal
+        }
+    }
+    
+    /// Set specific view mode
+    /// - Parameter mode: The view mode to set
+    func setViewMode(_ mode: ViewMode) {
+        viewMode = mode
+    }
+    
+    /// Jump to specific image from thumbnail selection
+    /// - Parameter index: The index of the image to jump to
+    func jumpToImage(at index: Int) {
+        guard index >= 0 && index < totalImages else { return }
+        
+        currentIndex = index
+        
+        // Load the image
+        loadCurrentImage()
+        
+        // Close grid view after selection
+        if viewMode == .grid {
+            viewMode = .normal
+        }
     }
     
     // MARK: - Share Methods
@@ -440,7 +626,7 @@ class ImageViewerViewModel: ObservableObject {
         let sharingServicePicker = NSSharingServicePicker(items: [currentImageFile.url])
         
         // Set delegate for customization if needed
-        sharingServicePicker.delegate = SharingServiceDelegate()
+        sharingServicePicker.delegate = sharingDelegate
         
         // Show the sharing picker
         if let sourceView = sourceView {
@@ -473,8 +659,10 @@ class ImageViewerViewModel: ObservableObject {
 
 // MARK: - Sharing Service Delegate
 private class SharingServiceDelegate: NSObject, NSSharingServicePickerDelegate {
+    private let sharingDelegate = SharingDelegate()
+    
     func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker, delegateFor sharingService: NSSharingService) -> NSSharingServiceDelegate? {
-        return SharingDelegate()
+        return sharingDelegate
     }
 }
 

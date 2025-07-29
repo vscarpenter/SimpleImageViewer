@@ -39,6 +39,8 @@
 		A10000A8 /* SecurityScopedAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A9 /* SecurityScopedAccessManager.swift */; };
 		FB5D39042E355791004B9D85 /* ImageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39032E355791004B9D85 /* ImageMetadataService.swift */; };
 		FB5D39062E35579D004B9D85 /* AccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39052E35579D004B9D85 /* AccessibilityService.swift */; };
+		FB9F40EC2E38708B005C2968 /* ImageInfoOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */; };
+		FB9F40EE2E387596005C2968 /* NavigationControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB9F40ED2E387596005C2968 /* NavigationControlsView.swift */; };
 		FBA046082E36DBA8006F9C47 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA046072E36DBA8006F9C47 /* HelpView.swift */; };
 		FBA0460A2E36DC34006F9C47 /* HelpContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA046092E36DC34006F9C47 /* HelpContent.swift */; };
 		FBC4F84D2E35215F00AE62AA /* ErrorHandlingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */; };
@@ -80,6 +82,8 @@
 		A10000A9 /* SecurityScopedAccessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedAccessManager.swift; sourceTree = "<group>"; };
 		FB5D39032E355791004B9D85 /* ImageMetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataService.swift; sourceTree = "<group>"; };
 		FB5D39052E35579D004B9D85 /* AccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityService.swift; sourceTree = "<group>"; };
+		FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInfoOverlayView.swift; sourceTree = "<group>"; };
+		FB9F40ED2E387596005C2968 /* NavigationControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationControlsView.swift; sourceTree = "<group>"; };
 		FBA046072E36DBA8006F9C47 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		FBA046092E36DC34006F9C47 /* HelpContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpContent.swift; sourceTree = "<group>"; };
 		FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorHandlingService.swift; sourceTree = "<group>"; };
@@ -156,6 +160,8 @@
 		A100000B /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				FB9F40ED2E387596005C2968 /* NavigationControlsView.swift */,
+				FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */,
 				FBA046072E36DBA8006F9C47 /* HelpView.swift */,
 				A1000015 /* ImageDisplayView.swift */,
 				A1000092 /* NavigationControlsView.swift */,
@@ -312,6 +318,7 @@
 				A100004D /* UTType+ImageSupport.swift in Sources */,
 				A1000088 /* ImageCache.swift in Sources */,
 				A100008A /* ImageMemoryManager.swift in Sources */,
+				FB9F40EE2E387596005C2968 /* NavigationControlsView.swift in Sources */,
 				A1000090 /* Bundle+Resources.swift in Sources */,
 				A1000001 /* SimpleImageViewerApp.swift in Sources */,
 				FBC4F84F2E35216900AE62AA /* KeyboardHandler.swift in Sources */,
@@ -322,6 +329,7 @@
 				A1000097 /* FolderSelectionViewModel.swift in Sources */,
 				A100009F /* ErrorDialogView.swift in Sources */,
 				A10000A0 /* NotificationView.swift in Sources */,
+				FB9F40EC2E38708B005C2968 /* ImageInfoOverlayView.swift in Sources */,
 				A10000A1 /* KeyCaptureViewRepresentable.swift in Sources */,
 				A10000A6 /* AboutView.swift in Sources */,
 				A10000A8 /* SecurityScopedAccessManager.swift in Sources */,
@@ -462,7 +470,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -500,7 +508,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;

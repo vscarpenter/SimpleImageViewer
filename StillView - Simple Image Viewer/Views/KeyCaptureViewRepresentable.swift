@@ -45,7 +45,7 @@ class KeyCaptureView: NSView {
     }
     
     override func flagsChanged(with event: NSEvent) {
-        guard let keyHandler = keyHandler else {
+        guard keyHandler != nil else {
             super.flagsChanged(with: event)
             return
         }

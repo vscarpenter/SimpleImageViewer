@@ -45,8 +45,16 @@ struct SimpleImageViewerApp: App {
             CommandGroup(replacing: .newItem) {
                 Button("Open Folder...") {
                     // This will be handled by the ContentView
+                    NotificationCenter.default.post(name: .requestFolderSelection, object: nil)
                 }
                 .keyboardShortcut("o", modifiers: .command)
+                
+                Divider()
+                
+                Button("Back to Folder Selection") {
+                    NotificationCenter.default.post(name: .requestFolderSelection, object: nil)
+                }
+                .keyboardShortcut("b", modifiers: .command)
             }
             
             // Add Help menu commands

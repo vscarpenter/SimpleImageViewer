@@ -59,16 +59,27 @@ class KeyboardHandler: ObservableObject {
             if viewModel.isFullscreen {
                 viewModel.exitFullscreen()
                 return true
+            } else if viewModel.viewMode != .normal {
+                // Exit thumbnail views back to normal view
+                viewModel.setViewMode(.normal)
+                return true
+            } else {
+                // Return to folder selection
+                viewModel.navigateToFolderSelection()
+                return true
             }
-            // If not in fullscreen, let the system handle escape (could close app)
-            return false
             
         case 36: // Enter/Return
             viewModel.toggleFullscreen()
             return true
             
         case 49: // Spacebar
-            viewModel.nextImage()
+            // In slideshow mode, spacebar pauses/resumes. Otherwise, advances to next image
+            if viewModel.isSlideshow {
+                viewModel.toggleSlideshow()
+            } else {
+                viewModel.nextImage()
+            }
             return true
             
         default:
@@ -102,6 +113,26 @@ class KeyboardHandler: ObservableObject {
                 viewModel.zoomToActualSize()
                 return true
                 
+            case "i":
+                viewModel.toggleImageInfo()
+                return true
+                
+            case "s":
+                viewModel.toggleSlideshow()
+                return true
+                
+            case "g":
+                viewModel.toggleGridView()
+                return true
+                
+            case "t":
+                viewModel.toggleThumbnailStrip()
+                return true
+                
+            case "b":
+                viewModel.navigateToFolderSelection()
+                return true
+                
             default:
                 continue
             }
@@ -115,16 +146,20 @@ class KeyboardHandler: ObservableObject {
     static func getKeyboardShortcuts() -> [String: String] {
         return [
             "← / →": "Navigate between images",
-            "Spacebar": "Next image",
+            "Spacebar": "Next image / Pause slideshow",
             "Page Up/Down": "Navigate between images",
             "Home": "Go to first image",
             "End": "Go to last image",
             "F / Enter": "Toggle fullscreen",
-            "Escape": "Exit fullscreen",
+            "Escape": "Exit fullscreen / Back to folder selection",
             "+ / =": "Zoom in",
             "-": "Zoom out",
             "0": "Fit to window",
-            "1": "Actual size (100%)"
+            "1": "Actual size (100%)",
+            "I": "Toggle image info overlay",
+            "S": "Start/stop slideshow",
+            "G": "Toggle grid view",
+            "B": "Back to folder selection"
         ]
     }
     

@@ -61,7 +61,10 @@ final class ImageCache: NSObject {
     ///   - url: The URL key for the image
     func setImage(_ image: NSImage, for url: URL) {
         let cost = estimateImageMemoryUsage(image)
-        cachedImageSizes[url as NSURL] = cost
+        cacheQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.cachedImageSizes[url as NSURL] = cost
+        }
         cache.setObject(image, forKey: url as NSURL, cost: cost)
     }
     
@@ -69,20 +72,26 @@ final class ImageCache: NSObject {
     /// - Parameter url: The URL of the image to remove
     func removeImage(for url: URL) {
         let nsurl = url as NSURL
-        if let size = cachedImageSizes[nsurl] {
-            memoryManager?.didUnloadImage(size: size)
-            cachedImageSizes.removeValue(forKey: nsurl)
+        cacheQueue.async { [weak self] in
+            guard let self = self else { return }
+            if let size = self.cachedImageSizes[nsurl] {
+                self.memoryManager?.didUnloadImage(size: size)
+                self.cachedImageSizes.removeValue(forKey: nsurl)
+            }
         }
         cache.removeObject(forKey: nsurl)
     }
     
     /// Clear all cached images
     func clearCache() {
-        // Notify memory manager of all cleared images
-        for (_, size) in cachedImageSizes {
-            memoryManager?.didUnloadImage(size: size)
+        cacheQueue.async { [weak self] in
+            guard let self = self else { return }
+            // Notify memory manager of all cleared images
+            for (_, size) in self.cachedImageSizes {
+                self.memoryManager?.didUnloadImage(size: size)
+            }
+            self.cachedImageSizes.removeAll()
         }
-        cachedImageSizes.removeAll()
         cache.removeAllObjects()
     }
     
@@ -183,15 +192,31 @@ final class ImageCache: NSObject {
 
 // MARK: - NSCache Delegate
 extension ImageCache: NSCacheDelegate {
-    func cache(_ cache: NSCache<AnyObject, AnyObject>, willEvictObject obj: AnyObject) {
+    func cache(_ cache: NSCache<AnyObject, AnyObject>, willEvictObject obj: Any) {
         // Find the URL for this object and notify memory manager
-        if let image = obj as? NSImage {
-            for (url, size) in cachedImageSizes {
-                if cache.object(forKey: url) === image {
-                    memoryManager?.didUnloadImage(size: size)
-                    cachedImageSizes.removeValue(forKey: url)
+        guard let image = obj as? NSImage else { return }
+        
+        // Use the cache queue to ensure thread safety
+        cacheQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Since we can't reliably match the evicted object back to a URL,
+            // we'll remove a reasonable estimate of memory usage
+            var foundSize: Int?
+            var foundURL: NSURL?
+            
+            for (url, size) in self.cachedImageSizes {
+                if let cachedImage = self.cache.object(forKey: url),
+                   cachedImage === image {
+                    foundSize = size
+                    foundURL = url
                     break
                 }
+            }
+            
+            if let size = foundSize, let url = foundURL {
+                self.memoryManager?.didUnloadImage(size: size)
+                self.cachedImageSizes.removeValue(forKey: url)
             }
         }
     }

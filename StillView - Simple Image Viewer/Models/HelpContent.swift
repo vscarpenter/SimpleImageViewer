@@ -19,7 +19,9 @@ struct HelpContent {
         .gettingStarted,
         .keyboardShortcuts,
         .navigation,
+        .thumbnailViewing,
         .zoomAndView,
+        .additionalFeatures,
         .supportedFormats,
         .troubleshooting,
         .about
@@ -86,7 +88,7 @@ extension HelpSection {
             ),
             HelpItem(
                 title: "Quick Start Tip",
-                description: "For the best experience, organize your images in folders and use StillView's keyboard shortcuts for fast, distraction-free browsing.",
+                description: "For the best experience, organize your images in folders and use StillView's keyboard shortcuts for fast, distraction-free browsing. Try the thumbnail views ('T' and 'G') for quick navigation through large collections.",
                 type: .tip
             )
         ]
@@ -163,6 +165,36 @@ extension HelpSection {
                 type: .shortcut
             ),
             HelpItem(
+                title: "Show Image Info",
+                description: "Toggle image metadata and EXIF information overlay",
+                shortcut: "I",
+                type: .shortcut
+            ),
+            HelpItem(
+                title: "Toggle Slideshow",
+                description: "Start or stop automatic slideshow mode",
+                shortcut: "S",
+                type: .shortcut
+            ),
+            HelpItem(
+                title: "Thumbnail Strip",
+                description: "Show/hide horizontal thumbnail strip at bottom",
+                shortcut: "T",
+                type: .shortcut
+            ),
+            HelpItem(
+                title: "Grid View",
+                description: "Open full-screen thumbnail grid for quick navigation",
+                shortcut: "G",
+                type: .shortcut
+            ),
+            HelpItem(
+                title: "Back to Folder Selection",
+                description: "Return to folder selection screen",
+                shortcut: "Escape or B",
+                type: .shortcut
+            ),
+            HelpItem(
                 title: "Help",
                 description: "Show this help window",
                 shortcut: "⌘?",
@@ -198,6 +230,45 @@ extension HelpSection {
         ]
     )
     
+    static let thumbnailViewing = HelpSection(
+        title: "Thumbnail Navigation",
+        icon: "rectangle.grid.3x3",
+        items: [
+            HelpItem(
+                title: "Thumbnail Strip",
+                description: "Press 'T' or click the strip button to show a horizontal thumbnail strip at the bottom. Perfect for quick previews while maintaining focus on the main image.",
+                shortcut: "T",
+                type: .information
+            ),
+            HelpItem(
+                title: "Grid View",
+                description: "Press 'G' or click the grid button to open a full-screen thumbnail grid. Great for browsing large collections and jumping to specific images.",
+                shortcut: "G",
+                type: .information
+            ),
+            HelpItem(
+                title: "Navigate with Thumbnails",
+                description: "Click any thumbnail to instantly jump to that image. The current image is highlighted with a blue border and scroll position updates automatically.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Thumbnail Performance",
+                description: "Thumbnails are generated in the background and cached for smooth scrolling. The cache manages memory automatically to prevent system slowdowns.",
+                type: .tip
+            ),
+            HelpItem(
+                title: "Grid View Controls",
+                description: "In grid view, use Escape to return to normal view, or click the 'Close' button. The grid shows image numbers, filenames, and file sizes for easy identification.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Memory Efficient",
+                description: "Thumbnail cache is limited to 25MB and 100 items to ensure smooth performance even with large image collections. Old thumbnails are automatically removed as needed.",
+                type: .tip
+            )
+        ]
+    )
+    
     static let zoomAndView = HelpSection(
         title: "Zoom & View Controls",
         icon: "magnifyingglass",
@@ -225,6 +296,45 @@ extension HelpSection {
             HelpItem(
                 title: "High DPI Support",
                 description: "StillView automatically handles Retina displays and high-DPI images, ensuring crisp rendering at all zoom levels.",
+                type: .information
+            )
+        ]
+    )
+    
+    static let additionalFeatures = HelpSection(
+        title: "Additional Features",
+        icon: "star",
+        items: [
+            HelpItem(
+                title: "Image Information",
+                description: "Press 'I' or click the info button to display image metadata including dimensions, file size, format, creation date, and camera EXIF data when available.",
+                shortcut: "I",
+                type: .information
+            ),
+            HelpItem(
+                title: "Slideshow Mode",
+                description: "Press 'S' or click the play button to start an automatic slideshow. Images advance every 3 seconds by default. Press 'S' again or spacebar to pause/resume.",
+                shortcut: "S",
+                type: .information
+            ),
+            HelpItem(
+                title: "Slideshow Controls",
+                description: "During slideshow mode, spacebar pauses/resumes, and arrow keys allow manual navigation. The slideshow automatically loops back to the first image when reaching the end.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Status Bar Controls",
+                description: "The bottom status bar contains toggle buttons for image info, slideshow, thumbnail views, and filename display. Hover over buttons for keyboard shortcut hints.",
+                type: .information
+            ),
+            HelpItem(
+                title: "EXIF Data Support",
+                description: "View detailed camera information including aperture, shutter speed, ISO, focal length, and GPS coordinates when available in the image metadata.",
+                type: .tip
+            ),
+            HelpItem(
+                title: "Share Images",
+                description: "Use the share button in the top toolbar to quickly share the current image via email, Messages, AirDrop, or other installed sharing services.",
                 type: .information
             )
         ]
@@ -283,8 +393,13 @@ extension HelpSection {
             ),
             HelpItem(
                 title: "Performance Tips",
-                description: "For best performance with large image collections, ensure your Mac has sufficient RAM and consider organizing images into smaller folders (100-500 images per folder).",
+                description: "For best performance with large image collections, ensure your Mac has sufficient RAM and consider organizing images into smaller folders (100-500 images per folder). Thumbnail views work best with collections under 1000 images.",
                 type: .tip
+            ),
+            HelpItem(
+                title: "Thumbnail Loading",
+                description: "Thumbnails generate automatically in the background. Large images may take a moment to appear in thumbnail views. The thumbnail cache persists between sessions for faster subsequent loading.",
+                type: .information
             ),
             HelpItem(
                 title: "App Sandbox Security",

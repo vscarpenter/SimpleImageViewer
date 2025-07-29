@@ -12,6 +12,12 @@ protocol PreferencesService {
     /// Whether to show file names in the interface
     var showFileName: Bool { get set }
     
+    /// Whether to show image info overlay by default
+    var showImageInfo: Bool { get set }
+    
+    /// Default slideshow interval in seconds
+    var slideshowInterval: Double { get set }
+    
     /// Last selected folder URL
     var lastSelectedFolder: URL? { get set }
     
@@ -51,6 +57,8 @@ class DefaultPreferencesService: PreferencesService {
         static let recentFolders = "recentFolders"
         static let windowFrame = "windowFrame"
         static let showFileName = "showFileName"
+        static let showImageInfo = "showImageInfo"
+        static let slideshowInterval = "slideshowInterval"
         static let lastSelectedFolder = "lastSelectedFolder"
         static let folderBookmarks = "folderBookmarks"
     }
@@ -101,6 +109,25 @@ class DefaultPreferencesService: PreferencesService {
         }
         set {
             userDefaults.set(newValue, forKey: Keys.showFileName)
+        }
+    }
+    
+    var showImageInfo: Bool {
+        get {
+            return userDefaults.bool(forKey: Keys.showImageInfo)
+        }
+        set {
+            userDefaults.set(newValue, forKey: Keys.showImageInfo)
+        }
+    }
+    
+    var slideshowInterval: Double {
+        get {
+            let interval = userDefaults.double(forKey: Keys.slideshowInterval)
+            return interval > 0 ? interval : 3.0 // Default to 3 seconds if not set
+        }
+        set {
+            userDefaults.set(newValue, forKey: Keys.slideshowInterval)
         }
     }
     

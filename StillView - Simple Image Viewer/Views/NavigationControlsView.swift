@@ -71,7 +71,7 @@ struct NavigationControlsView: View {
                 }
             }
             .foregroundColor(.primary)
-            .help("Return to folder selection")
+            .help("Return to folder selection (Escape or B)")
             .accessibilityLabel("Back to folder selection")
             .accessibilityHint("Returns to the main folder selection screen")
             
@@ -238,8 +238,26 @@ struct NavigationControlsView: View {
             
             Spacer()
             
+            // Image Info toggle button
+            imageInfoToggleButton
+            
+            // Slideshow toggle button
+            slideshowToggleButton
+            
+            // Thumbnail strip toggle button
+            thumbnailStripToggleButton
+            
+            // Grid view toggle button
+            gridViewToggleButton
+            
             // File name toggle button
             fileNameToggleButton
+            
+            Divider()
+                .frame(height: 16)
+            
+            // Choose folder button
+            chooseFolderButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -274,6 +292,73 @@ struct NavigationControlsView: View {
         )
     }
     
+    // MARK: - Image Info Toggle Button
+    private var imageInfoToggleButton: some View {
+        Button(action: {
+            viewModel.toggleImageInfo()
+            showControlsTemporarily()
+        }) {
+            Image(systemName: viewModel.showImageInfo ? "info.circle.fill" : "info.circle")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(viewModel.showImageInfo ? .accentColor : .secondary)
+        }
+        .buttonStyle(ToolbarButtonStyle())
+        .help(viewModel.showImageInfo ? "Hide image info (I)" : "Show image info (I)")
+        .accessibilityLabel(viewModel.showImageInfo ? "Hide image info" : "Show image info")
+        .accessibilityHint("Toggle image metadata display")
+    }
+    
+    // MARK: - Slideshow Toggle Button
+    private var slideshowToggleButton: some View {
+        Button(action: {
+            viewModel.toggleSlideshow()
+            showControlsTemporarily()
+        }) {
+            Image(systemName: viewModel.isSlideshow ? "pause.circle.fill" : "play.circle")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(viewModel.isSlideshow ? .accentColor : .secondary)
+        }
+        .buttonStyle(ToolbarButtonStyle())
+        .help(viewModel.isSlideshow ? "Stop slideshow (S)" : "Start slideshow (S)")
+        .accessibilityLabel(viewModel.isSlideshow ? "Stop slideshow" : "Start slideshow")
+        .accessibilityHint("Toggle slideshow mode")
+        .disabled(viewModel.totalImages < 2)
+    }
+    
+    // MARK: - Thumbnail Strip Toggle Button
+    private var thumbnailStripToggleButton: some View {
+        Button(action: {
+            viewModel.toggleThumbnailStrip()
+            showControlsTemporarily()
+        }) {
+            Image(systemName: viewModel.viewMode == .thumbnailStrip ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(viewModel.viewMode == .thumbnailStrip ? .accentColor : .secondary)
+        }
+        .buttonStyle(ToolbarButtonStyle())
+        .help(viewModel.viewMode == .thumbnailStrip ? "Hide thumbnail strip (T)" : "Show thumbnail strip (T)")
+        .accessibilityLabel(viewModel.viewMode == .thumbnailStrip ? "Hide thumbnail strip" : "Show thumbnail strip")
+        .accessibilityHint("Toggle thumbnail strip for quick image navigation")
+        .disabled(viewModel.totalImages < 2)
+    }
+    
+    // MARK: - Grid View Toggle Button
+    private var gridViewToggleButton: some View {
+        Button(action: {
+            viewModel.toggleGridView()
+            showControlsTemporarily()
+        }) {
+            Image(systemName: viewModel.viewMode == .grid ? "square.grid.3x3.fill" : "square.grid.3x3")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(viewModel.viewMode == .grid ? .accentColor : .secondary)
+        }
+        .buttonStyle(ToolbarButtonStyle())
+        .help(viewModel.viewMode == .grid ? "Exit grid view (G)" : "Show grid view (G)")
+        .accessibilityLabel(viewModel.viewMode == .grid ? "Exit grid view" : "Show grid view")
+        .accessibilityHint("Toggle grid view for browsing all images")
+        .disabled(viewModel.totalImages < 2)
+    }
+    
     // MARK: - File Name Toggle Button
     private var fileNameToggleButton: some View {
         Button(action: {
@@ -288,6 +373,22 @@ struct NavigationControlsView: View {
         .help(viewModel.showFileName ? "Hide file name" : "Show file name")
         .accessibilityLabel(viewModel.showFileName ? "Hide file name" : "Show file name")
         .accessibilityHint("Toggle file name display")
+    }
+    
+    // MARK: - Choose Folder Button
+    private var chooseFolderButton: some View {
+        Button(action: {
+            onExit()
+            showControlsTemporarily()
+        }) {
+            Image(systemName: "folder")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .buttonStyle(ToolbarButtonStyle())
+        .help("Choose different folder (Escape or B)")
+        .accessibilityLabel("Choose folder")
+        .accessibilityHint("Return to folder selection to choose a different folder")
     }
     
     // MARK: - Helper Methods
