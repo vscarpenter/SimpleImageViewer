@@ -70,7 +70,7 @@ struct NavigationControlsView: View {
                         .font(.system(size: 14, weight: .medium))
                 }
             }
-            .foregroundColor(.primary)
+            .foregroundColor(.appText)
             .help("Return to folder selection (Escape or B)")
             .accessibilityLabel("Back to folder selection")
             .accessibilityHint("Returns to the main folder selection screen")
@@ -89,8 +89,12 @@ struct NavigationControlsView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(
-            .regularMaterial,
-            in: RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.appToolbarBackground.opacity(0.95))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.appBorder.opacity(0.3), lineWidth: 0.5)
         )
         .padding(.horizontal, 16)
         .padding(.top, 8)
@@ -117,19 +121,23 @@ struct NavigationControlsView: View {
         HStack(spacing: 8) {
             Image(systemName: "photo.stack")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundColor(.appSecondaryText)
                 .accessibilityHidden(true)
             
             Text(viewModel.imageCounterText)
                 .font(.system(size: 14, weight: .medium, design: .monospaced))
-                .foregroundColor(.primary)
+                .foregroundColor(.appText)
                 .accessibilityLabel("Image \(viewModel.currentIndex + 1) of \(viewModel.totalImages)")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                .fill(Color.appSecondaryBackground.opacity(0.8))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.appBorder.opacity(0.2), lineWidth: 0.5)
         )
     }
     
@@ -213,7 +221,7 @@ struct NavigationControlsView: View {
         }) {
             Text(viewModel.zoomPercentageText)
                 .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .foregroundColor(.primary)
+                .foregroundColor(.appText)
                 .frame(minWidth: 40)
         }
         .buttonStyle(.plain)
@@ -221,7 +229,11 @@ struct NavigationControlsView: View {
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(Color(NSColor.controlBackgroundColor).opacity(0.8))
+                .fill(Color.appSecondaryBackground.opacity(0.9))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.appBorder.opacity(0.2), lineWidth: 0.5)
         )
         .help("Current zoom: \(viewModel.zoomPercentageText). Click to cycle through zoom levels.")
         .accessibilityLabel("Zoom level: \(viewModel.zoomPercentageText)")
@@ -262,8 +274,12 @@ struct NavigationControlsView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(
-            .regularMaterial,
-            in: RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.appToolbarBackground.opacity(0.95))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.appBorder.opacity(0.3), lineWidth: 0.5)
         )
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
@@ -274,12 +290,12 @@ struct NavigationControlsView: View {
         HStack(spacing: 8) {
             Image(systemName: "doc.text")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundColor(.appSecondaryText)
                 .accessibilityHidden(true)
             
             Text(viewModel.currentFileName)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.primary)
+                .foregroundColor(.appText)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .accessibilityLabel("File name: \(viewModel.currentFileName)")
@@ -288,7 +304,11 @@ struct NavigationControlsView: View {
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                .fill(Color.appSecondaryBackground.opacity(0.8))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.appBorder.opacity(0.2), lineWidth: 0.5)
         )
     }
     
@@ -300,7 +320,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.showImageInfo ? "info.circle.fill" : "info.circle")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.showImageInfo ? .accentColor : .secondary)
+                .foregroundColor(viewModel.showImageInfo ? .appAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.showImageInfo ? "Hide image info (I)" : "Show image info (I)")
@@ -316,7 +336,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.isSlideshow ? "pause.circle.fill" : "play.circle")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.isSlideshow ? .accentColor : .secondary)
+                .foregroundColor(viewModel.isSlideshow ? .appAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.isSlideshow ? "Stop slideshow (S)" : "Start slideshow (S)")
@@ -333,7 +353,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.viewMode == .thumbnailStrip ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.viewMode == .thumbnailStrip ? .accentColor : .secondary)
+                .foregroundColor(viewModel.viewMode == .thumbnailStrip ? .appAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.viewMode == .thumbnailStrip ? "Hide thumbnail strip (T)" : "Show thumbnail strip (T)")
@@ -350,7 +370,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.viewMode == .grid ? "square.grid.3x3.fill" : "square.grid.3x3")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.viewMode == .grid ? .accentColor : .secondary)
+                .foregroundColor(viewModel.viewMode == .grid ? .appAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.viewMode == .grid ? "Exit grid view (G)" : "Show grid view (G)")
@@ -367,7 +387,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.showFileName ? "eye.fill" : "eye.slash")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.showFileName ? .accentColor : .secondary)
+                .foregroundColor(viewModel.showFileName ? .appAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.showFileName ? "Hide file name" : "Show file name")
@@ -383,7 +403,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: "folder")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundColor(.appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help("Choose different folder (Escape or B)")
@@ -444,14 +464,23 @@ struct NavigationControlsView: View {
 private struct ToolbarButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundColor(configuration.isPressed ? .accentColor : .primary)
+            .foregroundColor(configuration.isPressed ? .appAccent : .appText)
             .padding(8)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(
                         configuration.isPressed 
-                        ? Color(NSColor.controlAccentColor).opacity(0.2)
-                        : Color(NSColor.controlBackgroundColor).opacity(0.8)
+                        ? Color.appAccent.opacity(0.2)
+                        : Color.appButtonBackground.opacity(0.8)
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(
+                        configuration.isPressed 
+                        ? Color.appAccent.opacity(0.3)
+                        : Color.appBorder.opacity(0.2), 
+                        lineWidth: 0.5
                     )
             )
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)

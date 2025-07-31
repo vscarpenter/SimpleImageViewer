@@ -272,6 +272,123 @@ class PreferencesServiceTests: XCTestCase {
         XCTAssertEqual(storedBookmarks[1], bookmark2)
     }
     
+    // MARK: - Window State Tests
+    
+    func testWindowStateInitiallyNil() {
+        // Given a fresh preferences service with clean UserDefaults
+        let cleanUserDefaults = UserDefaults(suiteName: "test.clean.suite")!
+        cleanUserDefaults.removePersistentDomain(forName: "test.clean.suite")
+        let service = DefaultPreferencesService(userDefaults: cleanUserDefaults)
+        
+        // When getting window state
+        let windowState = service.windowState
+        
+        // Then it should be nil
+        XCTAssertNil(windowState, "Window state should be nil initially")
+    }
+    
+    func testSetWindowState() {
+        // Given a window state
+        var windowState = WindowState()
+        windowState.windowFrame = CGRect(x: 200, y: 300, width: 1000, height: 800)
+        windowState.isVisible = false
+        windowState.lastFolderPath = "/tmp/test"
+        windowState.lastImageIndex = 5
+        windowState.showFileName = true
+        
+        // When setting window state
+        preferencesService.windowState = windowState
+        
+        // Then it should be stored and retrievable
+        let storedState = preferencesService.windowState
+        XCTAssertNotNil(storedState)
+        XCTAssertEqual(storedState?.windowFrame, windowState.windowFrame)
+        XCTAssertEqual(storedState?.isVisible, windowState.isVisible)
+        XCTAssertEqual(storedState?.lastFolderPath, windowState.lastFolderPath)
+        XCTAssertEqual(storedState?.lastImageIndex, windowState.lastImageIndex)
+        XCTAssertEqual(storedState?.showFileName, windowState.showFileName)
+    }
+    
+    func testClearWindowState() {
+        // Given a window state is set
+        var windowState = WindowState()
+        windowState.lastFolderPath = "/tmp/test"
+        preferencesService.windowState = windowState
+        XCTAssertNotNil(preferencesService.windowState)
+        
+        // When setting it to nil
+        preferencesService.windowState = nil
+        
+        // Then it should be cleared
+        XCTAssertNil(preferencesService.windowState)
+    }
+    
+    func testSaveWindowState() {
+        // Given a window state
+        var windowState = WindowState()
+        windowState.windowFrame = CGRect(x: 100, y: 200, width: 900, height: 700)
+        windowState.lastImageIndex = 3
+        
+        // When saving window state
+        preferencesService.saveWindowState(windowState)
+        
+        // Then it should be stored
+        let storedState = preferencesService.windowState
+        XCTAssertNotNil(storedState)
+        XCTAssertEqual(storedState?.windowFrame, windowState.windowFrame)
+        XCTAssertEqual(storedState?.lastImageIndex, windowState.lastImageIndex)
+    }
+    
+    func testLoadWindowState() {
+        // Given a window state is saved
+        var windowState = WindowState()
+        windowState.lastFolderPath = "/tmp/test-load"
+        windowState.lastImageIndex = 7
+        preferencesService.saveWindowState(windowState)
+        
+        // When loading window state
+        let loadedState = preferencesService.loadWindowState()
+        
+        // Then it should match the saved state
+        XCTAssertNotNil(loadedState)
+        XCTAssertEqual(loadedState?.lastFolderPath, windowState.lastFolderPath)
+        XCTAssertEqual(loadedState?.lastImageIndex, windowState.lastImageIndex)
+    }
+    
+    func testWindowStateEncodingDecoding() {
+        // Given a complex window state
+        var windowState = WindowState()
+        windowState.windowFrame = CGRect(x: 150, y: 250, width: 1200, height: 900)
+        windowState.isVisible = false
+        windowState.isFullscreen = true
+        windowState.zoomLevel = 2.5
+        windowState.lastFolderPath = "/tmp/complex-test"
+        windowState.lastImageIndex = 15
+        windowState.showFileName = true
+        windowState.showImageInfo = true
+        windowState.viewMode = "grid"
+        windowState.wasInSlideshow = true
+        windowState.slideshowInterval = 5.0
+        
+        // When saving and loading
+        preferencesService.saveWindowState(windowState)
+        let loadedState = preferencesService.loadWindowState()
+        
+        // Then all properties should be preserved
+        XCTAssertNotNil(loadedState)
+        XCTAssertEqual(loadedState?.windowFrame, windowState.windowFrame)
+        XCTAssertEqual(loadedState?.isVisible, windowState.isVisible)
+        XCTAssertEqual(loadedState?.isFullscreen, windowState.isFullscreen)
+        XCTAssertEqual(loadedState?.zoomLevel, windowState.zoomLevel)
+        XCTAssertEqual(loadedState?.lastFolderPath, windowState.lastFolderPath)
+        XCTAssertEqual(loadedState?.lastImageIndex, windowState.lastImageIndex)
+        XCTAssertEqual(loadedState?.showFileName, windowState.showFileName)
+        XCTAssertEqual(loadedState?.showImageInfo, windowState.showImageInfo)
+        XCTAssertEqual(loadedState?.viewMode, windowState.viewMode)
+        XCTAssertEqual(loadedState?.wasInSlideshow, windowState.wasInSlideshow)
+        XCTAssertEqual(loadedState?.slideshowInterval, windowState.slideshowInterval)
+    }
+    
     // MARK: - Persistence Tests
     
     func testSavePreferences() {

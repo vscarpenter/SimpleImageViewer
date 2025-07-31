@@ -14,6 +14,7 @@ import AppKit
 
 @main
 struct SimpleImageViewerApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var window: NSWindow?
     @State private var showingAbout = false
     @State private var showingHelp = false
@@ -22,6 +23,9 @@ struct SimpleImageViewerApp: App {
         WindowGroup {
             ContentView()
                 .frame(minWidth: 800, minHeight: 600)
+                .onAppear {
+                    setupWindow()
+                }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     handleAppWillTerminate()
                 }
@@ -44,15 +48,22 @@ struct SimpleImageViewerApp: App {
             // Add File menu commands
             CommandGroup(replacing: .newItem) {
                 Button("Open Folder...") {
-                    // This will be handled by the ContentView
-                    NotificationCenter.default.post(name: .requestFolderSelection, object: nil)
+                    // Bring window to foreground and handle folder selection
+                    Task { @MainActor in
+                        appDelegate.showMainWindow()
+                        NotificationCenter.default.post(name: .requestFolderSelection, object: nil)
+                    }
                 }
                 .keyboardShortcut("o", modifiers: .command)
                 
                 Divider()
                 
                 Button("Back to Folder Selection") {
-                    NotificationCenter.default.post(name: .requestFolderSelection, object: nil)
+                    // Bring window to foreground and go back to folder selection
+                    Task { @MainActor in
+                        appDelegate.showMainWindow()
+                        NotificationCenter.default.post(name: .requestFolderSelection, object: nil)
+                    }
                 }
                 .keyboardShortcut("b", modifiers: .command)
             }
@@ -82,10 +93,27 @@ struct SimpleImageViewerApp: App {
     
     // MARK: - Private Methods
     
+    private func setupWindow() {
+        // Find the main window and set it in the app delegate
+        DispatchQueue.main.async {
+            if let window = NSApp.windows.first {
+                self.window = window
+                Task { @MainActor in
+                    self.appDelegate.setMainWindow(window)
+                }
+            }
+        }
+    }
+    
     private func handleAppWillTerminate() {
-        // Handle app termination - save preferences
+        // Handle app termination - save preferences and window state
         let preferencesService = DefaultPreferencesService()
         preferencesService.savePreferences()
+        
+        // Save window state through app delegate
+        Task { @MainActor in
+            appDelegate.windowStateManager.saveWindowState()
+        }
     }
 }
 

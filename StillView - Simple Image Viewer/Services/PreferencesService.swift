@@ -24,6 +24,9 @@ protocol PreferencesService {
     /// Security-scoped bookmarks for recent folders
     var folderBookmarks: [Data] { get set }
     
+    /// Window state for persistence and restoration
+    var windowState: WindowState? { get set }
+    
     /// Add a folder to the recent folders list
     /// - Parameter url: The folder URL to add
     func addRecentFolder(_ url: URL)
@@ -40,6 +43,14 @@ protocol PreferencesService {
     
     /// Load preferences from persistent storage
     func loadPreferences()
+    
+    /// Save window state to persistent storage
+    /// - Parameter windowState: The window state to save
+    func saveWindowState(_ windowState: WindowState)
+    
+    /// Load window state from persistent storage
+    /// - Returns: The saved window state, or nil if none exists
+    func loadWindowState() -> WindowState?
 }
 
 /// Default implementation using UserDefaults
@@ -61,6 +72,7 @@ class DefaultPreferencesService: PreferencesService {
         static let slideshowInterval = "slideshowInterval"
         static let lastSelectedFolder = "lastSelectedFolder"
         static let folderBookmarks = "folderBookmarks"
+        static let windowState = "windowState"
     }
     
     // MARK: - Properties
@@ -158,6 +170,33 @@ class DefaultPreferencesService: PreferencesService {
         }
     }
     
+    var windowState: WindowState? {
+        get {
+            guard let data = userDefaults.data(forKey: Keys.windowState) else { return nil }
+            
+            do {
+                let decoder = JSONDecoder()
+                return try decoder.decode(WindowState.self, from: data)
+            } catch {
+                print("Failed to decode window state: \(error)")
+                return nil
+            }
+        }
+        set {
+            if let windowState = newValue {
+                do {
+                    let encoder = JSONEncoder()
+                    let data = try encoder.encode(windowState)
+                    userDefaults.set(data, forKey: Keys.windowState)
+                } catch {
+                    print("Failed to encode window state: \(error)")
+                }
+            } else {
+                userDefaults.removeObject(forKey: Keys.windowState)
+            }
+        }
+    }
+    
     // MARK: - Methods
     func addRecentFolder(_ url: URL) {
         var folders = recentFolders
@@ -188,5 +227,14 @@ class DefaultPreferencesService: PreferencesService {
     func loadPreferences() {
         // UserDefaults loads automatically, but this method can be used
         // for any additional initialization if needed
+    }
+    
+    func saveWindowState(_ windowState: WindowState) {
+        self.windowState = windowState
+        savePreferences()
+    }
+    
+    func loadWindowState() -> WindowState? {
+        return windowState
     }
 }

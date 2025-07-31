@@ -15,14 +15,16 @@ struct ImageInfoOverlayView: View {
             // Header
             HStack {
                 Image(systemName: "info.circle.fill")
-                    .foregroundColor(.blue)
+                    .foregroundColor(.appInfo)
                 Text("Image Information")
                     .font(.headline)
                     .fontWeight(.semibold)
+                    .foregroundColor(.appOverlayText)
                 Spacer()
             }
             
             Divider()
+                .background(Color.appBorder)
             
             // File Information
             VStack(alignment: .leading, spacing: 4) {
@@ -38,11 +40,13 @@ struct ImageInfoOverlayView: View {
             // Image Metadata (if available)
             if let metadata = getImageMetadata() {
                 Divider()
+                    .background(Color.appBorder)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Image Details")
                         .font(.subheadline)
                         .fontWeight(.medium)
+                        .foregroundColor(.appOverlayText)
                         .padding(.bottom, 2)
                     
                     if let colorSpace = metadata.colorSpace {
@@ -68,8 +72,8 @@ struct ImageInfoOverlayView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(colorScheme == .dark ? NSColor.controlBackgroundColor : NSColor.controlBackgroundColor))
-                .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                .fill(Color.appOverlayBackground)
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.4 : 0.2), radius: 8, x: 0, y: 4)
         )
         .frame(maxWidth: 280)
     }
@@ -84,11 +88,12 @@ struct ImageInfoOverlayView: View {
             HStack(alignment: .top) {
                 Text(label + ":")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.appSecondaryText)
                     .frame(width: 70, alignment: .leading)
                 
                 Text(value)
                     .font(.caption)
+                    .foregroundColor(.appOverlayText)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

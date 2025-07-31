@@ -15,13 +15,13 @@ struct NotificationView: View {
         var color: Color {
             switch self {
             case .info:
-                return .blue
+                return .appInfo
             case .warning:
-                return .orange
+                return .appWarning
             case .error:
-                return .red
+                return .appError
             case .success:
-                return .green
+                return .appSuccess
             }
         }
         
@@ -60,7 +60,7 @@ struct NotificationView: View {
             
             Text(message)
                 .font(.body)
-                .foregroundColor(.primary)
+                .foregroundColor(.appText)
             
             Spacer()
             
@@ -70,16 +70,16 @@ struct NotificationView: View {
                 }
             }) {
                 Image(systemName: "xmark")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.appSecondaryText)
             }
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel("Dismiss notification")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(Color.appOverlayBackground)
         .cornerRadius(8)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .shadow(color: .black.opacity(Color.isDarkMode ? 0.3 : 0.1), radius: 4, x: 0, y: 2)
         .opacity(isVisible ? 1 : 0)
         .scaleEffect(isVisible ? 1 : 0.9)
         .animation(.easeInOut(duration: 0.3), value: isVisible)

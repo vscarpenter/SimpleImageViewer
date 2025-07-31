@@ -62,31 +62,31 @@ struct ImageDisplayView: View {
     private var loadingView: some View {
         VStack(spacing: 16) {
             ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                .progressViewStyle(CircularProgressViewStyle(tint: Color.appAccent))
                 .scaleEffect(1.5)
                 .accessibilityLabel("Loading image")
             
             if viewModel.loadingProgress > 0 {
                 VStack(spacing: 8) {
                     Text("Loading...")
-                        .foregroundColor(.white)
+                        .foregroundColor(.appText)
                         .font(.headline)
                         .accessibilityHidden(true)
                     
                     ProgressView(value: viewModel.loadingProgress)
-                        .progressViewStyle(LinearProgressViewStyle(tint: .white))
+                        .progressViewStyle(LinearProgressViewStyle(tint: Color.appAccent))
                         .frame(width: 200)
                         .accessibilityLabel("Loading progress")
                         .accessibilityValue("\(Int(viewModel.loadingProgress * 100)) percent complete")
                     
                     Text("\(Int(viewModel.loadingProgress * 100))%")
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(.appSecondaryText)
                         .font(.caption)
                         .accessibilityHidden(true)
                 }
             } else {
                 Text("Loading...")
-                    .foregroundColor(.white)
+                    .foregroundColor(.appText)
                     .font(.headline)
                     .accessibilityHidden(true)
             }
@@ -94,11 +94,17 @@ struct ImageDisplayView: View {
             Button("Cancel") {
                 viewModel.cancelLoading()
             }
-            .foregroundColor(.white.opacity(0.8))
+            .foregroundColor(.appSecondaryText)
             .font(.caption)
             .accessibilityLabel("Cancel loading")
             .accessibilityHint("Stops loading the current image")
         }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.appOverlayBackground)
+                .shadow(color: .black.opacity(Color.isDarkMode ? 0.4 : 0.2), radius: 8, x: 0, y: 4)
+        )
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Loading image, \(Int(viewModel.loadingProgress * 100)) percent complete")
     }
@@ -187,11 +193,11 @@ struct ImageDisplayView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
-                .foregroundColor(.orange)
+                .foregroundColor(.appWarning)
                 .accessibilityHidden(true)
             
             Text(message)
-                .foregroundColor(.white)
+                .foregroundColor(.appText)
                 .font(.headline)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
@@ -200,12 +206,17 @@ struct ImageDisplayView: View {
             Button("Dismiss") {
                 viewModel.clearError()
             }
-            .foregroundColor(.white.opacity(0.8))
+            .foregroundColor(.appSecondaryText)
             .font(.caption)
             .accessibilityLabel("Dismiss error")
             .accessibilityHint("Closes the error message")
         }
-        .padding()
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.appOverlayBackground)
+                .shadow(color: .black.opacity(Color.isDarkMode ? 0.4 : 0.2), radius: 8, x: 0, y: 4)
+        )
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Error: \(message)")
     }
@@ -215,16 +226,16 @@ struct ImageDisplayView: View {
         VStack(spacing: 16) {
             Image(systemName: "photo")
                 .font(.system(size: 48))
-                .foregroundColor(.gray)
+                .foregroundColor(.appSecondaryText)
                 .accessibilityHidden(true)
             
             Text("No Image Selected")
-                .foregroundColor(.gray)
+                .foregroundColor(.appText)
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
             
             Text("Select a folder to start browsing images")
-                .foregroundColor(.gray.opacity(0.8))
+                .foregroundColor(.appSecondaryText)
                 .font(.caption)
         }
         .accessibilityElement(children: .combine)

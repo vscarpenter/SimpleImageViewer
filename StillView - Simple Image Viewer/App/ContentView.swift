@@ -28,6 +28,9 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .requestFolderSelection)) { _ in
                 showImageViewer = false
             }
+            .onReceive(NotificationCenter.default.publisher(for: .restoreWindowState)) { notification in
+                handleWindowStateRestoration(notification)
+            }
             .background(InvisibleKeyCapture(keyHandler: KeyboardHandler(imageViewerViewModel: imageViewerViewModel)))
     }
     
@@ -223,6 +226,7 @@ struct ContentView: View {
     
     private func setupApplication() {
         restoreApplicationState()
+        setupWindowStateManager()
     }
     
     private func restoreApplicationState() {
@@ -232,10 +236,63 @@ struct ContentView: View {
         imageViewerViewModel.showFileName = preferencesService.showFileName
     }
     
+    private func setupWindowStateManager() {
+        // Get the app delegate and set up the window state manager with the view model
+        if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+            Task { @MainActor in
+                appDelegate.windowStateManager.setImageViewerViewModel(imageViewerViewModel)
+            }
+        }
+    }
+    
     private func handleFolderSelection(_ notification: Notification) {
         if let folderContent = notification.object as? FolderContent {
             imageViewerViewModel.loadFolderContent(folderContent)
             showImageViewer = true
+            
+            // Update window state manager with new folder
+            if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+                Task { @MainActor in
+                    appDelegate.windowStateManager.updateFolderState(
+                        folderURL: folderContent.folderURL,
+                        imageIndex: folderContent.currentIndex
+                    )
+                }
+            }
+        }
+    }
+    
+    private func handleWindowStateRestoration(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let folderURL = userInfo["folderURL"] as? URL,
+              let imageIndex = userInfo["imageIndex"] as? Int else {
+            return
+        }
+        
+        // Create a folder selection view model to handle the restoration
+        let folderSelectionViewModel = FolderSelectionViewModel()
+        
+        // Restore the folder at the specific image index
+        Task { @MainActor in
+            // Set the folder URL and trigger scanning
+            folderSelectionViewModel.selectedFolderURL = folderURL
+            
+            // Wait for scanning to complete and then navigate to the specific image
+            // We'll use a simple approach by posting a delayed notification
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // Try to restore the folder content
+                if let folderContent = folderSelectionViewModel.selectedFolderContent {
+                    // Update the folder content to start at the restored image index
+                    let restoredFolderContent = FolderContent(
+                        folderURL: folderContent.folderURL,
+                        imageFiles: folderContent.imageFiles,
+                        currentIndex: min(imageIndex, folderContent.imageFiles.count - 1)
+                    )
+                    
+                    self.imageViewerViewModel.loadFolderContent(restoredFolderContent)
+                    self.showImageViewer = true
+                }
+            }
         }
     }
 }
