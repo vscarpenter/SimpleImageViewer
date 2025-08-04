@@ -39,6 +39,8 @@
 		A10000A8 /* SecurityScopedAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000A9 /* SecurityScopedAccessManager.swift */; };
 		A10000AB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000AA /* AppDelegate.swift */; };
 		A10000AD /* Color+Adaptive.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000AC /* Color+Adaptive.swift */; };
+		A10000B0 /* WindowState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000AF /* WindowState.swift */; };
+		A10000B2 /* WindowStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000B1 /* WindowStateManager.swift */; };
 		FB5D39042E355791004B9D85 /* ImageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39032E355791004B9D85 /* ImageMetadataService.swift */; };
 		FB5D39062E35579D004B9D85 /* AccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39052E35579D004B9D85 /* AccessibilityService.swift */; };
 		FB9F40EC2E38708B005C2968 /* ImageInfoOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */; };
@@ -47,8 +49,6 @@
 		FBA0460A2E36DC34006F9C47 /* HelpContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA046092E36DC34006F9C47 /* HelpContent.swift */; };
 		FBC4F84D2E35215F00AE62AA /* ErrorHandlingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */; };
 		FBC4F84F2E35216900AE62AA /* KeyboardHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC4F84E2E35216900AE62AA /* KeyboardHandler.swift */; };
-		A10000B0 /* WindowState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000AF /* WindowState.swift */; };
-		A10000B2 /* WindowStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000B1 /* WindowStateManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -86,6 +86,8 @@
 		A10000A9 /* SecurityScopedAccessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedAccessManager.swift; sourceTree = "<group>"; };
 		A10000AA /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A10000AC /* Color+Adaptive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Adaptive.swift"; sourceTree = "<group>"; };
+		A10000AF /* WindowState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowState.swift; sourceTree = "<group>"; };
+		A10000B1 /* WindowStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowStateManager.swift; sourceTree = "<group>"; };
 		FB5D39032E355791004B9D85 /* ImageMetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataService.swift; sourceTree = "<group>"; };
 		FB5D39052E35579D004B9D85 /* AccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityService.swift; sourceTree = "<group>"; };
 		FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInfoOverlayView.swift; sourceTree = "<group>"; };
@@ -94,8 +96,6 @@
 		FBA046092E36DC34006F9C47 /* HelpContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpContent.swift; sourceTree = "<group>"; };
 		FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorHandlingService.swift; sourceTree = "<group>"; };
 		FBC4F84E2E35216900AE62AA /* KeyboardHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHandler.swift; sourceTree = "<group>"; };
-		A10000AF /* WindowState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowState.swift; sourceTree = "<group>"; };
-		A10000B1 /* WindowStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowStateManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -486,7 +486,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 10;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -506,8 +506,8 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MARKETING_VERSION = 2.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -524,7 +524,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 10;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -544,8 +544,8 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MARKETING_VERSION = 2.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

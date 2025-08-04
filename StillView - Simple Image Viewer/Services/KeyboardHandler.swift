@@ -82,6 +82,18 @@ class KeyboardHandler: ObservableObject {
             }
             return true
             
+        case 51: // Delete key
+            Task { @MainActor in
+                await viewModel.moveCurrentImageToTrash()
+            }
+            return true
+            
+        case 117: // Backspace key (alternative delete)
+            Task { @MainActor in
+                await viewModel.moveCurrentImageToTrash()
+            }
+            return true
+            
         default:
             break
         }
@@ -159,7 +171,9 @@ class KeyboardHandler: ObservableObject {
             "I": "Toggle image info overlay",
             "S": "Start/stop slideshow",
             "G": "Toggle grid view",
-            "B": "Back to folder selection"
+            "T": "Toggle thumbnail strip",
+            "B": "Back to folder selection",
+            "Delete / Backspace": "Move image to Trash"
         ]
     }
     

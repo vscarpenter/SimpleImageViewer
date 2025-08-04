@@ -39,6 +39,14 @@ The `KeyboardHandler` class is the central component that manages all keyboard i
 ### View Controls
 - **F / Enter**: Toggle fullscreen mode
 - **Escape**: Exit fullscreen mode
+- **I**: Toggle image info overlay
+- **S**: Start/stop slideshow
+- **T**: Toggle thumbnail strip
+- **G**: Toggle grid view
+- **B**: Back to folder selection
+
+### File Management
+- **Delete / Backspace**: Move current image to Trash (with confirmation)
 
 ## Implementation Details
 
@@ -66,6 +74,8 @@ case 121: // Page Down
 case 53:  // Escape
 case 36:  // Enter/Return
 case 49:  // Spacebar
+case 51:  // Delete key
+case 117: // Backspace key
 
 // Character keys (by character)
 case "f": // Fullscreen toggle
@@ -73,6 +83,11 @@ case "+", "=": // Zoom in
 case "-": // Zoom out
 case "0": // Fit to window
 case "1": // Actual size
+case "i": // Toggle image info
+case "s": // Toggle slideshow
+case "t": // Toggle thumbnail strip
+case "g": // Toggle grid view
+case "b": // Back to folder selection
 ```
 
 ### Focus Management
@@ -113,6 +128,8 @@ The keyboard navigation system includes comprehensive unit tests:
 - Navigation commands (next, previous, first, last)
 - Zoom commands (in, out, fit, actual size)
 - Fullscreen toggle and escape handling
+- View mode toggles (info, slideshow, thumbnails, grid)
+- File management (delete with confirmation)
 - Edge cases (no view model, unknown keys)
 - Integration with real view model
 
@@ -123,9 +140,10 @@ The keyboard navigation system includes comprehensive unit tests:
 ## User Experience Considerations
 
 ### Discoverability
-- Keyboard shortcuts are documented in the app's Help menu
-- Command+? shows a shortcuts dialog
+- Keyboard shortcuts are documented in the app's Help menu (⌘?)
+- Tooltips on toolbar buttons show keyboard shortcuts
 - Shortcuts follow common conventions
+- Consolidated toolbar groups related functions logically
 
 ### Responsiveness
 - All keyboard actions execute immediately
@@ -149,6 +167,20 @@ The keyboard navigation system includes comprehensive unit tests:
 - Efficient event filtering
 - Proper cleanup on view destruction
 
+## Recent Updates
+
+### Consolidated Toolbar (Latest Version)
+- All controls moved to single top toolbar
+- Three logical sections: Navigation, View Modes, Image Actions
+- Delete functionality added with proper confirmation
+- Improved visual organization with separators
+
+### Delete Functionality
+- Safe deletion to Trash (recoverable)
+- Confirmation dialog with keyboard shortcuts (Enter/Escape)
+- Automatic navigation after deletion
+- Security-scoped access management
+
 ## Future Enhancements
 
 Potential improvements to consider:
@@ -157,6 +189,7 @@ Potential improvements to consider:
 2. **Additional Navigation**: Support for jumping by percentage (e.g., Ctrl+1-9)
 3. **Modifier Keys**: Support for Shift/Cmd combinations
 4. **Context Sensitivity**: Different shortcuts in different modes
+5. **Batch Operations**: Multi-select and batch delete with keyboard
 
 ## Troubleshooting
 

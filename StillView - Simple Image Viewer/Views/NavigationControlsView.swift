@@ -16,18 +16,18 @@ struct NavigationControlsView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Top toolbar
+            // Consolidated top toolbar
             if showControls || !viewModel.isFullscreen {
-                topToolbar
+                consolidatedTopToolbar
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .animation(.easeInOut(duration: controlsAnimationDuration), value: showControls)
             }
             
             Spacer()
             
-            // Bottom status bar
-            if showControls || !viewModel.isFullscreen {
-                bottomStatusBar
+            // File name overlay (when enabled)
+            if viewModel.showFileName && showControls {
+                fileNameOverlay
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .animation(.easeInOut(duration: controlsAnimationDuration), value: showControls)
             }
@@ -58,9 +58,42 @@ struct NavigationControlsView: View {
         }
     }
     
-    // MARK: - Top Toolbar
-    private var topToolbar: some View {
-        HStack(spacing: 16) {
+    // MARK: - Consolidated Top Toolbar
+    private var consolidatedTopToolbar: some View {
+        HStack(spacing: 0) {
+            // Left Section: Navigation & Context
+            leftSection
+            
+            // Section divider
+            Divider()
+                .frame(height: 20)
+                .padding(.horizontal, 12)
+            
+            // Center Section: View Mode Controls
+            centerSection
+            
+            Spacer()
+            
+            // Right Section: Image Actions & Zoom
+            rightSection
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.appToolbarBackground.opacity(0.95))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.appBorder.opacity(0.3), lineWidth: 0.5)
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+    }
+    
+    // MARK: - Left Section: Navigation & Context
+    private var leftSection: some View {
+        HStack(spacing: 12) {
             // Back button
             Button(action: onExit) {
                 HStack(spacing: 4) {
@@ -78,26 +111,58 @@ struct NavigationControlsView: View {
             // Image counter
             imageCounterView
             
-            Spacer()
+            // Choose folder button
+            chooseFolderButton
+        }
+    }
+    
+    // MARK: - Center Section: View Mode Controls
+    private var centerSection: some View {
+        HStack(spacing: 8) {
+            // Image Info toggle button
+            imageInfoToggleButton
             
+            // Slideshow toggle button
+            slideshowToggleButton
+            
+            // Thumbnail strip toggle button
+            thumbnailStripToggleButton
+            
+            // Grid view toggle button
+            gridViewToggleButton
+        }
+    }
+    
+    // MARK: - Right Section: Image Actions & Zoom
+    private var rightSection: some View {
+        HStack(spacing: 8) {
             // Share button
             shareButton
             
+            // Section divider
+            Divider()
+                .frame(height: 16)
+                .padding(.horizontal, 4)
+            
+            // Delete button
+            deleteButton
+            
+            // Section divider
+            Divider()
+                .frame(height: 16)
+                .padding(.horizontal, 4)
+            
             // Zoom controls
             zoomControlsView
+            
+            // Section divider
+            Divider()
+                .frame(height: 16)
+                .padding(.horizontal, 4)
+            
+            // File name toggle button
+            fileNameToggleButton
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.appToolbarBackground.opacity(0.95))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.appBorder.opacity(0.3), lineWidth: 0.5)
-        )
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
     }
     
     // MARK: - Share Button
@@ -114,6 +179,22 @@ struct NavigationControlsView: View {
         .accessibilityLabel("Share image")
         .accessibilityHint("Share the current image using system sharing options")
         .disabled(!viewModel.canShareCurrentImage)
+    }
+    
+    // MARK: - Delete Button
+    private var deleteButton: some View {
+        Button(action: {
+            moveCurrentImageToTrash()
+            showControlsTemporarily()
+        }) {
+            Image(systemName: "trash")
+                .font(.system(size: 14, weight: .medium))
+        }
+        .buttonStyle(ToolbarButtonStyle())
+        .help("Move current image to Trash (Delete)")
+        .accessibilityLabel("Delete image")
+        .accessibilityHint("Move the current image to Trash")
+        .disabled(!viewModel.canDeleteCurrentImage)
     }
     
     // MARK: - Image Counter View
@@ -143,7 +224,7 @@ struct NavigationControlsView: View {
     
     // MARK: - Zoom Controls View
     private var zoomControlsView: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 4) {
             // Zoom out button
             Button(action: {
                 viewModel.zoomOut()
@@ -172,9 +253,6 @@ struct NavigationControlsView: View {
             .help("Zoom in")
             .accessibilityLabel("Zoom in")
             .accessibilityHint("Increase zoom level")
-            
-            Divider()
-                .frame(height: 16)
             
             // Fit to window button
             Button(action: {
@@ -240,49 +318,14 @@ struct NavigationControlsView: View {
         .accessibilityHint("Tap to cycle through zoom levels")
     }
     
-    // MARK: - Bottom Status Bar
-    private var bottomStatusBar: some View {
-        HStack(spacing: 16) {
-            // File name display (if enabled)
-            if viewModel.showFileName {
-                fileNameView
-            }
-            
+    // MARK: - File Name Overlay
+    private var fileNameOverlay: some View {
+        HStack {
+            fileNameView
             Spacer()
-            
-            // Image Info toggle button
-            imageInfoToggleButton
-            
-            // Slideshow toggle button
-            slideshowToggleButton
-            
-            // Thumbnail strip toggle button
-            thumbnailStripToggleButton
-            
-            // Grid view toggle button
-            gridViewToggleButton
-            
-            // File name toggle button
-            fileNameToggleButton
-            
-            Divider()
-                .frame(height: 16)
-            
-            // Choose folder button
-            chooseFolderButton
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.appToolbarBackground.opacity(0.95))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.appBorder.opacity(0.3), lineWidth: 0.5)
-        )
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 20)
     }
     
     // MARK: - File Name View
@@ -403,7 +446,6 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: "folder")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help("Choose different folder (Escape or B)")
@@ -458,6 +500,12 @@ struct NavigationControlsView: View {
             viewModel.shareCurrentImage()
         }
     }
+    
+    private func moveCurrentImageToTrash() {
+        Task { @MainActor in
+            await viewModel.moveCurrentImageToTrash()
+        }
+    }
 }
 
 // MARK: - Toolbar Button Style
@@ -499,7 +547,7 @@ private struct ToolbarButtonStyle: ButtonStyle {
             return vm
         }()) {
             // Preview exit action
-            print("Exit pressed")
+            // Exit pressed
         }
     }
     .frame(width: 800, height: 600)
@@ -515,7 +563,7 @@ private struct ToolbarButtonStyle: ButtonStyle {
             return vm
         }()) {
             // Preview exit action
-            print("Exit pressed")
+            // Exit pressed
         }
     }
     .frame(width: 800, height: 600)

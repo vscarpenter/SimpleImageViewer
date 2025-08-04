@@ -18,6 +18,7 @@ struct HelpContent {
     static let shared = HelpContent(sections: [
         .gettingStarted,
         .keyboardShortcuts,
+        .consolidatedToolbar,
         .navigation,
         .thumbnailViewing,
         .zoomAndView,
@@ -83,12 +84,12 @@ extension HelpSection {
             ),
             HelpItem(
                 title: "Basic Navigation",
-                description: "Once images are loaded, use the arrow keys or click the navigation controls to browse through your images. The current image position is shown in the bottom status bar.",
+                description: "Once images are loaded, use the arrow keys or click the navigation controls to browse through your images. The current image position is shown in the top toolbar.",
                 type: .information
             ),
             HelpItem(
                 title: "Quick Start Tip",
-                description: "For the best experience, organize your images in folders and use StillView's keyboard shortcuts for fast, distraction-free browsing. Try the thumbnail views ('T' and 'G') for quick navigation through large collections.",
+                description: "For the best experience, organize your images in folders and use StillView's keyboard shortcuts for fast, distraction-free browsing. Try the thumbnail views ('T' and 'G') for quick navigation through large collections. All controls are now consolidated in the top toolbar for easy access.",
                 type: .tip
             )
         ]
@@ -189,6 +190,12 @@ extension HelpSection {
                 type: .shortcut
             ),
             HelpItem(
+                title: "Delete Image",
+                description: "Move current image to Trash (can be undone from Trash)",
+                shortcut: "Delete or Backspace",
+                type: .shortcut
+            ),
+            HelpItem(
                 title: "Back to Folder Selection",
                 description: "Return to folder selection screen",
                 shortcut: "Escape or B",
@@ -203,8 +210,50 @@ extension HelpSection {
         ]
     )
     
+    static let consolidatedToolbar = HelpSection(
+        title: "Consolidated Toolbar",
+        icon: "rectangle.3.group",
+        items: [
+            HelpItem(
+                title: "Streamlined Design",
+                description: "All controls are now organized in a single top toolbar for a cleaner, more intuitive interface. No more bottom toolbar taking up screen space.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Left Section: Navigation & Context",
+                description: "Contains the Back button, image counter (e.g., '4 of 4'), and folder selection button. Everything you need for navigation and context awareness.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Center Section: View Mode Controls",
+                description: "Groups all view-related toggles: Image Info (I), Slideshow (S), Thumbnail Strip (T), and Grid View (G). Easy to find and logically grouped.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Right Section: Image Actions & Zoom",
+                description: "Contains Share, Delete (trash), Zoom controls (-, zoom%, +, fit, 1:1), and filename toggle. All image manipulation tools in one place.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Visual Separators",
+                description: "Subtle dividers between toolbar sections help visually organize the controls while maintaining a clean, unified appearance.",
+                type: .tip
+            ),
+            HelpItem(
+                title: "Hover for Shortcuts",
+                description: "Hover over any toolbar button to see its keyboard shortcut in a tooltip. This helps you learn the shortcuts for faster navigation.",
+                type: .tip
+            ),
+            HelpItem(
+                title: "macOS Native Design",
+                description: "The consolidated toolbar follows macOS design patterns and works seamlessly with fullscreen mode, auto-hiding when appropriate.",
+                type: .information
+            )
+        ]
+    )
+    
     static let navigation = HelpSection(
-        title: "Navigation & Controls",
+        title: "Interface & Controls",
         icon: "arrow.left.arrow.right",
         items: [
             HelpItem(
@@ -214,7 +263,12 @@ extension HelpSection {
             ),
             HelpItem(
                 title: "Image Counter",
-                description: "The bottom status bar shows your current position (e.g., '5 of 23') and the current image filename when enabled.",
+                description: "The top toolbar shows your current position (e.g., '5 of 23') in the left section next to the back button.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Consolidated Toolbar",
+                description: "All controls are now organized in a single top toolbar with three sections: Navigation & Context (left), View Mode Controls (center), and Image Actions & Zoom (right).",
                 type: .information
             ),
             HelpItem(
@@ -236,13 +290,13 @@ extension HelpSection {
         items: [
             HelpItem(
                 title: "Thumbnail Strip",
-                description: "Press 'T' or click the strip button to show a horizontal thumbnail strip at the bottom. Perfect for quick previews while maintaining focus on the main image.",
+                description: "Press 'T' or click the strip button in the center toolbar section to show a horizontal thumbnail strip at the bottom. Perfect for quick previews while maintaining focus on the main image.",
                 shortcut: "T",
                 type: .information
             ),
             HelpItem(
                 title: "Grid View",
-                description: "Press 'G' or click the grid button to open a full-screen thumbnail grid. Great for browsing large collections and jumping to specific images.",
+                description: "Press 'G' or click the grid button in the center toolbar section to open a full-screen thumbnail grid. Great for browsing large collections and jumping to specific images.",
                 shortcut: "G",
                 type: .information
             ),
@@ -258,7 +312,7 @@ extension HelpSection {
             ),
             HelpItem(
                 title: "Grid View Controls",
-                description: "In grid view, use Escape to return to normal view, or click the 'Close' button. The grid shows image numbers, filenames, and file sizes for easy identification.",
+                description: "In grid view, use Escape to return to normal view, or click the grid button again in the toolbar. The grid shows image numbers, filenames, and file sizes for easy identification.",
                 type: .information
             ),
             HelpItem(
@@ -302,7 +356,7 @@ extension HelpSection {
     )
     
     static let additionalFeatures = HelpSection(
-        title: "Additional Features",
+        title: "Image Management",
         icon: "star",
         items: [
             HelpItem(
@@ -323,8 +377,13 @@ extension HelpSection {
                 type: .information
             ),
             HelpItem(
-                title: "Status Bar Controls",
-                description: "The bottom status bar contains toggle buttons for image info, slideshow, thumbnail views, and filename display. Hover over buttons for keyboard shortcut hints.",
+                title: "Toolbar Organization",
+                description: "The consolidated top toolbar groups related controls together: navigation on the left, view modes in the center, and image actions (share, delete, zoom) on the right. Hover over buttons for keyboard shortcut hints.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Delete Images Safely",
+                description: "Click the trash button or press Delete/Backspace to move images to Trash. A confirmation dialog ensures you don't accidentally delete images. Files can be recovered from the Trash.",
                 type: .information
             ),
             HelpItem(
@@ -334,7 +393,22 @@ extension HelpSection {
             ),
             HelpItem(
                 title: "Share Images",
-                description: "Use the share button in the top toolbar to quickly share the current image via email, Messages, AirDrop, or other installed sharing services.",
+                description: "Use the share button in the top-right toolbar section to quickly share the current image via email, Messages, AirDrop, or other installed sharing services.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Delete Images",
+                description: "Click the trash button (between share and zoom controls) or press Delete/Backspace to move images to Trash. A confirmation dialog prevents accidental deletions.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Safe File Management",
+                description: "Deleted images are moved to the Trash, not permanently deleted. You can recover them from the Trash if needed. The app requires explicit folder access permissions for delete operations.",
+                type: .tip
+            ),
+            HelpItem(
+                title: "Auto-Navigation After Delete",
+                description: "When you delete an image, StillView automatically advances to the next image in the folder. If you delete the last image, it will return to folder selection.",
                 type: .information
             )
         ]
@@ -390,6 +464,11 @@ extension HelpSection {
                 title: "Folder Access Issues",
                 description: "StillView uses security-scoped bookmarks to remember folder access. If you can't access a previously selected folder, try selecting it again.",
                 type: .information
+            ),
+            HelpItem(
+                title: "Delete Permission Issues",
+                description: "If you see 'Permission denied' when trying to delete images, the app needs write access to the folder. Simply re-select the folder using the folder button in the top toolbar to restore delete permissions.",
+                type: .warning
             ),
             HelpItem(
                 title: "Performance Tips",

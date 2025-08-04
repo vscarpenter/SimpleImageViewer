@@ -655,6 +655,128 @@ class ImageViewerViewModel: ObservableObject {
     var canShareCurrentImage: Bool {
         return currentImageFile != nil && !availableSharingServices.isEmpty
     }
+    
+    // MARK: - Delete Methods
+    
+    /// Move the current image to trash with confirmation
+    @MainActor
+    func moveCurrentImageToTrash() async {
+        guard let currentImageFile = currentImageFile else {
+            errorHandlingService.showNotification("No image to delete", type: .warning)
+            return
+        }
+        
+        // Show confirmation dialog
+        let confirmed = await showDeleteConfirmation(for: currentImageFile)
+        guard confirmed else { return }
+        
+        // Ensure security-scoped access before attempting delete
+        let fileURL = currentImageFile.url
+        let parentURL = fileURL.deletingLastPathComponent()
+        
+        // Start security-scoped access for the parent directory
+        let hasAccess = parentURL.startAccessingSecurityScopedResource()
+        
+        defer {
+            if hasAccess {
+                parentURL.stopAccessingSecurityScopedResource()
+            }
+        }
+        
+        guard hasAccess else {
+            errorHandlingService.showNotification(
+                "Permission denied. Please re-select the folder to grant delete permissions.",
+                type: .error
+            )
+            return
+        }
+        
+        // Move to trash using NSWorkspace
+        NSWorkspace.shared.recycle([fileURL], completionHandler: { (trashedItems, error) in
+            DispatchQueue.main.async {
+                if let error = error {
+                    // Check for specific permission errors
+                    if error.localizedDescription.contains("permission") || 
+                       error.localizedDescription.contains("Operation not permitted") {
+                        self.errorHandlingService.showNotification(
+                            "Permission denied. The app needs write access to this folder. Please re-select the folder.",
+                            type: .error
+                        )
+                    } else {
+                        self.errorHandlingService.showNotification(
+                            "Failed to move image to trash: \(error.localizedDescription)",
+                            type: .error
+                        )
+                    }
+                } else {
+                    // Successfully moved to trash
+                    self.handleImageDeletion()
+                    self.errorHandlingService.showNotification(
+                        "Image moved to Trash",
+                        type: .success
+                    )
+                }
+            }
+        })
+    }
+    
+    /// Show confirmation dialog for deleting an image
+    @MainActor
+    private func showDeleteConfirmation(for imageFile: ImageFile) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Move to Trash"
+                alert.informativeText = "Are you sure you want to move \"\(imageFile.displayName)\" to the Trash? This action can be undone from the Trash."
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "Move to Trash")
+                alert.addButton(withTitle: "Cancel")
+                
+                // Set the trash button as the default (pressing Enter)
+                if let trashButton = alert.buttons.first {
+                    trashButton.keyEquivalent = "\r" // Enter key
+                }
+                
+                // Set cancel button shortcut
+                if alert.buttons.count > 1 {
+                    alert.buttons[1].keyEquivalent = "\u{1b}" // Escape key
+                }
+                
+                // Run the alert
+                let response = alert.runModal()
+                continuation.resume(returning: response == .alertFirstButtonReturn)
+            }
+        }
+    }
+    
+    /// Handle the image deletion by updating the image list and navigation
+    private func handleImageDeletion() {
+        let deletedIndex = currentIndex
+        
+        // Remove the image from our array
+        imageFiles.remove(at: deletedIndex)
+        totalImages = imageFiles.count
+        
+        // Handle navigation after deletion
+        if totalImages == 0 {
+            // No more images, go back to folder selection
+            shouldNavigateToFolderSelection = true
+            return
+        }
+        
+        // Adjust current index if necessary
+        if currentIndex >= totalImages {
+            currentIndex = totalImages - 1
+        }
+        
+        // Load the new current image
+        loadCurrentImage()
+    }
+    
+    /// Check if deletion is available for the current image
+    var canDeleteCurrentImage: Bool {
+        return currentImageFile != nil
+    }
 }
 
 // MARK: - Sharing Service Delegate
@@ -669,7 +791,6 @@ private class SharingServiceDelegate: NSObject, NSSharingServicePickerDelegate {
 private class SharingDelegate: NSObject, NSSharingServiceDelegate {
     func sharingService(_ sharingService: NSSharingService, willShareItems items: [Any]) {
         // Optional: Log or track sharing events
-        print("Sharing image via \(sharingService.title)")
     }
     
     func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: Error) {
