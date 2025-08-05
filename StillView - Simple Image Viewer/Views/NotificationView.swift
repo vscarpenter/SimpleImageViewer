@@ -84,9 +84,9 @@ struct NotificationView: View {
         .scaleEffect(isVisible ? 1 : 0.9)
         .animation(.easeInOut(duration: 0.3), value: isVisible)
         .onAppear {
-            // Auto-dismiss after 4 seconds for non-error notifications
+            // Auto-dismiss after 5 seconds for non-error notifications
             if type != .error {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         isVisible = false
                     }
@@ -141,7 +141,7 @@ struct NotificationItem: Identifiable, Equatable {
     let duration: TimeInterval
     let timestamp: Date = Date()
     
-    init(message: String, type: NotificationView.NotificationType, duration: TimeInterval = 4.0) {
+    init(message: String, type: NotificationView.NotificationType, duration: TimeInterval = 5.0) {
         self.message = message
         self.type = type
         self.duration = duration
@@ -156,7 +156,7 @@ struct NotificationItem: Identifiable, Equatable {
 class NotificationManager: ObservableObject {
     @Published var notifications: [NotificationItem] = []
     
-    func show(_ message: String, type: NotificationView.NotificationType, duration: TimeInterval = 4.0) {
+    func show(_ message: String, type: NotificationView.NotificationType, duration: TimeInterval = 5.0) {
         let notification = NotificationItem(message: message, type: type, duration: duration)
         
         withAnimation(.easeInOut(duration: 0.3)) {

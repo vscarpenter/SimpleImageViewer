@@ -119,6 +119,10 @@ struct ContentView: View {
             VStack(alignment: .trailing, spacing: 8) {
                 ForEach(errorHandlingService.notifications) { notification in
                     notificationItem(notification)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity),
+                            removal: .move(edge: .top).combined(with: .opacity)
+                        ))
                 }
                 Spacer()
             }

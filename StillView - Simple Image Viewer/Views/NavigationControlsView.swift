@@ -10,26 +10,41 @@ struct NavigationControlsView: View {
     @State private var showControls = true
     @State private var hideControlsTimer: Timer?
     
+    // MARK: - Responsive Layout Properties
+    @StateObject private var layoutManager = ToolbarLayoutManager()
+    @State private var availableWidth: CGFloat = 800
+    @State private var isOverflowMenuPresented = false
+    
     // MARK: - Animation Properties
     private let controlsAnimationDuration: Double = 0.3
     private let autoHideDelay: Double = 3.0
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Consolidated top toolbar
-            if showControls || !viewModel.isFullscreen {
-                consolidatedTopToolbar
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .animation(.easeInOut(duration: controlsAnimationDuration), value: showControls)
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                // Consolidated top toolbar
+                if showControls || !viewModel.isFullscreen {
+                    consolidatedTopToolbar
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .animation(.easeInOut(duration: controlsAnimationDuration), value: showControls)
+                }
+                
+                Spacer()
+                
+                // File name overlay (when enabled and not inline)
+                if viewModel.showFileName && showControls && shouldShowFileNameOverlay {
+                    fileNameOverlay
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .animation(.easeInOut(duration: controlsAnimationDuration), value: showControls)
+                }
             }
-            
-            Spacer()
-            
-            // File name overlay (when enabled)
-            if viewModel.showFileName && showControls {
-                fileNameOverlay
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.easeInOut(duration: controlsAnimationDuration), value: showControls)
+            .onAppear {
+                availableWidth = geometry.size.width
+                layoutManager.updateLayout(for: availableWidth)
+            }
+            .onChange(of: geometry.size.width) { newWidth in
+                availableWidth = newWidth
+                layoutManager.updateLayout(for: newWidth)
             }
         }
         .onHover { hovering in
@@ -62,22 +77,43 @@ struct NavigationControlsView: View {
     private var consolidatedTopToolbar: some View {
         HStack(spacing: 0) {
             // Left Section: Navigation & Context
-            leftSection
+            responsiveLeftSection
             
-            // Section divider
-            Divider()
-                .frame(height: 20)
-                .padding(.horizontal, 12)
+            // Section divider (only show in full layout)
+            if layoutManager.currentLayout == .full {
+                Divider()
+                    .frame(height: 20)
+                    .padding(.horizontal, layoutManager.currentLayout == .full ? 12 : 6)
+            }
             
-            // Center Section: View Mode Controls
-            centerSection
-            
-            Spacer()
+            // Center Section: View Mode Controls (adaptive)
+            if shouldShowCenterSection {
+                responsiveCenterSection
+                
+                if layoutManager.currentLayout == .full {
+                    Spacer()
+                }
+            } else {
+                Spacer()
+            }
             
             // Right Section: Image Actions & Zoom
-            rightSection
+            responsiveRightSection
+            
+            // Overflow menu button (when needed)
+            if layoutManager.showOverflowButton {
+                Divider()
+                    .frame(height: 16)
+                    .padding(.horizontal, 4)
+                
+                ToolbarOverflowButton(
+                    isMenuPresented: $isOverflowMenuPresented,
+                    overflowItems: layoutManager.overflowItems,
+                    viewModel: viewModel
+                )
+            }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, layoutManager.currentLayout == .ultraCompact ? 8 : 16)
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8)
@@ -87,20 +123,22 @@ struct NavigationControlsView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.appBorder.opacity(0.3), lineWidth: 0.5)
         )
-        .padding(.horizontal, 16)
+        .padding(.horizontal, layoutManager.currentLayout == .ultraCompact ? 8 : 16)
         .padding(.top, 8)
     }
     
-    // MARK: - Left Section: Navigation & Context
-    private var leftSection: some View {
-        HStack(spacing: 12) {
-            // Back button
+    // MARK: - Responsive Left Section
+    private var responsiveLeftSection: some View {
+        HStack(spacing: layoutManager.currentLayout == .ultraCompact ? 8 : 12) {
+            // Back button (always visible)
             Button(action: onExit) {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14, weight: .medium))
-                    Text("Back")
-                        .font(.system(size: 14, weight: .medium))
+                    if layoutManager.currentLayout != .ultraCompact {
+                        Text("Back")
+                            .font(.system(size: 14, weight: .medium))
+                    }
                 }
             }
             .foregroundColor(.appText)
@@ -108,61 +146,102 @@ struct NavigationControlsView: View {
             .accessibilityLabel("Back to folder selection")
             .accessibilityHint("Returns to the main folder selection screen")
             
-            // Image counter
+            // Image counter (always visible)
             imageCounterView
             
-            // Choose folder button
-            chooseFolderButton
+            // Choose folder button (hidden in compact modes)
+            if layoutManager.isItemVisible("folder") {
+                chooseFolderButton
+            }
         }
     }
     
-    // MARK: - Center Section: View Mode Controls
-    private var centerSection: some View {
+    // MARK: - Legacy Left Section (for compatibility)
+    private var leftSection: some View {
+        responsiveLeftSection
+    }
+    
+    // MARK: - Responsive Center Section
+    private var responsiveCenterSection: some View {
         HStack(spacing: 8) {
             // Image Info toggle button
-            imageInfoToggleButton
+            if layoutManager.isItemVisible("info") {
+                imageInfoToggleButton
+            }
             
             // Slideshow toggle button
-            slideshowToggleButton
+            if layoutManager.isItemVisible("slideshow") {
+                slideshowToggleButton
+            }
             
             // Thumbnail strip toggle button
-            thumbnailStripToggleButton
+            if layoutManager.isItemVisible("thumbnails") {
+                thumbnailStripToggleButton
+            }
             
             // Grid view toggle button
-            gridViewToggleButton
+            if layoutManager.isItemVisible("grid") {
+                gridViewToggleButton
+            }
         }
     }
     
-    // MARK: - Right Section: Image Actions & Zoom
-    private var rightSection: some View {
+    // MARK: - Legacy Center Section (for compatibility)
+    private var centerSection: some View {
+        responsiveCenterSection
+    }
+    
+    // MARK: - Responsive Right Section
+    private var responsiveRightSection: some View {
         HStack(spacing: 8) {
-            // Share button
-            shareButton
+            // Share button (hidden in compact modes)
+            if layoutManager.isItemVisible("share") {
+                shareButton
+                
+                Divider()
+                    .frame(height: 16)
+                    .padding(.horizontal, 4)
+            }
             
-            // Section divider
-            Divider()
-                .frame(height: 16)
-                .padding(.horizontal, 4)
+            // Delete button (hidden in compact modes)
+            if layoutManager.isItemVisible("delete") {
+                deleteButton
+                
+                Divider()
+                    .frame(height: 16)
+                    .padding(.horizontal, 4)
+            }
             
-            // Delete button
-            deleteButton
+            // Zoom controls (always visible, but may be simplified)
+            if layoutManager.currentLayout == .ultraCompact {
+                compactZoomControls
+            } else {
+                zoomControlsView
+            }
             
-            // Section divider
-            Divider()
-                .frame(height: 16)
-                .padding(.horizontal, 4)
+            // File name toggle button (hidden in most compact modes)
+            if layoutManager.isItemVisible("filename") {
+                Divider()
+                    .frame(height: 16)
+                    .padding(.horizontal, 4)
+                
+                fileNameToggleButton
+            }
             
-            // Zoom controls
-            zoomControlsView
-            
-            // Section divider
-            Divider()
-                .frame(height: 16)
-                .padding(.horizontal, 4)
-            
-            // File name toggle button
-            fileNameToggleButton
+            // Inline file name (when space permits and enabled)
+            if shouldShowInlineFileName {
+                Divider()
+                    .frame(height: 16)
+                    .padding(.horizontal, 4)
+                
+                inlineFileNameView
+            }
         }
+    }
+    
+    // MARK: - Legacy Right Section (for compatibility)
+    private var rightSection: some View {
+        responsiveRightSection
     }
     
     // MARK: - Share Button
@@ -453,6 +532,96 @@ struct NavigationControlsView: View {
         .accessibilityHint("Return to folder selection to choose a different folder")
     }
     
+    // MARK: - Responsive Layout Helpers
+    
+    private var shouldShowCenterSection: Bool {
+        return layoutManager.currentLayout == .full || 
+               layoutManager.visibleItems["center"]?.isEmpty == false
+    }
+    
+    private var shouldShowFileNameOverlay: Bool {
+        return !shouldShowInlineFileName && layoutManager.currentLayout != .ultraCompact
+    }
+    
+    private var shouldShowInlineFileName: Bool {
+        return viewModel.showFileName && 
+               layoutManager.currentLayout == .full &&
+               availableWidth > 900 // Extra space needed for inline display
+    }
+    
+    // MARK: - Compact Zoom Controls
+    private var compactZoomControls: some View {
+        HStack(spacing: 2) {
+            // Zoom out button
+            Button(action: {
+                viewModel.zoomOut()
+                showControlsTemporarily()
+            }) {
+                Image(systemName: "minus.magnifyingglass")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .buttonStyle(CompactToolbarButtonStyle())
+            .help("Zoom out")
+            .accessibilityLabel("Zoom out")
+            
+            // Zoom level indicator (simplified)
+            Button(action: {
+                viewModel.zoomToFit()
+                showControlsTemporarily()
+            }) {
+                Text(viewModel.zoomPercentageText)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundColor(.appText)
+                    .frame(minWidth: 30)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.appSecondaryBackground.opacity(0.9))
+            )
+            .help("Reset zoom")
+            
+            // Zoom in button
+            Button(action: {
+                viewModel.zoomIn()
+                showControlsTemporarily()
+            }) {
+                Image(systemName: "plus.magnifyingglass")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .buttonStyle(CompactToolbarButtonStyle())
+            .help("Zoom in")
+            .accessibilityLabel("Zoom in")
+        }
+    }
+    
+    // MARK: - Inline File Name View
+    private var inlineFileNameView: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.appSecondaryText)
+                .accessibilityHidden(true)
+            
+            Text(viewModel.currentFileName)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.appText)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: 150) // Limit width to prevent toolbar overflow
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color.appSecondaryBackground.opacity(0.6))
+        )
+        .help("File: \(viewModel.currentFileName)")
+        .accessibilityLabel("File name: \(viewModel.currentFileName)")
+    }
+    
     // MARK: - Helper Methods
     private func toggleControlsVisibility() {
         withAnimation(.easeInOut(duration: controlsAnimationDuration)) {
@@ -508,33 +677,7 @@ struct NavigationControlsView: View {
     }
 }
 
-// MARK: - Toolbar Button Style
-private struct ToolbarButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundColor(configuration.isPressed ? .appAccent : .appText)
-            .padding(8)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(
-                        configuration.isPressed 
-                        ? Color.appAccent.opacity(0.2)
-                        : Color.appButtonBackground.opacity(0.8)
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(
-                        configuration.isPressed 
-                        ? Color.appAccent.opacity(0.3)
-                        : Color.appBorder.opacity(0.2), 
-                        lineWidth: 0.5
-                    )
-            )
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-    }
-}
+
 
 // MARK: - Preview
 #Preview {

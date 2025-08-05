@@ -53,6 +53,13 @@ class ErrorHandlingService: ObservableObject {
             
             let notification = NotificationItem(message: message, type: type)
             self.notifications.append(notification)
+            
+            // Auto-dismiss after 5 seconds for non-error notifications
+            if type != .error {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+                    self?.removeNotification(notification)
+                }
+            }
         }
     }
     
@@ -209,12 +216,16 @@ class ErrorHandlingService: ObservableObject {
     /// Remove a specific notification
     /// - Parameter notification: The notification to remove
     func removeNotification(_ notification: NotificationItem) {
-        notifications.removeAll { $0.id == notification.id }
+        withAnimation(.easeInOut(duration: 0.3)) {
+            notifications.removeAll { $0.id == notification.id }
+        }
     }
     
     /// Clear all notifications
     func clearAllNotifications() {
-        notifications.removeAll()
+        withAnimation(.easeInOut(duration: 0.3)) {
+            notifications.removeAll()
+        }
     }
     
     // MARK: - Private Methods
