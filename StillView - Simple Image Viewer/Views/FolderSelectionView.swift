@@ -8,7 +8,7 @@ struct FolderSelectionView: View {
     
     var body: some View {
         ZStack {
-            // Adaptive gradient background
+            // Adaptive gradient background with context menu
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color.appBackground,
@@ -19,6 +19,9 @@ struct FolderSelectionView: View {
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
+            .contextMenu {
+                folderSelectionContextMenu
+            }
             
             // Subtle texture overlay with adaptive colors
             RadialGradient(
@@ -85,6 +88,60 @@ struct FolderSelectionView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Folder selection view")
+    }
+    
+    // MARK: - Context Menu
+    
+    private var folderSelectionContextMenu: some View {
+        Group {
+            Button(action: {
+                viewModel.selectFolder()
+            }) {
+                Label("Select Folder...", systemImage: "folder.badge.plus")
+            }
+            .keyboardShortcut("o", modifiers: .command)
+            
+            Divider()
+            
+            if !viewModel.recentFolders.isEmpty {
+                Menu("Recent Folders") {
+                    ForEach(viewModel.recentFolders.prefix(5), id: \.absoluteString) { folderURL in
+                        Button(action: {
+                            viewModel.selectRecentFolder(folderURL)
+                        }) {
+                            Label(folderURL.lastPathComponent, systemImage: "folder")
+                        }
+                    }
+                    
+                    if viewModel.recentFolders.count > 5 {
+                        Text("... and \(viewModel.recentFolders.count - 5) more")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Divider()
+                    
+                    Button(action: {
+                        viewModel.clearRecentFolders()
+                    }) {
+                        Label("Clear All Recent", systemImage: "trash")
+                    }
+                    .foregroundColor(.red)
+                }
+            }
+            
+            Divider()
+            
+            Button(action: {
+                // Open preferences (placeholder)
+                ErrorHandlingService.shared.showNotification(
+                    "Preferences window will be available in a future update",
+                    type: .info
+                )
+            }) {
+                Label("Preferences...", systemImage: "gearshape")
+            }
+            .keyboardShortcut(",", modifiers: .command)
+        }
     }
     
     // MARK: - Header View

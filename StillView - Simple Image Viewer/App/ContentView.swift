@@ -331,7 +331,8 @@ struct ThumbnailStripView: View {
                             size: thumbnailSize,
                             onTap: {
                                 viewModel.jumpToImage(at: index)
-                            }
+                            },
+                            viewModel: viewModel
                         )
                         .id(index)
                     }
@@ -365,6 +366,7 @@ struct ThumbnailItemView: View {
     let isSelected: Bool
     let size: CGSize
     let onTap: () -> Void
+    let viewModel: ImageViewerViewModel
     
     @State private var thumbnail: NSImage?
     @State private var isLoading = true
@@ -434,7 +436,8 @@ struct ThumbnailItemView: View {
         .frame(width: size.width, height: size.height)
         .help("Image \(index + 1): \(imageFile.displayName)")
         .accessibilityLabel("Thumbnail \(index + 1), \(imageFile.displayName)")
-        .accessibilityHint("Tap to view this image")
+        .accessibilityHint("Tap to view this image, right-click for options")
+        .thumbnailContextMenu(for: imageFile, at: index, viewModel: viewModel)
         .onAppear {
             loadThumbnail()
         }
@@ -536,7 +539,8 @@ struct ThumbnailGridView: View {
                                     size: gridThumbnailSize,
                                     onTap: {
                                         viewModel.jumpToImage(at: index)
-                                    }
+                                    },
+                                    viewModel: viewModel
                                 )
                                 .id(index)
                             }
@@ -577,6 +581,7 @@ struct GridThumbnailItemView: View {
     let isSelected: Bool
     let size: CGSize
     let onTap: () -> Void
+    let viewModel: ImageViewerViewModel
     
     @State private var thumbnail: NSImage?
     @State private var isLoading = true
@@ -688,7 +693,8 @@ struct GridThumbnailItemView: View {
         .buttonStyle(.plain)
         .help("Image \(index + 1): \(imageFile.displayName)")
         .accessibilityLabel("Grid thumbnail \(index + 1), \(imageFile.displayName)")
-        .accessibilityHint("Double-tap to view this image")
+        .accessibilityHint("Double-tap to view this image, right-click for options")
+        .thumbnailContextMenu(for: imageFile, at: index, viewModel: viewModel)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.2)) {
                 isHovered = hovering

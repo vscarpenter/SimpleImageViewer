@@ -39,6 +39,7 @@ class ImageViewerViewModel: ObservableObject {
     @Published var totalImages: Int = 0
     @Published var isLoading: Bool = false
     @Published var loadingProgress: Double = 0.0
+    @Published var expectedImageSize: CGSize?
     @Published var zoomLevel: Double = 1.0
     @Published var isFullscreen: Bool = false
     @Published var errorMessage: String?
@@ -279,6 +280,7 @@ class ImageViewerViewModel: ObservableObject {
         }
         isLoading = false
         loadingProgress = 0.0
+        expectedImageSize = nil
     }
     
     // MARK: - Private Methods
@@ -340,11 +342,13 @@ class ImageViewerViewModel: ObservableObject {
     private func loadCurrentImage() {
         guard let imageFile = currentImageFile else {
             currentImage = nil
+            expectedImageSize = nil
             return
         }
         
-        // Clear any previous error
+        // Clear any previous error and state
         errorMessage = nil
+        expectedImageSize = nil
         
         // Set loading state
         isLoading = true
@@ -352,6 +356,9 @@ class ImageViewerViewModel: ObservableObject {
         
         // Cancel any previous loading
         imageLoaderService.cancelLoading(for: imageFile.url)
+        
+        // Try to get expected image size from metadata for better skeleton loading
+        loadExpectedImageSize(for: imageFile)
         
         // Load the image
         imageLoaderService.loadImage(from: imageFile.url)
@@ -375,6 +382,28 @@ class ImageViewerViewModel: ObservableObject {
                 }
             )
             .store(in: &cancellables)
+    }
+    
+    private func loadExpectedImageSize(for imageFile: ImageFile) {
+        // Try to get image dimensions from metadata without loading the full image
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let imageSource = CGImageSourceCreateWithURL(imageFile.url as CFURL, nil),
+                  CGImageSourceGetCount(imageSource) > 0 else {
+                return
+            }
+            
+            // Get image properties
+            if let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any],
+               let width = properties[kCGImagePropertyPixelWidth] as? NSNumber,
+               let height = properties[kCGImagePropertyPixelHeight] as? NSNumber {
+                
+                let imageSize = CGSize(width: width.doubleValue, height: height.doubleValue)
+                
+                DispatchQueue.main.async {
+                    self?.expectedImageSize = imageSize
+                }
+            }
+        }
     }
     
     private func preloadAdjacentImages() {
@@ -477,6 +506,7 @@ class ImageViewerViewModel: ObservableObject {
         imageLoaderService.clearCache()
         
         currentImage = nil
+        expectedImageSize = nil
         imageFiles = []
         folderContent = nil
         currentIndex = 0

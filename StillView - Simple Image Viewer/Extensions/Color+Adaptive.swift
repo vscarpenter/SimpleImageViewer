@@ -71,6 +71,93 @@ extension Color {
     
     /// Information status color
     static let appInfo = Color(NSColor.systemBlue)
+    
+    // MARK: - Glassmorphism Colors
+    
+    /// Primary glass effect background with subtle tint
+    static let appGlassPrimary = Color.adaptive(
+        light: Color.white.opacity(0.8),
+        dark: Color.black.opacity(0.6)
+    )
+    
+    /// Secondary glass effect background with more transparency
+    static let appGlassSecondary = Color.adaptive(
+        light: Color.white.opacity(0.6),
+        dark: Color.black.opacity(0.4)
+    )
+    
+    /// Tertiary glass effect background for subtle overlays
+    static let appGlassTertiary = Color.adaptive(
+        light: Color.white.opacity(0.4),
+        dark: Color.black.opacity(0.3)
+    )
+    
+    /// Glass border color for subtle outlines
+    static let appGlassBorder = Color.adaptive(
+        light: Color.white.opacity(0.3),
+        dark: Color.white.opacity(0.1)
+    )
+    
+    /// Glass highlight color for top edges and accents
+    static let appGlassHighlight = Color.adaptive(
+        light: Color.white.opacity(0.6),
+        dark: Color.white.opacity(0.2)
+    )
+    
+    /// Glass shadow color for depth
+    static let appGlassShadow = Color.adaptive(
+        light: Color.black.opacity(0.1),
+        dark: Color.black.opacity(0.3)
+    )
+    
+    // MARK: - Enhanced Status Colors
+    
+    /// Subtle success background color
+    static let appSuccessBackground = Color.adaptive(
+        light: Color.green.opacity(0.1),
+        dark: Color.green.opacity(0.2)
+    )
+    
+    /// Subtle warning background color
+    static let appWarningBackground = Color.adaptive(
+        light: Color.orange.opacity(0.1),
+        dark: Color.orange.opacity(0.2)
+    )
+    
+    /// Subtle error background color
+    static let appErrorBackground = Color.adaptive(
+        light: Color.red.opacity(0.1),
+        dark: Color.red.opacity(0.2)
+    )
+    
+    /// Subtle info background color
+    static let appInfoBackground = Color.adaptive(
+        light: Color.blue.opacity(0.1),
+        dark: Color.blue.opacity(0.2)
+    )
+    
+    // MARK: - Interactive State Colors
+    
+    /// Hover state background color
+    static let appHoverBackground = Color.adaptive(
+        light: Color.black.opacity(0.05),
+        dark: Color.white.opacity(0.1)
+    )
+    
+    /// Active/pressed state background color
+    static let appActiveBackground = Color.adaptive(
+        light: Color.black.opacity(0.1),
+        dark: Color.white.opacity(0.2)
+    )
+    
+    /// Focus ring color for keyboard navigation
+    static let appFocusRing = Color(NSColor.keyboardFocusIndicatorColor)
+    
+    /// Disabled element color
+    static let appDisabled = Color.adaptive(
+        light: Color.gray.opacity(0.3),
+        dark: Color.gray.opacity(0.5)
+    )
 }
 
 // MARK: - Color Scheme Detection
@@ -151,6 +238,38 @@ extension Color {
             green: Double(g) / 255,
             blue:  Double(b) / 255,
             opacity: Double(a) / 255
+        )
+    }
+}
+
+// MARK: - Glassmorphism Helpers
+
+extension Color {
+    
+    /// Creates a glassmorphism tint color with the specified opacity
+    /// - Parameter opacity: Opacity level for the tint (0.0 to 1.0)
+    /// - Returns: Tinted color suitable for glass effects
+    func glassEffect(opacity: Double = 0.1) -> Color {
+        return self.opacity(opacity)
+    }
+    
+    /// Creates a color suitable for glass borders
+    /// - Parameter intensity: Border intensity (0.0 to 1.0)
+    /// - Returns: Border color for glass effects
+    func glassBorder(intensity: Double = 0.3) -> Color {
+        return Color.adaptive(
+            light: Color.white.opacity(intensity),
+            dark: Color.white.opacity(intensity * 0.5)
+        )
+    }
+    
+    /// Creates a color suitable for glass highlights
+    /// - Parameter intensity: Highlight intensity (0.0 to 1.0)
+    /// - Returns: Highlight color for glass effects
+    func glassHighlight(intensity: Double = 0.6) -> Color {
+        return Color.adaptive(
+            light: Color.white.opacity(intensity),
+            dark: Color.white.opacity(intensity * 0.3)
         )
     }
 }

@@ -27,6 +27,12 @@ protocol PreferencesService {
     /// Window state for persistence and restoration
     var windowState: WindowState? { get set }
     
+    /// Default thumbnail grid size
+    var defaultThumbnailGridSize: ThumbnailGridSize { get set }
+    
+    /// Whether to use responsive grid layout that adapts to window size
+    var useResponsiveGridLayout: Bool { get set }
+    
     /// Add a folder to the recent folders list
     /// - Parameter url: The folder URL to add
     func addRecentFolder(_ url: URL)
@@ -73,6 +79,8 @@ class DefaultPreferencesService: PreferencesService {
         static let lastSelectedFolder = "lastSelectedFolder"
         static let folderBookmarks = "folderBookmarks"
         static let windowState = "windowState"
+        static let defaultThumbnailGridSize = "defaultThumbnailGridSize"
+        static let useResponsiveGridLayout = "useResponsiveGridLayout"
     }
     
     // MARK: - Properties
@@ -194,6 +202,42 @@ class DefaultPreferencesService: PreferencesService {
             } else {
                 userDefaults.removeObject(forKey: Keys.windowState)
             }
+        }
+    }
+    
+    var defaultThumbnailGridSize: ThumbnailGridSize {
+        get {
+            let rawValue = userDefaults.string(forKey: Keys.defaultThumbnailGridSize) ?? "medium"
+            switch rawValue {
+            case "small":
+                return .small
+            case "large":
+                return .large
+            default:
+                return .medium
+            }
+        }
+        set {
+            let rawValue: String
+            switch newValue {
+            case .small:
+                rawValue = "small"
+            case .medium:
+                rawValue = "medium"
+            case .large:
+                rawValue = "large"
+            }
+            userDefaults.set(rawValue, forKey: Keys.defaultThumbnailGridSize)
+        }
+    }
+    
+    var useResponsiveGridLayout: Bool {
+        get {
+            // Default to true if not set
+            return userDefaults.object(forKey: Keys.useResponsiveGridLayout) as? Bool ?? true
+        }
+        set {
+            userDefaults.set(newValue, forKey: Keys.useResponsiveGridLayout)
         }
     }
     

@@ -237,6 +237,153 @@ final class VisualRegressionTests: XCTestCase {
         }
     }
     
+    // MARK: - Skeleton Loading Screen Tests
+    
+    func testSkeletonLoadingScreensVisualConsistency() {
+        // Test skeleton loading screens in both light and dark modes
+        let testCases: [(CGSize?, Bool, Double, String)] = [
+            (nil, false, 0.0, "Default"),
+            (CGSize(width: 800, height: 600), true, 0.65, "WithProgress"),
+            (CGSize(width: 1200, height: 800), false, 0.0, "LargeImage"),
+            (CGSize(width: 400, height: 600), true, 0.25, "PortraitImage")
+        ]
+        
+        for (imageSize, showProgress, progress, testName) in testCases {
+            let view = SkeletonLoadingView(
+                imageSize: imageSize,
+                showProgressBar: showProgress,
+                loadingProgress: progress
+            )
+            
+            // Test light mode
+            NSApp.appearance = NSAppearance(named: .aqua)
+            let lightScreenshot = captureViewScreenshot(
+                view: AnyView(view),
+                identifier: "SkeletonLoading_\(testName)_Light",
+                size: CGSize(width: 400, height: 300)
+            )
+            
+            // Test dark mode
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+            let darkScreenshot = captureViewScreenshot(
+                view: AnyView(view),
+                identifier: "SkeletonLoading_\(testName)_Dark",
+                size: CGSize(width: 400, height: 300)
+            )
+            
+            // Verify screenshots were captured
+            XCTAssertNotNil(lightScreenshot, "Light mode skeleton loading screenshot should be captured for \(testName)")
+            XCTAssertNotNil(darkScreenshot, "Dark mode skeleton loading screenshot should be captured for \(testName)")
+            
+            // Verify both screenshots have visible content
+            if let lightScreenshot = lightScreenshot {
+                let hasLightContent = analyzeScreenshotForVisibleContent(lightScreenshot)
+                XCTAssertTrue(hasLightContent, "Light mode skeleton loading should have visible content for \(testName)")
+            }
+            
+            if let darkScreenshot = darkScreenshot {
+                let hasDarkContent = analyzeScreenshotForVisibleContent(darkScreenshot)
+                XCTAssertTrue(hasDarkContent, "Dark mode skeleton loading should have visible content for \(testName)")
+            }
+            
+            // Verify screenshots are different between modes
+            if let lightData = lightScreenshot?.tiffRepresentation,
+               let darkData = darkScreenshot?.tiffRepresentation {
+                XCTAssertNotEqual(lightData, darkData,
+                                 "Light and dark mode skeleton loading screenshots should be different for \(testName)")
+            }
+        }
+    }
+    
+    func testProgressiveLoadingScreensVisualConsistency() {
+        // Test progressive loading screens with preview images
+        let testImage = createMockNSImage()
+        let testCases: [(NSImage?, Double, CGSize?, String)] = [
+            (testImage, 0.0, CGSize(width: 800, height: 600), "WithPreview_Start"),
+            (testImage, 0.5, CGSize(width: 800, height: 600), "WithPreview_Half"),
+            (testImage, 0.9, CGSize(width: 800, height: 600), "WithPreview_Almost"),
+            (nil, 0.3, CGSize(width: 800, height: 600), "NoPreview")
+        ]
+        
+        for (previewImage, progress, targetSize, testName) in testCases {
+            let view = ProgressiveLoadingView(
+                previewImage: previewImage,
+                loadingProgress: progress,
+                targetSize: targetSize
+            )
+            
+            // Test light mode
+            NSApp.appearance = NSAppearance(named: .aqua)
+            let lightScreenshot = captureViewScreenshot(
+                view: AnyView(view),
+                identifier: "ProgressiveLoading_\(testName)_Light",
+                size: CGSize(width: 400, height: 300)
+            )
+            
+            // Test dark mode
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+            let darkScreenshot = captureViewScreenshot(
+                view: AnyView(view),
+                identifier: "ProgressiveLoading_\(testName)_Dark",
+                size: CGSize(width: 400, height: 300)
+            )
+            
+            // Verify screenshots were captured
+            XCTAssertNotNil(lightScreenshot, "Light mode progressive loading screenshot should be captured for \(testName)")
+            XCTAssertNotNil(darkScreenshot, "Dark mode progressive loading screenshot should be captured for \(testName)")
+            
+            // Verify both screenshots have visible content
+            if let lightScreenshot = lightScreenshot {
+                let hasLightContent = analyzeScreenshotForVisibleContent(lightScreenshot)
+                XCTAssertTrue(hasLightContent, "Light mode progressive loading should have visible content for \(testName)")
+            }
+            
+            if let darkScreenshot = darkScreenshot {
+                let hasDarkContent = analyzeScreenshotForVisibleContent(darkScreenshot)
+                XCTAssertTrue(hasDarkContent, "Dark mode progressive loading should have visible content for \(testName)")
+            }
+        }
+    }
+    
+    func testLoadingScreenAnimationStates() {
+        // Test that loading screens respect reduced motion settings
+        let originalReducedMotion = AccessibilityService.shared.isReducedMotionEnabled
+        
+        defer {
+            // Reset to original state
+            AccessibilityService.shared.isReducedMotionEnabled = originalReducedMotion
+        }
+        
+        let testCases: [(Bool, String)] = [
+            (false, "NormalMotion"),
+            (true, "ReducedMotion")
+        ]
+        
+        for (reducedMotion, testName) in testCases {
+            AccessibilityService.shared.isReducedMotionEnabled = reducedMotion
+            
+            let skeletonView = SkeletonLoadingView(
+                imageSize: CGSize(width: 800, height: 600),
+                showProgressBar: true,
+                loadingProgress: 0.5
+            )
+            
+            NSApp.appearance = NSAppearance(named: .aqua)
+            let screenshot = captureViewScreenshot(
+                view: AnyView(skeletonView),
+                identifier: "SkeletonLoading_\(testName)",
+                size: CGSize(width: 400, height: 300)
+            )
+            
+            XCTAssertNotNil(screenshot, "Skeleton loading screenshot should be captured for \(testName)")
+            
+            if let screenshot = screenshot {
+                let hasContent = analyzeScreenshotForVisibleContent(screenshot)
+                XCTAssertTrue(hasContent, "Skeleton loading should have visible content for \(testName)")
+            }
+        }
+    }
+    
     // MARK: - Regression Detection Tests
     
     func testVisualRegressionDetection() {
