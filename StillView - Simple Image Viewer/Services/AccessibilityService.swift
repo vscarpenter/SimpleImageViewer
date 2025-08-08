@@ -130,39 +130,6 @@ extension EnvironmentValues {
     }
 }
 
-// MARK: - Color Extensions
-
-extension Color {
-    /// Get a high contrast version of this color
-    var highContrast: Color {
-        switch self {
-        case .red:
-            return Color(red: 1.0, green: 0.0, blue: 0.0) // Pure red
-        case .blue:
-            return Color(red: 0.0, green: 0.0, blue: 1.0) // Pure blue
-        case .green:
-            return Color(red: 0.0, green: 1.0, blue: 0.0) // Pure green
-        case .orange:
-            return Color(red: 1.0, green: 0.5, blue: 0.0) // High contrast orange
-        case .yellow:
-            return Color(red: 1.0, green: 1.0, blue: 0.0) // Pure yellow
-        case .purple:
-            return Color(red: 1.0, green: 0.0, blue: 1.0) // Pure magenta
-        case .gray:
-            return Color(red: 0.5, green: 0.5, blue: 0.5) // Mid gray
-        case .black:
-            return Color.black
-        case .white:
-            return Color.white
-        case .primary:
-            return Color.black
-        case .secondary:
-            return Color(red: 0.3, green: 0.3, blue: 0.3) // Dark gray
-        default:
-            return self
-        }
-    }
-}
 
 // MARK: - View Modifiers
 

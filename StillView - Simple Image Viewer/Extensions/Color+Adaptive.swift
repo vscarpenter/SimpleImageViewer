@@ -272,4 +272,21 @@ extension Color {
             dark: Color.white.opacity(intensity * 0.3)
         )
     }
+    
+    /// Returns a high contrast version of the color for accessibility
+    var highContrast: Color {
+        switch self {
+        case .blue:
+            return Color.adaptive(light: Color.blue, dark: Color.cyan)
+        case .green:
+            return Color.adaptive(light: Color.green, dark: Color.mint)
+        case .orange:
+            return Color.adaptive(light: Color.orange, dark: Color.yellow)
+        case .red:
+            return Color.adaptive(light: Color.red, dark: Color.pink)
+        default:
+            return self
+        }
+    }
 }
+

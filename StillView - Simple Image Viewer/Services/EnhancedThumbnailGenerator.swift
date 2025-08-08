@@ -3,39 +3,7 @@ import AppKit
 import ImageIO
 import Combine
 
-/// Quality levels for thumbnail generation
-enum ThumbnailQuality: CaseIterable {
-    case low
-    case medium
-    case high
-    
-    /// Maximum pixel size for this quality level
-    var maxPixelSize: CGFloat {
-        switch self {
-        case .low: return 128
-        case .medium: return 256
-        case .high: return 512
-        }
-    }
-    
-    /// Interpolation quality for this level
-    var interpolationQuality: CGInterpolationQuality {
-        switch self {
-        case .low: return .low
-        case .medium: return .medium
-        case .high: return .high
-        }
-    }
-    
-    /// Whether to use high-quality thumbnail generation
-    var useHighQuality: Bool {
-        switch self {
-        case .low: return false
-        case .medium: return true
-        case .high: return true
-        }
-    }
-}
+// ThumbnailQuality enum is defined in ThumbnailQuality.swift
 
 /// Protocol for enhanced thumbnail generation with quality levels
 protocol EnhancedThumbnailGeneratorProtocol {
@@ -274,22 +242,7 @@ final class EnhancedThumbnailGenerator: EnhancedThumbnailGeneratorProtocol {
     }
 }
 
-// MARK: - Thumbnail Size Utilities
-
-extension ThumbnailQuality {
-    /// Get the appropriate thumbnail size for a given container size
-    /// - Parameter containerSize: The size of the container that will display the thumbnail
-    /// - Returns: The optimal thumbnail size
-    func optimalSize(for containerSize: CGSize) -> CGSize {
-        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
-        let maxDimension = max(containerSize.width, containerSize.height) * scale
-        
-        // Ensure we don't exceed the quality's maximum pixel size
-        let clampedDimension = min(maxDimension, maxPixelSize)
-        
-        return CGSize(width: clampedDimension, height: clampedDimension)
-    }
-}
+// ThumbnailQuality extension moved to ThumbnailQuality.swift
 
 // MARK: - Integration with Existing Services
 

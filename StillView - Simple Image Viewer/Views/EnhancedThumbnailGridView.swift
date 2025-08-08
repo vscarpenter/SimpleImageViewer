@@ -428,67 +428,7 @@ private struct DateBadge: View {
     }
 }
 
-/// Thumbnail grid size configuration
-enum ThumbnailGridSize: CaseIterable {
-    case small
-    case medium
-    case large
-    
-    var thumbnailSize: CGSize {
-        switch self {
-        case .small:
-            return CGSize(width: 120, height: 90)
-        case .medium:
-            return CGSize(width: 160, height: 120)
-        case .large:
-            return CGSize(width: 200, height: 150)
-        }
-    }
-    
-    var columnCount: Int {
-        switch self {
-        case .small:
-            return 6
-        case .medium:
-            return 4
-        case .large:
-            return 3
-        }
-    }
-    
-    var spacing: CGFloat {
-        switch self {
-        case .small:
-            return 8
-        case .medium:
-            return 12
-        case .large:
-            return 16
-        }
-    }
-    
-    var padding: CGFloat {
-        switch self {
-        case .small:
-            return 12
-        case .medium:
-            return 16
-        case .large:
-            return 20
-        }
-    }
-    
-    var displayName: String {
-        switch self {
-        case .small:
-            return "Small"
-        case .medium:
-            return "Medium"
-        case .large:
-            return "Large"
-        }
-    }
-}
+// ThumbnailGridSize enum is defined in ThumbnailQuality.swift
 
 // MARK: - Preview
 

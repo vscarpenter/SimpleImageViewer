@@ -2,6 +2,84 @@ import Foundation
 import AppKit
 
 extension Bundle {
+    
+    // MARK: - Version Utilities
+    
+    /// The app's version string from CFBundleShortVersionString
+    var appVersion: String {
+        return infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    }
+    
+    /// The app's build number from CFBundleVersion
+    var buildNumber: String {
+        return infoDictionary?["CFBundleVersion"] as? String ?? "1"
+    }
+    
+    /// Full version string combining version and build number
+    var fullVersionString: String {
+        return "Version \(appVersion) (\(buildNumber))"
+    }
+    
+    /// Loads and parses a JSON file from the bundle with comprehensive error handling
+    func loadJSON<T: Codable>(_ type: T.Type, from filename: String) -> T? {
+        guard let url = url(forResource: filename, withExtension: "json") else {
+            print("JSON file not found: \(filename).json")
+            return nil
+        }
+        
+        do {
+            let data = try Data(contentsOf: url)
+            
+            // Check for empty data
+            guard !data.isEmpty else {
+                print("JSON file is empty: \(filename).json")
+                return nil
+            }
+            
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            
+            return try decoder.decode(type, from: data)
+            
+        } catch let decodingError as DecodingError {
+            print("JSON decoding error in \(filename).json: \(decodingError.localizedDescription)")
+            
+            // Log specific decoding error details
+            switch decodingError {
+            case .dataCorrupted(let context):
+                print("Data corrupted: \(context.debugDescription)")
+            case .keyNotFound(let key, let context):
+                print("Key '\(key.stringValue)' not found: \(context.debugDescription)")
+            case .typeMismatch(let type, let context):
+                print("Type mismatch for \(type): \(context.debugDescription)")
+            case .valueNotFound(let type, let context):
+                print("Value not found for \(type): \(context.debugDescription)")
+            @unknown default:
+                print("Unknown decoding error: \(decodingError)")
+            }
+            
+            return nil
+            
+        } catch let ioError as CocoaError {
+            switch ioError.code {
+            case .fileReadCorruptFile:
+                print("Corrupted file: \(filename).json")
+            case .fileReadNoSuchFile:
+                print("File not found: \(filename).json")
+            case .fileReadNoPermission:
+                print("No permission to read: \(filename).json")
+            default:
+                print("File I/O error loading \(filename).json: \(ioError.localizedDescription)")
+            }
+            return nil
+            
+        } catch {
+            print("Unexpected error loading JSON from \(filename).json: \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    // MARK: - Logo Resources
     /// Get the horizontal logo SVG data
     var horizontalLogoSVG: Data? {
         guard let url = url(forResource: "logo-horizontal", withExtension: "svg") else {
@@ -63,16 +141,16 @@ final class AppBranding {
     
     /// App version from bundle
     static var version: String {
-        return Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        return Bundle.main.appVersion
     }
     
     /// App build number from bundle
     static var buildNumber: String {
-        return Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return Bundle.main.buildNumber
     }
     
     /// Full version string
     static var fullVersionString: String {
-        return "Version \(version) (\(buildNumber))"
+        return Bundle.main.fullVersionString
     }
 }

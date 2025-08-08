@@ -196,33 +196,14 @@ extension View {
     
     /// Apply standard spacing between elements in a stack
     func stackSpacing() -> some View {
-        if let vstack = self as? VStack<TupleView<(some View, some View)>> {
-            return AnyView(vstack)
-        } else if let hstack = self as? HStack<TupleView<(some View, some View)>> {
-            return AnyView(hstack)
-        } else {
-            return AnyView(self)
-        }
+        return AnyView(self)
     }
 }
 
 // MARK: - Stack Extensions
 
-extension VStack {
-    
-    /// Create VStack with standard spacing
-    init<Content: View>(spacing: AppSpacingValue = .md, alignment: HorizontalAlignment = .center, @ViewBuilder content: () -> Content) where Content == Content {
-        self.init(alignment: alignment, spacing: spacing.value, content: content)
-    }
-}
-
-extension HStack {
-    
-    /// Create HStack with standard spacing
-    init<Content: View>(spacing: AppSpacingValue = .md, alignment: VerticalAlignment = .center, @ViewBuilder content: () -> Content) where Content == Content {
-        self.init(alignment: alignment, spacing: spacing.value, content: content)
-    }
-}
+// Note: Custom VStack and HStack initializers removed due to Swift generic constraints
+// Use AppSpacingValue.value directly when creating stacks with custom spacing
 
 // MARK: - Spacing Value Enum
 

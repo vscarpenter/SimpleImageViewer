@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 /// Enumeration for thumbnail quality levels
 enum ThumbnailQuality: String, CaseIterable {
@@ -39,6 +40,33 @@ enum ThumbnailQuality: String, CaseIterable {
             return 0.7
         case .high:
             return 0.9
+        }
+    }
+    
+    /// Maximum pixel size for this quality level
+    var maxPixelSize: CGFloat {
+        switch self {
+        case .low: return 128
+        case .medium: return 256
+        case .high: return 512
+        }
+    }
+    
+    /// Interpolation quality for this level
+    var interpolationQuality: CGInterpolationQuality {
+        switch self {
+        case .low: return .low
+        case .medium: return .medium
+        case .high: return .high
+        }
+    }
+    
+    /// Whether to use high-quality thumbnail generation
+    var useHighQuality: Bool {
+        switch self {
+        case .low: return false
+        case .medium: return true
+        case .high: return true
         }
     }
 }
@@ -95,5 +123,34 @@ enum ThumbnailGridSize: String, CaseIterable {
         case .large:
             return 20
         }
+    }
+    
+    /// Number of columns for the grid size
+    var columnCount: Int {
+        switch self {
+        case .small:
+            return 6
+        case .medium:
+            return 4
+        case .large:
+            return 3
+        }
+    }
+}
+
+// MARK: - ThumbnailQuality Extensions
+
+extension ThumbnailQuality {
+    /// Get the appropriate thumbnail size for a given container size
+    /// - Parameter containerSize: The size of the container that will display the thumbnail
+    /// - Returns: The optimal thumbnail size
+    func optimalSize(for containerSize: CGSize) -> CGSize {
+        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+        let maxDimension = max(containerSize.width, containerSize.height) * scale
+        
+        // Ensure we don't exceed the quality's maximum pixel size
+        let clampedDimension = min(maxDimension, maxPixelSize)
+        
+        return CGSize(width: clampedDimension, height: clampedDimension)
     }
 }

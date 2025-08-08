@@ -1,0 +1,74 @@
+{
+  "version": "1.2.0",
+  "releaseDate": "2025-08-07T00:00:00Z",
+  "sections": [
+    {
+      "title": "New Features",
+      "type": "newFeatures",
+      "items": [
+        {
+          "title": "What's New Feature",
+          "description": "Stay informed about new features and improvements with automatic update notifications and on-demand access through the Help menu.",
+          "isHighlighted": true
+        },
+        {
+          "title": "Enhanced Thumbnail Grid",
+          "description": "Improved performance and visual quality for browsing large image collections.",
+          "isHighlighted": true
+        },
+        {
+          "title": "Responsive Layout System",
+          "description": "Dynamic grid layouts that adapt to window size and content for optimal viewing experience.",
+          "isHighlighted": false
+        }
+      ]
+    },
+    {
+      "title": "Improvements",
+      "type": "improvements",
+      "items": [
+        {
+          "title": "Faster Image Loading",
+          "description": "Optimized image loading pipeline reduces wait times and improves responsiveness.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Better Memory Management",
+          "description": "Enhanced memory handling prevents crashes when viewing large image collections.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Improved Accessibility",
+          "description": "Better VoiceOver support and keyboard navigation throughout the app.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Dark Mode Enhancements",
+          "description": "Refined dark mode appearance with better contrast and visual hierarchy.",
+          "isHighlighted": false
+        }
+      ]
+    },
+    {
+      "title": "Bug Fixes",
+      "type": "bugFixes",
+      "items": [
+        {
+          "title": "Fixed Thumbnail Generation",
+          "description": "Resolved issues with thumbnail generation for certain image formats.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Window State Persistence",
+          "description": "Fixed window size and position not being remembered between app launches.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Keyboard Navigation",
+          "description": "Corrected keyboard shortcuts not working in certain UI states.",
+          "isHighlighted": false
+        }
+      ]
+    }
+  ]
+}

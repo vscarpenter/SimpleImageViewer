@@ -309,4 +309,6 @@ struct PermissionAction {
 
 extension Notification.Name {
     static let requestFolderSelection = Notification.Name("requestFolderSelection")
+    static let showWhatsNew = Notification.Name("showWhatsNew")
+    static let whatsNewDismissed = Notification.Name("whatsNewDismissed")
 }
