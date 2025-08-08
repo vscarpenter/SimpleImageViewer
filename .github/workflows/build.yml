@@ -1,0 +1,216 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  # Xcode project configuration
+  XCODE_PROJECT: "StillView - Simple Image Viewer.xcodeproj"
+  XCODE_SCHEME: "StillView - Simple Image Viewer"
+  
+  # Build configuration
+  BUILD_CONFIGURATION: Debug
+  MACOS_VERSION: "13.5"
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+        
+    - name: Show Xcode Version
+      run: |
+        xcodebuild -version
+        xcrun --show-sdk-version
+        
+    - name: Cache Build Products
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData
+          ~/Library/Caches/com.apple.dt.Xcode
+        key: ${{ runner.os }}-xcode-${{ hashFiles('**/*.pbxproj') }}
+        restore-keys: |
+          ${{ runner.os }}-xcode-
+          
+    - name: Install Dependencies
+      run: |
+        # If you have any dependencies to install, add them here
+        # For example, if using Swift Package Manager:
+        # xcodebuild -resolvePackageDependencies -project "$XCODE_PROJECT"
+        echo "No external dependencies to install"
+        
+    - name: Build Project
+      run: |
+        xcodebuild \
+          -project "$XCODE_PROJECT" \
+          -scheme "$XCODE_SCHEME" \
+          -configuration $BUILD_CONFIGURATION \
+          -destination "platform=macOS,arch=arm64" \
+          clean build \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
+          
+    - name: Run Unit Tests
+      run: |
+        xcodebuild test \
+          -project "$XCODE_PROJECT" \
+          -scheme "$XCODE_SCHEME" \
+          -configuration $BUILD_CONFIGURATION \
+          -destination "platform=macOS,arch=arm64" \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
+          
+    - name: Archive Build Artifacts
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          ~/Library/Developer/Xcode/DerivedData/*/Build/Products/${{ env.BUILD_CONFIGURATION }}/*.app
+        retention-days: 30
+        
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          ~/Library/Developer/Xcode/DerivedData/*/Logs/Test/
+        retention-days: 30
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+        
+    - name: SwiftLint
+      run: |
+        # Install SwiftLint if not already available
+        if ! command -v swiftlint &> /dev/null; then
+          echo "SwiftLint not found. Installing..."
+          brew install swiftlint
+        fi
+        
+        # Run SwiftLint
+        swiftlint --reporter github-actions-logging
+      continue-on-error: true
+      
+    - name: Swift Format Check
+      run: |
+        # Install swift-format if you want to use it
+        # if ! command -v swift-format &> /dev/null; then
+        #   echo "swift-format not found. Installing..."
+        #   brew install swift-format
+        # fi
+        echo "Swift format check skipped - add swift-format if needed"
+      continue-on-error: true
+
+  security-scan:
+    name: Security Scan
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: Run Security Scan
+      run: |
+        # Check for common security issues
+        echo "Running basic security checks..."
+        
+        # Check for hardcoded secrets (basic patterns)
+        echo "Checking for potential hardcoded secrets..."
+        if grep -r -i "password\|secret\|key\|token" --include="*.swift" . | grep -v "// " | grep -v "test"; then
+          echo "⚠️ Potential hardcoded secrets found - review manually"
+        else
+          echo "✅ No obvious hardcoded secrets found"
+        fi
+        
+        # Check entitlements
+        echo "Checking entitlements..."
+        if [ -f "StillView - Simple Image Viewer/Simple_Image_Viewer.entitlements" ]; then
+          cat "StillView - Simple Image Viewer/Simple_Image_Viewer.entitlements"
+        fi
+        
+        echo "✅ Security scan completed"
+      continue-on-error: true
+
+  release-build:
+    name: Release Build
+    runs-on: macos-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [build, code-quality]
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+        
+    - name: Build Release Version
+      run: |
+        xcodebuild \
+          -project "$XCODE_PROJECT" \
+          -scheme "$XCODE_SCHEME" \
+          -configuration Release \
+          -destination "platform=macOS,arch=arm64" \
+          -archivePath "StillView.xcarchive" \
+          clean archive \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
+          
+    - name: Export Archive
+      run: |
+        # Create export options plist
+        cat > ExportOptions.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>method</key>
+            <string>mac-application</string>
+            <key>destination</key>
+            <string>export</string>
+        </dict>
+        </plist>
+        EOF
+        
+        # Export the archive
+        xcodebuild \
+          -exportArchive \
+          -archivePath "StillView.xcarchive" \
+          -exportPath "export" \
+          -exportOptionsPlist "ExportOptions.plist"
+          
+    - name: Upload Release Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-build
+        path: export/
+        retention-days: 90
