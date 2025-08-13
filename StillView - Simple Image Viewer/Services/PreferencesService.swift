@@ -1,5 +1,10 @@
 import Foundation
 import CoreGraphics
+import SwiftUI
+import Combine
+import UniformTypeIdentifiers
+
+// MARK: - PreferencesService Protocol
 
 /// Protocol defining preferences management for StillView - Simple Image Viewer
 protocol PreferencesService {
@@ -33,6 +38,9 @@ protocol PreferencesService {
     /// Whether to use responsive grid layout that adapts to window size
     var useResponsiveGridLayout: Bool { get set }
     
+    /// Favorited images data
+    var favoriteImages: [FavoriteImageFile] { get set }
+    
     /// Add a folder to the recent folders list
     /// - Parameter url: The folder URL to add
     func addRecentFolder(_ url: URL)
@@ -57,10 +65,22 @@ protocol PreferencesService {
     /// Load window state from persistent storage
     /// - Returns: The saved window state, or nil if none exists
     func loadWindowState() -> WindowState?
+    
+    /// Save favorites to persistent storage
+    func saveFavorites()
+    
+    /// Update favorites data
+    /// - Parameter favorites: The new favorites array
+    func updateFavorites(_ favorites: [FavoriteImageFile])
+    
+    /// Load favorites from persistent storage
+    func loadFavorites() -> [FavoriteImageFile]
 }
 
 /// Default implementation using UserDefaults
 class DefaultPreferencesService: PreferencesService {
+    static let shared = DefaultPreferencesService()
+    
     private let userDefaults: UserDefaults
     
     /// Initialize with custom UserDefaults (useful for testing)
@@ -81,6 +101,7 @@ class DefaultPreferencesService: PreferencesService {
         static let windowState = "windowState"
         static let defaultThumbnailGridSize = "defaultThumbnailGridSize"
         static let useResponsiveGridLayout = "useResponsiveGridLayout"
+        static let favoriteImages = "favoriteImages"
     }
     
     // MARK: - Properties
@@ -241,6 +262,21 @@ class DefaultPreferencesService: PreferencesService {
         }
     }
     
+    var favoriteImages: [FavoriteImageFile] {
+        get {
+            guard let data = userDefaults.data(forKey: Keys.favoriteImages),
+                  let favorites = try? JSONDecoder().decode([FavoriteImageFile].self, from: data) else {
+                return []
+            }
+            return favorites
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                userDefaults.set(data, forKey: Keys.favoriteImages)
+            }
+        }
+    }
+    
     // MARK: - Methods
     func addRecentFolder(_ url: URL) {
         var folders = recentFolders
@@ -281,4 +317,17 @@ class DefaultPreferencesService: PreferencesService {
     func loadWindowState() -> WindowState? {
         return windowState
     }
+    
+    func saveFavorites() {
+        savePreferences()
+    }
+    
+    func updateFavorites(_ favorites: [FavoriteImageFile]) {
+        favoriteImages = favorites
+    }
+    
+    func loadFavorites() -> [FavoriteImageFile] {
+        return favoriteImages
+    }
 }
+

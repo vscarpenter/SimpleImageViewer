@@ -6,7 +6,29 @@ struct FolderSelectionView: View {
     @StateObject private var viewModel = FolderSelectionViewModel()
     @State private var showingErrorAlert = false
     
+    /// Callback when an image is selected for full-screen viewing from favorites
+    let onImageSelected: ((FolderContent, ImageFile) -> Void)?
+    
     var body: some View {
+        ZStack {
+            if viewModel.showingFavorites {
+                FavoritesView(
+                    onImageSelected: { folderContent, imageFile in
+                        onImageSelected?(folderContent, imageFile)
+                    },
+                    onBackToFolderSelection: {
+                        viewModel.hideFavorites()
+                    }
+                )
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            } else {
+                folderSelectionContent
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: viewModel.showingFavorites)
+    }
+    
+    private var folderSelectionContent: some View {
         ZStack {
             // Adaptive gradient background with context menu
             LinearGradient(
@@ -43,6 +65,10 @@ struct FolderSelectionView: View {
                     
                     if viewModel.isScanning {
                         scanningView
+                    }
+                    
+                    if viewModel.hasFavorites && !viewModel.isScanning {
+                        favoritesView
                     }
                     
                     if !viewModel.recentFolders.isEmpty && !viewModel.isScanning {
@@ -100,6 +126,15 @@ struct FolderSelectionView: View {
                 Label("Select Folder...", systemImage: "folder.badge.plus")
             }
             .keyboardShortcut("o", modifiers: .command)
+            
+            if viewModel.hasFavorites {
+                Button(action: {
+                    viewModel.showFavorites()
+                }) {
+                    Label("View Favorites", systemImage: "heart.fill")
+                }
+                .keyboardShortcut("f", modifiers: .command)
+            }
             
             Divider()
             
@@ -235,8 +270,8 @@ struct FolderSelectionView: View {
             .background(
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color.appAccent,
-                        Color.appAccent.opacity(0.8)
+                        Color.systemAccent,
+                        Color.systemAccent.opacity(0.8)
                     ]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -244,7 +279,7 @@ struct FolderSelectionView: View {
             )
             .foregroundColor(.white)
             .cornerRadius(12)
-            .shadow(color: Color.appAccent.opacity(0.4), radius: 8, x: 0, y: 4)
+            .shadow(color: Color.systemAccent.opacity(0.4), radius: 8, x: 0, y: 4)
             .scaleEffect(viewModel.isScanning ? 0.95 : 1.0)
         }
         .buttonStyle(.plain)
@@ -260,7 +295,7 @@ struct FolderSelectionView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.0)
-                .tint(.appAccent)
+                .tint(.systemAccent)
                 .accessibilityLabel("Scanning folder")
             
             VStack(spacing: 8) {
@@ -271,7 +306,7 @@ struct FolderSelectionView: View {
                 if viewModel.scanProgress > 0 {
                     ProgressView(value: viewModel.scanProgress)
                         .frame(width: 240)
-                        .tint(.appAccent)
+                        .tint(.systemAccent)
                         .accessibilityLabel("Scan progress")
                         .accessibilityValue("\(Int(viewModel.scanProgress * 100)) percent complete")
                 }
@@ -315,6 +350,110 @@ struct FolderSelectionView: View {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(Color.appBackground)
                         .shadow(color: Color.appBorder.opacity(0.3), radius: 8, x: 0, y: 2)
+                )
+        )
+    }
+    
+    // MARK: - Favorites View
+    private var favoritesView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack {
+                Text("Favorites")
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundColor(.appText)
+                    .accessibilityAddTraits(.isHeader)
+                
+                Spacer()
+            }
+            
+            Button(action: {
+                viewModel.showFavorites()
+            }) {
+                HStack(spacing: 16) {
+                    // Enhanced heart icon with background
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.red.opacity(0.2),
+                                        Color.red.opacity(0.1)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 40, height: 40)
+                        
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.red)
+                            .accessibilityHidden(true)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Favorites")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.appText)
+                            .lineLimit(1)
+                        
+                        Text("View your favorite images")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(.appSecondaryText)
+                            .opacity(0.8)
+                            .lineLimit(1)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.appSecondaryText)
+                        .opacity(0.6)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.red.opacity(0.08),
+                                    Color.red.opacity(0.04)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.red.opacity(0.2), lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+            .help("View your favorite images")
+            .accessibilityLabel("View favorites")
+            .accessibilityHint("Opens the favorites view to browse your favorite images")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(24)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.appBackground.opacity(0.8),
+                            Color.appBackground.opacity(0.6)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.appBackground)
+                        .shadow(color: Color.appBorder.opacity(0.3), radius: 12, x: 0, y: 4)
                 )
         )
     }
@@ -394,8 +533,8 @@ private struct RecentFolderRow: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.appAccent.opacity(0.2),
-                                Color.appAccent.opacity(0.1)
+                                Color.systemAccent.opacity(0.2),
+                                Color.systemAccent.opacity(0.1)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -405,7 +544,7 @@ private struct RecentFolderRow: View {
                 
                 Image(systemName: "folder.fill")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.appAccent)
+                    .foregroundColor(.systemAccent)
                     .accessibilityHidden(true)
             }
             
@@ -447,8 +586,8 @@ private struct RecentFolderRow: View {
                     isHovered ? 
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.appAccent.opacity(0.08),
-                            Color.appAccent.opacity(0.04)
+                            Color.systemAccent.opacity(0.08),
+                            Color.systemAccent.opacity(0.04)
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -465,7 +604,7 @@ private struct RecentFolderRow: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(
-                            isHovered ? Color.appAccent.opacity(0.2) : Color.clear,
+                            isHovered ? Color.systemAccent.opacity(0.2) : Color.clear,
                             lineWidth: 1
                         )
                 )
@@ -493,20 +632,20 @@ private struct RecentFolderRow: View {
 }
 
 #Preview {
-    FolderSelectionView()
+    FolderSelectionView(onImageSelected: nil)
         .frame(width: 600, height: 500)
 }
 
 #Preview("With Recent Folders") {
-    let viewModel = FolderSelectionViewModel()
+    let _ = FolderSelectionViewModel()
     // Note: In a real preview, you'd inject mock data
-    return FolderSelectionView()
+    FolderSelectionView(onImageSelected: nil)
         .frame(width: 600, height: 500)
 }
 
 #Preview("Scanning State") {
-    let viewModel = FolderSelectionViewModel()
+    let _ = FolderSelectionViewModel()
     // Note: In a real preview, you'd set isScanning to true
-    return FolderSelectionView()
+    FolderSelectionView(onImageSelected: nil)
         .frame(width: 600, height: 500)
 }

@@ -231,7 +231,7 @@ struct ThumbnailGlassEffect: ViewModifier {
         content
             .modifier(GlassEffectModifier(
                 intensity: isSelected ? .strong : (isHovered ? .medium : .subtle),
-                tintColor: isSelected ? Color.appAccent : nil,
+                tintColor: isSelected ? Color.systemAccent : nil,
                 cornerRadius: 8,
                 shadowRadius: isSelected ? 16 : (isHovered ? 12 : 4),
                 shadowOffset: CGSize(width: 0, height: isSelected ? 8 : (isHovered ? 6 : 2))

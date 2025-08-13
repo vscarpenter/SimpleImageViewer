@@ -79,6 +79,23 @@ struct ImageFile: Identifiable, Equatable, Hashable {
         }
     }
     
+    /// Initialize an ImageFile with all metadata (used for favorites restoration)
+    /// - Parameters:
+    ///   - url: The file URL
+    ///   - name: The file name
+    ///   - type: The UTType of the image
+    ///   - size: The file size in bytes
+    ///   - creationDate: The file creation date
+    ///   - modificationDate: The file modification date
+    init(url: URL, name: String, type: UTType, size: Int64, creationDate: Date, modificationDate: Date) {
+        self.url = url
+        self.name = name
+        self.type = type
+        self.size = size
+        self.creationDate = creationDate
+        self.modificationDate = modificationDate
+    }
+    
     /// Check if a UTType represents a supported image format
     /// - Parameter type: The UTType to check
     /// - Returns: True if the type is supported

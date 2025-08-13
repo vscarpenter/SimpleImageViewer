@@ -520,6 +520,195 @@ class ImageViewerViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentFileName, "test_image_0")
     }
     
+    // MARK: - Favorites Tests
+    
+    func testIsFavoriteWithNoCurrentImage() {
+        // Given no current image
+        XCTAssertFalse(viewModel.isFavorite)
+    }
+    
+    func testIsFavoriteWithCurrentImage() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        let imageFiles = try createMockImageFiles(count: 1)
+        let folderContent = FolderContent(
+            folderURL: URL(fileURLWithPath: "/test/folder"),
+            imageFiles: imageFiles,
+            currentIndex: 0
+        )
+        
+        // Create view model with mock favorites service
+        viewModel = ImageViewerViewModel(
+            imageLoaderService: mockImageLoaderService,
+            preferencesService: mockPreferencesService,
+            favoritesService: mockFavoritesService
+        )
+        
+        viewModel.loadFolderContent(folderContent)
+        
+        // When image is not favorited
+        mockFavoritesService.favoriteStatus = false
+        XCTAssertFalse(viewModel.isFavorite)
+        
+        // When image is favorited
+        mockFavoritesService.favoriteStatus = true
+        XCTAssertTrue(viewModel.isFavorite)
+    }
+    
+    func testToggleFavoriteWithNoCurrentImage() {
+        // Given no current image
+        let mockErrorHandlingService = MockErrorHandlingService()
+        viewModel = ImageViewerViewModel(
+            imageLoaderService: mockImageLoaderService,
+            preferencesService: mockPreferencesService,
+            errorHandlingService: mockErrorHandlingService
+        )
+        
+        // When
+        viewModel.toggleFavorite()
+        
+        // Then
+        XCTAssertTrue(mockErrorHandlingService.showNotificationCalled)
+        XCTAssertEqual(mockErrorHandlingService.lastNotificationMessage, "No image to favorite")
+        XCTAssertEqual(mockErrorHandlingService.lastNotificationType, .warning)
+    }
+    
+    func testToggleFavoriteAddToFavorites() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        let mockErrorHandlingService = MockErrorHandlingService()
+        let imageFiles = try createMockImageFiles(count: 1)
+        let folderContent = FolderContent(
+            folderURL: URL(fileURLWithPath: "/test/folder"),
+            imageFiles: imageFiles,
+            currentIndex: 0
+        )
+        
+        viewModel = ImageViewerViewModel(
+            imageLoaderService: mockImageLoaderService,
+            preferencesService: mockPreferencesService,
+            errorHandlingService: mockErrorHandlingService,
+            favoritesService: mockFavoritesService
+        )
+        
+        viewModel.loadFolderContent(folderContent)
+        
+        // Set up mock to simulate not favorited initially
+        mockFavoritesService.favoriteStatus = false
+        mockFavoritesService.addToFavoritesResult = true
+        
+        // When
+        viewModel.toggleFavorite()
+        
+        // Then
+        XCTAssertTrue(mockFavoritesService.addToFavoritesCalled)
+        XCTAssertTrue(mockErrorHandlingService.showNotificationCalled)
+        XCTAssertEqual(mockErrorHandlingService.lastNotificationMessage, "Added to favorites")
+        XCTAssertEqual(mockErrorHandlingService.lastNotificationType, .success)
+    }
+    
+    func testToggleFavoriteRemoveFromFavorites() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        let mockErrorHandlingService = MockErrorHandlingService()
+        let imageFiles = try createMockImageFiles(count: 1)
+        let folderContent = FolderContent(
+            folderURL: URL(fileURLWithPath: "/test/folder"),
+            imageFiles: imageFiles,
+            currentIndex: 0
+        )
+        
+        viewModel = ImageViewerViewModel(
+            imageLoaderService: mockImageLoaderService,
+            preferencesService: mockPreferencesService,
+            errorHandlingService: mockErrorHandlingService,
+            favoritesService: mockFavoritesService
+        )
+        
+        viewModel.loadFolderContent(folderContent)
+        
+        // Set up mock to simulate favorited initially
+        mockFavoritesService.favoriteStatus = true
+        mockFavoritesService.removeFromFavoritesResult = true
+        
+        // When
+        viewModel.toggleFavorite()
+        
+        // Then
+        XCTAssertTrue(mockFavoritesService.removeFromFavoritesCalled)
+        XCTAssertTrue(mockErrorHandlingService.showNotificationCalled)
+        XCTAssertEqual(mockErrorHandlingService.lastNotificationMessage, "Removed from favorites")
+        XCTAssertEqual(mockErrorHandlingService.lastNotificationType, .success)
+    }
+    
+    func testToggleFavoriteAddFailure() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        let mockErrorHandlingService = MockErrorHandlingService()
+        let imageFiles = try createMockImageFiles(count: 1)
+        let folderContent = FolderContent(
+            folderURL: URL(fileURLWithPath: "/test/folder"),
+            imageFiles: imageFiles,
+            currentIndex: 0
+        )
+        
+        viewModel = ImageViewerViewModel(
+            imageLoaderService: mockImageLoaderService,
+            preferencesService: mockPreferencesService,
+            errorHandlingService: mockErrorHandlingService,
+            favoritesService: mockFavoritesService
+        )
+        
+        viewModel.loadFolderContent(folderContent)
+        
+        // Set up mock to simulate not favorited initially and add failure
+        mockFavoritesService.favoriteStatus = false
+        mockFavoritesService.addToFavoritesResult = false
+        
+        // When
+        viewModel.toggleFavorite()
+        
+        // Then
+        XCTAssertTrue(mockFavoritesService.addToFavoritesCalled)
+        XCTAssertTrue(mockErrorHandlingService.showNotificationCalled)
+        XCTAssertEqual(mockErrorHandlingService.lastNotificationMessage, "Failed to add to favorites")
+        XCTAssertEqual(mockErrorHandlingService.lastNotificationType, .error)
+    }
+    
+    func testToggleFavoriteRemoveFailure() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        let mockErrorHandlingService = MockErrorHandlingService()
+        let imageFiles = try createMockImageFiles(count: 1)
+        let folderContent = FolderContent(
+            folderURL: URL(fileURLWithPath: "/test/folder"),
+            imageFiles: imageFiles,
+            currentIndex: 0
+        )
+        
+        viewModel = ImageViewerViewModel(
+            imageLoaderService: mockImageLoaderService,
+            preferencesService: mockPreferencesService,
+            errorHandlingService: mockErrorHandlingService,
+            favoritesService: mockFavoritesService
+        )
+        
+        viewModel.loadFolderContent(folderContent)
+        
+        // Set up mock to simulate favorited initially and remove failure
+        mockFavoritesService.favoriteStatus = true
+        mockFavoritesService.removeFromFavoritesResult = false
+        
+        // When
+        viewModel.toggleFavorite()
+        
+        // Then
+        XCTAssertTrue(mockFavoritesService.removeFromFavoritesCalled)
+        XCTAssertTrue(mockErrorHandlingService.showNotificationCalled)
+        XCTAssertEqual(mockErrorHandlingService.lastNotificationMessage, "Failed to remove from favorites")
+        XCTAssertEqual(mockErrorHandlingService.lastNotificationType, .error)
+    }
+    
     // MARK: - Helper Methods
     
     private func createMockImageFiles(count: Int) throws -> [ImageFile] {
@@ -593,8 +782,14 @@ class MockPreferencesService: PreferencesService {
     var recentFolders: [URL] = []
     var windowFrame: CGRect = CGRect(x: 0, y: 0, width: 800, height: 600)
     var showFileName: Bool = false
+    var showImageInfo: Bool = false
+    var slideshowInterval: Double = 3.0
     var lastSelectedFolder: URL?
     var folderBookmarks: [Data] = []
+    var windowState: WindowState?
+    var defaultThumbnailGridSize: ThumbnailGridSize = .medium
+    var useResponsiveGridLayout: Bool = true
+    var favoriteImages: [FavoriteImageFile] = []
     
     var savePreferencesCalled = false
     var loadPreferencesCalled = false
@@ -617,6 +812,97 @@ class MockPreferencesService: PreferencesService {
     
     func loadPreferences() {
         loadPreferencesCalled = true
+    }
+    
+    func saveWindowState(_ windowState: WindowState) {
+        self.windowState = windowState
+    }
+    
+    func loadWindowState() -> WindowState? {
+        return windowState
+    }
+    
+    func saveFavorites() {
+        savePreferencesCalled = true
+    }
+    
+    func loadFavorites() -> [FavoriteImageFile] {
+        return favoriteImages
+    }
+}
+
+class MockFavoritesService: FavoritesService {
+    @Published var favoriteImages: [FavoriteImageFile] = []
+    
+    var favoriteImagesPublisher: Published<[FavoriteImageFile]>.Publisher {
+        $favoriteImages
+    }
+    
+    var favoriteStatus: Bool = false
+    var addToFavoritesResult: Bool = true
+    var removeFromFavoritesResult: Bool = true
+    
+    var addToFavoritesCalled = false
+    var removeFromFavoritesCalled = false
+    var isFavoriteCalled = false
+    var validateFavoritesCalled = false
+    var getValidFavoritesCalled = false
+    var clearAllFavoritesCalled = false
+    
+    func addToFavorites(_ imageFile: ImageFile) -> Bool {
+        addToFavoritesCalled = true
+        return addToFavoritesResult
+    }
+    
+    func removeFromFavorites(_ imageFile: ImageFile) -> Bool {
+        removeFromFavoritesCalled = true
+        return removeFromFavoritesResult
+    }
+    
+    func isFavorite(_ imageFile: ImageFile) -> Bool {
+        isFavoriteCalled = true
+        return favoriteStatus
+    }
+    
+    func validateFavorites() async {
+        validateFavoritesCalled = true
+    }
+    
+    func getValidFavorites() async -> [ImageFile] {
+        getValidFavoritesCalled = true
+        return []
+    }
+    
+    func clearAllFavorites() {
+        clearAllFavoritesCalled = true
+        favoriteImages.removeAll()
+    }
+}
+
+class MockErrorHandlingService: ErrorHandlingService {
+    var showNotificationCalled = false
+    var showModalErrorCalled = false
+    var showPermissionRequestCalled = false
+    
+    var lastNotificationMessage: String?
+    var lastNotificationType: NotificationView.NotificationType?
+    var lastModalError: Error?
+    var lastPermissionRequest: PermissionRequestInfo?
+    
+    override func showNotification(_ message: String, type: NotificationView.NotificationType) {
+        showNotificationCalled = true
+        lastNotificationMessage = message
+        lastNotificationType = type
+    }
+    
+    override func showModalError(_ error: Error, title: String? = nil, actions: [ModalErrorAction] = []) {
+        showModalErrorCalled = true
+        lastModalError = error
+    }
+    
+    override func showPermissionRequest(_ request: PermissionRequestInfo) {
+        showPermissionRequestCalled = true
+        lastPermissionRequest = request
     }
 }
 

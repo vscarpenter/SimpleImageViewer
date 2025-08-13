@@ -31,11 +31,18 @@ class FolderSelectionViewModel: ObservableObject {
     /// The selected folder content ready for navigation
     @Published var selectedFolderContent: FolderContent?
     
+    /// Whether to show the favorites view
+    @Published var showingFavorites: Bool = false
+    
+    /// Whether favorites are available (has at least one favorite)
+    @Published private(set) var hasFavorites: Bool = false
+    
     // MARK: - Private Properties
     
     private let fileSystemService: FileSystemService
     private var preferencesService: PreferencesService
     private let errorHandlingService: ErrorHandlingService
+    private let favoritesService: any FavoritesService
     private let accessManager = SecurityScopedAccessManager.shared
     private var cancellables = Set<AnyCancellable>()
     private var scanTask: Task<Void, Never>?
@@ -48,15 +55,19 @@ class FolderSelectionViewModel: ObservableObject {
     ///   - fileSystemService: Service for file system operations
     ///   - preferencesService: Service for managing user preferences
     ///   - errorHandlingService: Service for handling errors and user feedback
+    ///   - favoritesService: Service for managing favorites
     init(fileSystemService: FileSystemService = DefaultFileSystemService(),
          preferencesService: PreferencesService = DefaultPreferencesService(),
-         errorHandlingService: ErrorHandlingService = ErrorHandlingService.shared) {
+         errorHandlingService: ErrorHandlingService = ErrorHandlingService.shared,
+         favoritesService: (any FavoritesService)? = nil) {
         self.fileSystemService = fileSystemService
         self.preferencesService = preferencesService
         self.errorHandlingService = errorHandlingService
+        self.favoritesService = favoritesService ?? DefaultFavoritesService.shared
         
         loadRecentFolders()
         setupBindings()
+        checkFavoritesAvailability()
     }
     
     deinit {
@@ -197,6 +208,14 @@ class FolderSelectionViewModel: ObservableObject {
                 Task { @MainActor in
                     self?.loadRecentFolders()
                 }
+            }
+            .store(in: &cancellables)
+        
+        // Monitor changes to favorites
+        favoritesService.favoriteImagesPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.checkFavoritesAvailability()
             }
             .store(in: &cancellables)
     }
@@ -408,6 +427,24 @@ class FolderSelectionViewModel: ObservableObject {
         // Set as selected folder and scan it
         selectedFolderURL = folderURL
         scanFolder(folderURL)
+    }
+    
+    /// Show the favorites view
+    func showFavorites() {
+        showingFavorites = true
+    }
+    
+    /// Hide the favorites view and return to folder selection
+    func hideFavorites() {
+        showingFavorites = false
+    }
+    
+    /// Check if favorites are available and update the published property
+    private func checkFavoritesAvailability() {
+        let favoritesCount = favoritesService.favoriteImages.count
+        let newHasFavorites = favoritesCount > 0
+        print("DEBUG: FolderSelectionViewModel.checkFavoritesAvailability() - Favorites count: \(favoritesCount), hasFavorites: \(newHasFavorites)")
+        hasFavorites = newHasFavorites
     }
 }
 

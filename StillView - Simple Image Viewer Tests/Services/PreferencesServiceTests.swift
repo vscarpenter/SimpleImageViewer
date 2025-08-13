@@ -1,7 +1,7 @@
 import XCTest
 import Foundation
 import CoreGraphics
-@testable import Simple_Image_Viewer
+@testable import StillView___Simple_Image_Viewer
 
 class PreferencesServiceTests: XCTestCase {
     var preferencesService: DefaultPreferencesService!
@@ -415,5 +415,127 @@ class PreferencesServiceTests: XCTestCase {
         // When loading preferences
         // Then it should complete without error
         XCTAssertNoThrow(preferencesService.loadPreferences())
+    }
+    
+    // MARK: - Favorites Tests
+    
+    func testFavoriteImagesInitiallyEmpty() {
+        // Given a fresh preferences service with clean UserDefaults
+        let cleanUserDefaults = UserDefaults(suiteName: "test.clean.suite")!
+        cleanUserDefaults.removePersistentDomain(forName: "test.clean.suite")
+        let service = DefaultPreferencesService(userDefaults: cleanUserDefaults)
+        
+        // When getting favorite images
+        let favorites = service.favoriteImages
+        
+        // Then it should be empty
+        XCTAssertTrue(favorites.isEmpty, "Favorite images should be empty initially")
+    }
+    
+    func testSetFavoriteImages() throws {
+        // Given some favorite image files
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-favorites")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        
+        let imageURL1 = tempDir.appendingPathComponent("test1.jpg")
+        let imageURL2 = tempDir.appendingPathComponent("test2.png")
+        
+        // Create minimal test image data
+        let imageData = createTestJPEGData()
+        try imageData.write(to: imageURL1)
+        try imageData.write(to: imageURL2)
+        
+        let imageFile1 = try ImageFile(url: imageURL1)
+        let imageFile2 = try ImageFile(url: imageURL2)
+        
+        let favorite1 = FavoriteImageFile(from: imageFile1)
+        let favorite2 = FavoriteImageFile(from: imageFile2)
+        let favorites = [favorite1, favorite2]
+        
+        // When setting favorite images
+        preferencesService.favoriteImages = favorites
+        
+        // Then they should be stored and retrievable
+        let storedFavorites = preferencesService.favoriteImages
+        XCTAssertEqual(storedFavorites.count, 2)
+        XCTAssertEqual(storedFavorites[0].originalURL, favorite1.originalURL)
+        XCTAssertEqual(storedFavorites[1].originalURL, favorite2.originalURL)
+        
+        // Clean up
+        try FileManager.default.removeItem(at: tempDir)
+    }
+    
+    func testFavoriteImagesEncodingDecoding() throws {
+        // Given a favorite image file
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-encoding")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        
+        let imageURL = tempDir.appendingPathComponent("test.jpg")
+        let imageData = createTestJPEGData()
+        try imageData.write(to: imageURL)
+        
+        let imageFile = try ImageFile(url: imageURL)
+        let originalFavorite = FavoriteImageFile(from: imageFile)
+        
+        // When saving and loading
+        preferencesService.favoriteImages = [originalFavorite]
+        let loadedFavorites = preferencesService.favoriteImages
+        
+        // Then all properties should be preserved
+        XCTAssertEqual(loadedFavorites.count, 1)
+        let loadedFavorite = loadedFavorites.first!
+        
+        XCTAssertEqual(loadedFavorite.id, originalFavorite.id)
+        XCTAssertEqual(loadedFavorite.originalURL, originalFavorite.originalURL)
+        XCTAssertEqual(loadedFavorite.name, originalFavorite.name)
+        XCTAssertEqual(loadedFavorite.fileSize, originalFavorite.fileSize)
+        XCTAssertEqual(loadedFavorite.imageType, originalFavorite.imageType)
+        XCTAssertEqual(loadedFavorite.dateAdded.timeIntervalSince1970, 
+                      originalFavorite.dateAdded.timeIntervalSince1970, accuracy: 0.001)
+        XCTAssertEqual(loadedFavorite.lastValidated.timeIntervalSince1970, 
+                      originalFavorite.lastValidated.timeIntervalSince1970, accuracy: 0.001)
+        
+        // Clean up
+        try FileManager.default.removeItem(at: tempDir)
+    }
+    
+    func testSaveFavorites() {
+        // When saving favorites
+        preferencesService.saveFavorites()
+        
+        // Then it should complete without error
+        XCTAssertNoThrow(preferencesService.saveFavorites())
+    }
+    
+    func testLoadFavorites() {
+        // When loading favorites
+        let favorites = preferencesService.loadFavorites()
+        
+        // Then it should return the current favorites
+        XCTAssertEqual(favorites, preferencesService.favoriteImages)
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func createTestJPEGData() -> Data {
+        // Create minimal valid JPEG data for testing
+        let jpegBytes: [UInt8] = [
+            0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
+            0x01, 0x01, 0x00, 0x48, 0x00, 0x48, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43,
+            0x00, 0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08, 0x07, 0x07, 0x07, 0x09,
+            0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B, 0x0C, 0x19, 0x12,
+            0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20,
+            0x24, 0x2E, 0x27, 0x20, 0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29,
+            0x2C, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1F, 0x27, 0x39, 0x3D, 0x38, 0x32,
+            0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF, 0xC0, 0x00, 0x11, 0x08, 0x00, 0x01,
+            0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01,
+            0xFF, 0xC4, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0xFF, 0xC4,
+            0x00, 0x14, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xDA, 0x00, 0x0C,
+            0x03, 0x01, 0x00, 0x02, 0x11, 0x03, 0x11, 0x00, 0x3F, 0x00, 0x8A, 0x00,
+            0xFF, 0xD9
+        ]
+        return Data(jpegBytes)
     }
 }

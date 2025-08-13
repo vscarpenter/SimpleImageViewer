@@ -49,10 +49,15 @@
 		FB140FBC2E435BB300A36AB6 /* PreviewGeneratorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB140FBB2E435BB300A36AB6 /* PreviewGeneratorService.swift */; };
 		FB140FBD2E435BB300A36AB6 /* EnhancedThumbnailGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB140FBA2E435BB300A36AB6 /* EnhancedThumbnailGenerator.swift */; };
 		FB140FBF2E435BBC00A36AB6 /* ContextMenuService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB140FBE2E435BBC00A36AB6 /* ContextMenuService.swift */; };
+		FB203FA82E4ACD4900600016 /* FavoritesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB203FA72E4ACD4900600016 /* FavoritesViewModel.swift */; };
+		FB203FAC2E4ACD5B00600016 /* HeartIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB203FAB2E4ACD5B00600016 /* HeartIndicatorView.swift */; };
 		FB231AB02E45B29000763700 /* whats-new.json in Resources */ = {isa = PBXBuildFile; fileRef = FB231AAF2E45B29000763700 /* whats-new.json */; };
 		FB231AB42E45B2B600763700 /* WhatsNewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB231AB32E45B2B600763700 /* WhatsNewSheet.swift */; };
 		FB231AB52E45B2B600763700 /* WhatsNewContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB231AB12E45B2B600763700 /* WhatsNewContentView.swift */; };
 		FB231AB62E45B2B600763700 /* WhatsNewSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB231AB22E45B2B600763700 /* WhatsNewSectionView.swift */; };
+		FB3B35952E4C303C00AD9DBF /* FavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3B35942E4C303C00AD9DBF /* FavoritesView.swift */; };
+		FB3B35972E4C304C00AD9DBF /* FavoriteImageFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3B35962E4C304C00AD9DBF /* FavoriteImageFile.swift */; };
+		FB3B35992E4C305E00AD9DBF /* FavoritesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3B35982E4C305E00AD9DBF /* FavoritesService.swift */; };
 		FB5D39042E355791004B9D85 /* ImageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39032E355791004B9D85 /* ImageMetadataService.swift */; };
 		FB5D39062E35579D004B9D85 /* AccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39052E35579D004B9D85 /* AccessibilityService.swift */; };
 		FB748BE62E41615E00E6D948 /* ToolbarOverflowMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB748BE52E41615E00E6D948 /* ToolbarOverflowMenu.swift */; };
@@ -121,10 +126,15 @@
 		FB140FBA2E435BB300A36AB6 /* EnhancedThumbnailGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedThumbnailGenerator.swift; sourceTree = "<group>"; };
 		FB140FBB2E435BB300A36AB6 /* PreviewGeneratorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewGeneratorService.swift; sourceTree = "<group>"; };
 		FB140FBE2E435BBC00A36AB6 /* ContextMenuService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextMenuService.swift; sourceTree = "<group>"; };
+		FB203FA72E4ACD4900600016 /* FavoritesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesViewModel.swift; sourceTree = "<group>"; };
+		FB203FAB2E4ACD5B00600016 /* HeartIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartIndicatorView.swift; sourceTree = "<group>"; };
 		FB231AAF2E45B29000763700 /* whats-new.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "whats-new.json"; sourceTree = "<group>"; };
 		FB231AB12E45B2B600763700 /* WhatsNewContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewContentView.swift; sourceTree = "<group>"; };
 		FB231AB22E45B2B600763700 /* WhatsNewSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewSectionView.swift; sourceTree = "<group>"; };
 		FB231AB32E45B2B600763700 /* WhatsNewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewSheet.swift; sourceTree = "<group>"; };
+		FB3B35942E4C303C00AD9DBF /* FavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesView.swift; sourceTree = "<group>"; };
+		FB3B35962E4C304C00AD9DBF /* FavoriteImageFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteImageFile.swift; sourceTree = "<group>"; };
+		FB3B35982E4C305E00AD9DBF /* FavoritesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesService.swift; sourceTree = "<group>"; };
 		FB5D39032E355791004B9D85 /* ImageMetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataService.swift; sourceTree = "<group>"; };
 		FB5D39052E35579D004B9D85 /* AccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityService.swift; sourceTree = "<group>"; };
 		FB748BE52E41615E00E6D948 /* ToolbarOverflowMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarOverflowMenu.swift; sourceTree = "<group>"; };
@@ -203,6 +213,7 @@
 		A100000A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				FB3B35982E4C305E00AD9DBF /* FavoritesService.swift */,
 				FBA5E0AA2E45ABA0009F3D00 /* WhatsNewContentProvider.swift */,
 				FBA5E0AB2E45ABA0009F3D00 /* WhatsNewService.swift */,
 				FB140FBA2E435BB300A36AB6 /* EnhancedThumbnailGenerator.swift */,
@@ -224,6 +235,8 @@
 		A100000B /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				FB3B35942E4C303C00AD9DBF /* FavoritesView.swift */,
+				FB203FAB2E4ACD5B00600016 /* HeartIndicatorView.swift */,
 				FB231AB12E45B2B600763700 /* WhatsNewContentView.swift */,
 				FB231AB22E45B2B600763700 /* WhatsNewSectionView.swift */,
 				FB231AB32E45B2B600763700 /* WhatsNewSheet.swift */,
@@ -249,6 +262,7 @@
 		A100000C /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
+				FB203FA72E4ACD4900600016 /* FavoritesViewModel.swift */,
 				A1000013 /* ImageViewerViewModel.swift */,
 				A1000094 /* FolderSelectionViewModel.swift */,
 			);
@@ -258,6 +272,7 @@
 		A100000D /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				FB3B35962E4C304C00AD9DBF /* FavoriteImageFile.swift */,
 				FBA5E0AE2E45ABAE009F3D00 /* VersionTracker.swift */,
 				FBA5E0AF2E45ABAE009F3D00 /* WhatsNewContent.swift */,
 				FBA5E0B22E45ABB6009F3D00 /* ThumbnailQuality.swift */,
@@ -403,6 +418,7 @@
 				FBA0460A2E36DC34006F9C47 /* HelpContent.swift in Sources */,
 				A1000012 /* FolderScanner.swift in Sources */,
 				A1000014 /* ImageViewerViewModel.swift in Sources */,
+				FB3B35992E4C305E00AD9DBF /* FavoritesService.swift in Sources */,
 				A1000016 /* ImageDisplayView.swift in Sources */,
 				FB748BE82E41616900E6D948 /* ToolbarLayoutManager.swift in Sources */,
 				A1000018 /* ImageLoaderService.swift in Sources */,
@@ -430,6 +446,7 @@
 				A1000095 /* NavigationControlsView.swift in Sources */,
 				A1000096 /* FolderSelectionView.swift in Sources */,
 				FB748BE62E41615E00E6D948 /* ToolbarOverflowMenu.swift in Sources */,
+				FB3B35952E4C303C00AD9DBF /* FavoritesView.swift in Sources */,
 				FBA5E0BA2E45ABD5009F3D00 /* DesignTokens.swift in Sources */,
 				FBA5E0BB2E45ABD5009F3D00 /* HoverEffectModifier.swift in Sources */,
 				FBA5E0BC2E45ABD5009F3D00 /* AnimationPresets.swift in Sources */,
@@ -437,6 +454,7 @@
 				FBA5E0BE2E45ABD5009F3D00 /* Typography+Scale.swift in Sources */,
 				FBA5E0BF2E45ABD5009F3D00 /* Spacing+System.swift in Sources */,
 				FB748BEA2E41617A00E6D948 /* ToolbarButtonStyles.swift in Sources */,
+				FB203FAC2E4ACD5B00600016 /* HeartIndicatorView.swift in Sources */,
 				A1000097 /* FolderSelectionViewModel.swift in Sources */,
 				A100009F /* ErrorDialogView.swift in Sources */,
 				FBA5E0B32E45ABB6009F3D00 /* ThumbnailQuality.swift in Sources */,
@@ -444,7 +462,9 @@
 				FBA5E0B12E45ABAE009F3D00 /* VersionTracker.swift in Sources */,
 				A10000A0 /* NotificationView.swift in Sources */,
 				FB9F40EC2E38708B005C2968 /* ImageInfoOverlayView.swift in Sources */,
+				FB203FA82E4ACD4900600016 /* FavoritesViewModel.swift in Sources */,
 				A10000A1 /* KeyCaptureViewRepresentable.swift in Sources */,
+				FB3B35972E4C304C00AD9DBF /* FavoriteImageFile.swift in Sources */,
 				A10000A6 /* AboutView.swift in Sources */,
 				A10000A8 /* SecurityScopedAccessManager.swift in Sources */,
 				A10000B0 /* WindowState.swift in Sources */,
@@ -586,7 +606,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -607,7 +627,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -624,7 +644,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -645,7 +665,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

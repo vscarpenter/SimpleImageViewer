@@ -6,7 +6,7 @@ struct ToolbarButtonStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundColor(configuration.isPressed ? .appAccent : .appText)
+            .foregroundColor(configuration.isPressed ? .systemAccent : .appText)
             .padding(8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
@@ -15,7 +15,7 @@ struct ToolbarButtonStyle: ButtonStyle {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(
                                 configuration.isPressed 
-                                ? Color.appAccent.glassEffect(opacity: 0.2)
+                                ? Color.systemAccent.glassEffect(opacity: 0.2)
                                 : (isHovered ? Color.appGlassPrimary : Color.appGlassSecondary)
                             )
                     )
@@ -24,7 +24,7 @@ struct ToolbarButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(
                         configuration.isPressed 
-                        ? Color.appAccent.glassBorder(intensity: 0.4)
+                        ? Color.systemAccent.glassBorder(intensity: 0.4)
                         : Color.appGlassBorder, 
                         lineWidth: 0.5
                     )
@@ -71,7 +71,7 @@ struct CompactToolbarButtonStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundColor(configuration.isPressed ? .appAccent : .appText)
+            .foregroundColor(configuration.isPressed ? .systemAccent : .appText)
             .padding(6)
             .background(
                 RoundedRectangle(cornerRadius: 6)
@@ -80,7 +80,7 @@ struct CompactToolbarButtonStyle: ButtonStyle {
                         RoundedRectangle(cornerRadius: 6)
                             .fill(
                                 configuration.isPressed 
-                                ? Color.appAccent.glassEffect(opacity: 0.2)
+                                ? Color.systemAccent.glassEffect(opacity: 0.2)
                                 : (isHovered ? Color.appGlassPrimary : Color.appGlassTertiary)
                             )
                     )
@@ -89,7 +89,7 @@ struct CompactToolbarButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(
                         configuration.isPressed 
-                        ? Color.appAccent.glassBorder(intensity: 0.4)
+                        ? Color.systemAccent.glassBorder(intensity: 0.4)
                         : Color.appGlassBorder, 
                         lineWidth: 0.5
                     )

@@ -137,7 +137,7 @@ class ContextMenuServiceTests: XCTestCase {
     
     func testIsActionAvailableWithImageFile() throws {
         // Test actions that require an image file
-        let imageActions: [ContextMenuAction] = [.copyImage, .copyPath, .share, .revealInFinder, .moveToTrash]
+        let imageActions: [ContextMenuAction] = [.copyImage, .copyPath, .share, .revealInFinder, .moveToTrash, .toggleFavorite]
         
         for action in imageActions {
             XCTAssertTrue(contextMenuService.isActionAvailable(action, for: mockImageFile), 
@@ -179,10 +179,161 @@ class ContextMenuServiceTests: XCTestCase {
         XCTAssertNotNil(ContextMenuAction.revealInFinder.keyboardShortcut, "Reveal in Finder should have keyboard shortcut")
         XCTAssertNotNil(ContextMenuAction.selectFolder.keyboardShortcut, "Select folder should have keyboard shortcut")
         XCTAssertNotNil(ContextMenuAction.moveToTrash.keyboardShortcut, "Move to trash should have keyboard shortcut")
+        XCTAssertNotNil(ContextMenuAction.toggleFavorite.keyboardShortcut, "Toggle favorite should have keyboard shortcut")
+    }
+    
+    // MARK: - Favorites Tests
+    
+    func testToggleFavoriteAddToFavorites() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        XCTAssertFalse(mockFavoritesService.isFavorite(mockImageFile), "Image should not be favorited initially")
+        
+        // When
+        contextMenuService.toggleFavorite(mockImageFile, favoritesService: mockFavoritesService)
+        
+        // Then
+        XCTAssertTrue(mockFavoritesService.addToFavoritesCalled, "addToFavorites should be called")
+        XCTAssertFalse(mockFavoritesService.removeFromFavoritesCalled, "removeFromFavorites should not be called")
+    }
+    
+    func testToggleFavoriteRemoveFromFavorites() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        mockFavoritesService.mockIsFavorite = true
+        XCTAssertTrue(mockFavoritesService.isFavorite(mockImageFile), "Image should be favorited initially")
+        
+        // When
+        contextMenuService.toggleFavorite(mockImageFile, favoritesService: mockFavoritesService)
+        
+        // Then
+        XCTAssertTrue(mockFavoritesService.removeFromFavoritesCalled, "removeFromFavorites should be called")
+        XCTAssertFalse(mockFavoritesService.addToFavoritesCalled, "addToFavorites should not be called")
+    }
+    
+    func testGetFavoriteActionTitleForNonFavorite() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        mockFavoritesService.mockIsFavorite = false
+        
+        // When
+        let title = contextMenuService.getFavoriteActionTitle(for: mockImageFile, favoritesService: mockFavoritesService)
+        
+        // Then
+        XCTAssertEqual(title, "Add to Favorites", "Should return 'Add to Favorites' for non-favorite image")
+    }
+    
+    func testGetFavoriteActionTitleForFavorite() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        mockFavoritesService.mockIsFavorite = true
+        
+        // When
+        let title = contextMenuService.getFavoriteActionTitle(for: mockImageFile, favoritesService: mockFavoritesService)
+        
+        // Then
+        XCTAssertEqual(title, "Remove from Favorites", "Should return 'Remove from Favorites' for favorite image")
+    }
+    
+    func testGetFavoriteActionIconForNonFavorite() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        mockFavoritesService.mockIsFavorite = false
+        
+        // When
+        let icon = contextMenuService.getFavoriteActionIcon(for: mockImageFile, favoritesService: mockFavoritesService)
+        
+        // Then
+        XCTAssertEqual(icon, "heart", "Should return 'heart' icon for non-favorite image")
+    }
+    
+    func testGetFavoriteActionIconForFavorite() throws {
+        // Given
+        let mockFavoritesService = MockFavoritesService()
+        mockFavoritesService.mockIsFavorite = true
+        
+        // When
+        let icon = contextMenuService.getFavoriteActionIcon(for: mockImageFile, favoritesService: mockFavoritesService)
+        
+        // Then
+        XCTAssertEqual(icon, "heart.fill", "Should return 'heart.fill' icon for favorite image")
+    }
+    
+    func testToggleFavoriteActionAvailability() throws {
+        // Given
+        let action = ContextMenuAction.toggleFavorite
+        
+        // When & Then
+        XCTAssertTrue(contextMenuService.isActionAvailable(action, for: mockImageFile), 
+                     "Toggle favorite should be available with image file")
+        XCTAssertFalse(contextMenuService.isActionAvailable(action, for: nil), 
+                      "Toggle favorite should not be available without image file")
+    }
+    
+    func testToggleFavoriteActionProperties() throws {
+        // Given
+        let action = ContextMenuAction.toggleFavorite
+        
+        // When & Then
+        XCTAssertEqual(action.title, "Toggle Favorite", "Toggle favorite should have correct title")
+        XCTAssertEqual(action.icon, "heart", "Toggle favorite should have heart icon")
+        XCTAssertEqual(action.keyboardShortcut, "f", "Toggle favorite should have 'f' keyboard shortcut")
+        XCTAssertEqual(action.keyboardModifiers, .command, "Toggle favorite should use command modifier")
+        XCTAssertFalse(action.isDestructive, "Toggle favorite should not be destructive")
     }
 }
 
 // MARK: - Mock Classes for Testing
+
+class MockFavoritesService: FavoritesService {
+    @Published var favoriteImages: [FavoriteImageFile] = []
+    
+    var favoriteImagesPublisher: Published<[FavoriteImageFile]>.Publisher {
+        $favoriteImages
+    }
+    
+    var mockIsFavorite = false
+    var mockAddToFavoritesResult = true
+    var mockRemoveFromFavoritesResult = true
+    
+    var addToFavoritesCalled = false
+    var removeFromFavoritesCalled = false
+    var isFavoriteCalled = false
+    
+    func addToFavorites(_ imageFile: ImageFile) -> Bool {
+        addToFavoritesCalled = true
+        if mockAddToFavoritesResult {
+            let favoriteImage = FavoriteImageFile(from: imageFile)
+            favoriteImages.append(favoriteImage)
+        }
+        return mockAddToFavoritesResult
+    }
+    
+    func removeFromFavorites(_ imageFile: ImageFile) -> Bool {
+        removeFromFavoritesCalled = true
+        if mockRemoveFromFavoritesResult {
+            favoriteImages.removeAll { $0.originalURL == imageFile.url }
+        }
+        return mockRemoveFromFavoritesResult
+    }
+    
+    func isFavorite(_ imageFile: ImageFile) -> Bool {
+        isFavoriteCalled = true
+        return mockIsFavorite
+    }
+    
+    func validateFavorites() async {
+        // Mock implementation
+    }
+    
+    func getValidFavorites() async -> [ImageFile] {
+        return []
+    }
+    
+    func clearAllFavorites() {
+        favoriteImages.removeAll()
+    }
+}
 
 class MockImageViewerViewModel: ImageViewerViewModel {
     var mockShouldNavigateToFolderSelection = false

@@ -120,6 +120,19 @@ final class KeyboardHandlerTests: XCTestCase {
         XCTAssertTrue(mockImageViewerViewModel.toggleFullscreenCalled)
     }
     
+    func testCmdFKeyTogglesFavorite() {
+        // Given
+        let event = createKeyEventWithModifiers(characters: "f", modifierFlags: .command)
+        
+        // When
+        let handled = keyboardHandler.handleKeyPress(event)
+        
+        // Then
+        XCTAssertTrue(handled)
+        XCTAssertTrue(mockImageViewerViewModel.toggleFavoriteCalled)
+        XCTAssertFalse(mockImageViewerViewModel.toggleFullscreenCalled)
+    }
+    
     func testEnterKeyTogglesFullscreen() {
         // Given
         let event = createKeyEvent(keyCode: 36) // Enter/Return
@@ -269,12 +282,13 @@ final class KeyboardHandlerTests: XCTestCase {
         // Then
         XCTAssertFalse(shortcuts.isEmpty)
         XCTAssertEqual(shortcuts["← / →"], "Navigate between images")
-        XCTAssertEqual(shortcuts["Spacebar"], "Next image")
+        XCTAssertEqual(shortcuts["Spacebar"], "Next image / Pause slideshow")
         XCTAssertEqual(shortcuts["Page Up/Down"], "Navigate between images")
         XCTAssertEqual(shortcuts["Home"], "Go to first image")
         XCTAssertEqual(shortcuts["End"], "Go to last image")
         XCTAssertEqual(shortcuts["F / Enter"], "Toggle fullscreen")
-        XCTAssertEqual(shortcuts["Escape"], "Exit fullscreen")
+        XCTAssertEqual(shortcuts["⌘F"], "Toggle favorite")
+        XCTAssertEqual(shortcuts["Escape"], "Exit fullscreen / Back to folder selection")
         XCTAssertEqual(shortcuts["+ / ="], "Zoom in")
         XCTAssertEqual(shortcuts["-"], "Zoom out")
         XCTAssertEqual(shortcuts["0"], "Fit to window")
@@ -287,7 +301,7 @@ final class KeyboardHandlerTests: XCTestCase {
         
         // Then
         XCTAssertFalse(formattedShortcuts.isEmpty)
-        XCTAssertEqual(formattedShortcuts.count, 11)
+        XCTAssertEqual(formattedShortcuts.count, 17)
         
         // Check that all shortcuts are properly formatted
         for shortcut in formattedShortcuts {
@@ -315,6 +329,21 @@ final class KeyboardHandlerTests: XCTestCase {
             keyCode: keyCode
         )!
     }
+    
+    private func createKeyEventWithModifiers(keyCode: UInt16 = 0, characters: String? = nil, modifierFlags: NSEvent.ModifierFlags) -> NSEvent {
+        return NSEvent.keyEvent(
+            with: .keyDown,
+            location: NSPoint.zero,
+            modifierFlags: modifierFlags,
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: characters ?? "",
+            charactersIgnoringModifiers: characters ?? "",
+            isARepeat: false,
+            keyCode: keyCode
+        )!
+    }
 }
 
 // MARK: - Mock ImageViewerViewModel
@@ -330,6 +359,7 @@ class MockImageViewerViewModel: ImageViewerViewModel {
     var zoomOutCalled = false
     var zoomToFitCalled = false
     var zoomToActualSizeCalled = false
+    var toggleFavoriteCalled = false
     
     override func nextImage() {
         nextImageCalled = true
@@ -369,6 +399,10 @@ class MockImageViewerViewModel: ImageViewerViewModel {
     
     override func zoomToActualSize() {
         zoomToActualSizeCalled = true
+    }
+    
+    override func toggleFavorite() {
+        toggleFavoriteCalled = true
     }
 }    // 
 MARK: - Integration Tests

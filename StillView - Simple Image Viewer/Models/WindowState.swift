@@ -89,6 +89,7 @@ struct WindowState: Codable {
     ///   - folderURL: The currently selected folder URL
     ///   - imageIndex: The current image index
     ///   - viewModel: The image viewer view model containing UI state
+    @MainActor
     init(window: NSWindow?, folderURL: URL?, imageIndex: Int, viewModel: ImageViewerViewModel?) {
         self.init()
         
@@ -188,6 +189,7 @@ struct WindowState: Codable {
     
     /// Update UI state from view model
     /// - Parameter viewModel: The image viewer view model
+    @MainActor
     mutating func updateUIState(from viewModel: ImageViewerViewModel) {
         self.zoomLevel = viewModel.zoomLevel
         self.showFileName = viewModel.showFileName
@@ -258,6 +260,7 @@ struct WindowState: Codable {
     
     /// Apply UI state to the given view model
     /// - Parameter viewModel: The view model to apply state to
+    @MainActor
     func applyUIState(to viewModel: ImageViewerViewModel) {
         viewModel.zoomLevel = zoomLevel
         viewModel.showFileName = showFileName

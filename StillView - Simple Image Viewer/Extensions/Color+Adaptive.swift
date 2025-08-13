@@ -36,7 +36,7 @@ extension Color {
     // MARK: - UI Element Colors
     
     /// System accent color that respects user preferences
-    static let appAccent = Color(NSColor.controlAccentColor)
+    static let systemAccent = Color(NSColor.controlAccentColor)
     
     /// Border and separator color
     static let appBorder = Color(NSColor.separatorColor)

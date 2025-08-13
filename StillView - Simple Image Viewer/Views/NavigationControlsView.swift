@@ -194,22 +194,25 @@ struct NavigationControlsView: View {
     // MARK: - Responsive Right Section
     private var responsiveRightSection: some View {
         HStack(spacing: 8) {
+            // Heart/Favorite button (always visible)
+            heartButton
+            
             // Share button (hidden in compact modes)
             if layoutManager.isItemVisible("share") {
-                shareButton
-                
                 Divider()
                     .frame(height: 16)
                     .padding(.horizontal, 4)
+                
+                shareButton
             }
             
             // Delete button (hidden in compact modes)
             if layoutManager.isItemVisible("delete") {
-                deleteButton
-                
                 Divider()
                     .frame(height: 16)
                     .padding(.horizontal, 4)
+                
+                deleteButton
             }
             
             // Zoom controls (always visible, but may be simplified)
@@ -274,6 +277,56 @@ struct NavigationControlsView: View {
         .accessibilityLabel("Delete image")
         .accessibilityHint("Move the current image to Trash")
         .disabled(!viewModel.canDeleteCurrentImage)
+    }
+    
+    // MARK: - Heart/Favorite Button
+    private var heartButton: some View {
+        Button(action: {
+            viewModel.toggleFavorite()
+            showControlsTemporarily()
+        }) {
+            Image(systemName: viewModel.isFavorite ? "heart.fill" : "heart")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(heartButtonColor)
+        }
+        .buttonStyle(ToolbarButtonStyle())
+        .help(viewModel.isFavorite ? "Remove from favorites (Cmd+F)" : "Add to favorites (Cmd+F)")
+        .accessibilityLabel(heartButtonAccessibilityLabel)
+        .accessibilityHint(heartButtonAccessibilityHint)
+        .accessibilityValue(heartButtonAccessibilityValue)
+        .accessibilityAddTraits(heartButtonAccessibilityTraits)
+        .disabled(viewModel.currentImageFile == nil)
+    }
+    
+    // MARK: - Heart Button Accessibility Helpers
+    
+    private var heartButtonColor: Color {
+        return AccessibilityService.shared.heartIndicatorColor(isFavorite: viewModel.isFavorite)
+    }
+    
+    private var heartButtonAccessibilityLabel: String {
+        let action = viewModel.isFavorite ? "Remove from favorites" : "Add to favorites"
+        let imageName = viewModel.currentImageFile?.displayName ?? "current image"
+        return "\(action): \(imageName)"
+    }
+    
+    private var heartButtonAccessibilityHint: String {
+        if viewModel.currentImageFile == nil {
+            return "No image available to favorite"
+        }
+        return AccessibilityService.shared.favoriteActionHint(isFavorite: viewModel.isFavorite)
+    }
+    
+    private var heartButtonAccessibilityValue: String {
+        return viewModel.isFavorite ? "Favorited" : "Not favorited"
+    }
+    
+    private var heartButtonAccessibilityTraits: AccessibilityTraits {
+        var traits: AccessibilityTraits = [.isButton]
+        if viewModel.isFavorite {
+            traits.insert(.isSelected)
+        }
+        return traits
     }
     
     // MARK: - Image Counter View
@@ -442,7 +495,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.showImageInfo ? "info.circle.fill" : "info.circle")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.showImageInfo ? .appAccent : .appSecondaryText)
+                .foregroundColor(viewModel.showImageInfo ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.showImageInfo ? "Hide image info (I)" : "Show image info (I)")
@@ -458,7 +511,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.isSlideshow ? "pause.circle.fill" : "play.circle")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.isSlideshow ? .appAccent : .appSecondaryText)
+                .foregroundColor(viewModel.isSlideshow ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.isSlideshow ? "Stop slideshow (S)" : "Start slideshow (S)")
@@ -475,7 +528,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.viewMode == .thumbnailStrip ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.viewMode == .thumbnailStrip ? .appAccent : .appSecondaryText)
+                .foregroundColor(viewModel.viewMode == .thumbnailStrip ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.viewMode == .thumbnailStrip ? "Hide thumbnail strip (T)" : "Show thumbnail strip (T)")
@@ -492,7 +545,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.viewMode == .grid ? "square.grid.3x3.fill" : "square.grid.3x3")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.viewMode == .grid ? .appAccent : .appSecondaryText)
+                .foregroundColor(viewModel.viewMode == .grid ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.viewMode == .grid ? "Exit grid view (G)" : "Show grid view (G)")
@@ -509,7 +562,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.showFileName ? "eye.fill" : "eye.slash")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.showFileName ? .appAccent : .appSecondaryText)
+                .foregroundColor(viewModel.showFileName ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.showFileName ? "Hide file name" : "Show file name")

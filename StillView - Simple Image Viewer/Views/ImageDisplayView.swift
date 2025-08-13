@@ -204,13 +204,13 @@ struct ZoomIndicatorView: View {
     /// Color for the zoom indicator based on zoom level
     private var indicatorColor: Color {
         if isFitToWindow {
-            return .appAccent
+            return .systemAccent
         } else if zoomLevel < 1.0 {
             return .appWarning // Orange for zoomed out
         } else if zoomLevel > 2.0 {
             return .red // Red for high zoom levels
         } else {
-            return .appAccent // Blue for normal zoom levels
+            return .systemAccent // Blue for normal zoom levels
         }
     }
     
@@ -463,7 +463,7 @@ struct ImageDisplayView: View {
                         .accessibilityHidden(true)
                     
                     ProgressView(value: viewModel.loadingProgress)
-                        .progressViewStyle(LinearProgressViewStyle(tint: Color.appAccent))
+                        .progressViewStyle(LinearProgressViewStyle(tint: Color.systemAccent))
                         .frame(width: 200)
                         .accessibilityLabel("Loading progress")
                         .accessibilityValue("\(Int(viewModel.loadingProgress * 100)) percent complete")
@@ -476,7 +476,7 @@ struct ImageDisplayView: View {
             } else {
                 VStack(spacing: 12) {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: Color.appAccent))
+                        .progressViewStyle(CircularProgressViewStyle(tint: Color.systemAccent))
                         .scaleEffect(1.2)
                         .accessibilityLabel("Loading image")
                     
