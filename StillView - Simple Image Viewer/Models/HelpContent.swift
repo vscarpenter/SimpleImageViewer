@@ -9,6 +9,7 @@
 //  Source: https://github.com/vscarpenter/SimpleImageViewer
 //
 
+// swiftlint:disable file_length line_length
 import Foundation
 
 /// Help content structure for the application

@@ -113,7 +113,7 @@ final class ImageMemoryManager {
         case .warning:
             isUnderMemoryPressure = true
             // Reduce current memory usage estimate by 50%
-            currentMemoryUsage = currentMemoryUsage / 2
+            currentMemoryUsage /= 2
         case .critical:
             isUnderMemoryPressure = true
             // Reset memory usage tracking completely

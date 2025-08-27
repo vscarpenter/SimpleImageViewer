@@ -65,7 +65,14 @@ struct ImageFile: Identifiable, Equatable, Hashable {
         ])
         
         guard let contentType = resourceValues.contentType else {
-            throw FileSystemError.scanningFailed(NSError(domain: "ImageFile", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not determine file type"]))
+            let error = NSError(
+                domain: "ImageFile",
+                code: 1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Could not determine file type"
+                ]
+            )
+            throw FileSystemError.scanningFailed(error)
         }
         
         self.type = contentType
@@ -75,7 +82,14 @@ struct ImageFile: Identifiable, Equatable, Hashable {
         
         // Verify it's a supported image type
         guard Self.isSupportedImageType(contentType) else {
-            throw FileSystemError.scanningFailed(NSError(domain: "ImageFile", code: 2, userInfo: [NSLocalizedDescriptionKey: "Unsupported image type: \(contentType.identifier)"]))
+            let error = NSError(
+                domain: "ImageFile",
+                code: 2,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Unsupported image type: \(contentType.identifier)"
+                ]
+            )
+            throw FileSystemError.scanningFailed(error)
         }
     }
     
