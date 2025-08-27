@@ -1,0 +1,37 @@
+name-template: "v$NEXT_PATCH_VERSION"
+tag-template: "v$NEXT_PATCH_VERSION"
+categories:
+  - title: "🚀 Features"
+    labels: ["enhancement", "feature", "feat"]
+  - title: "✨ Improvements"
+    labels: ["improvement", "refactor", "performance"]
+  - title: "🐛 Bug Fixes"
+    labels: ["bug", "fix"]
+  - title: "🧪 Tests"
+    labels: ["tests"]
+  - title: "📚 Documentation"
+    labels: ["docs"]
+  - title: "🔐 Security"
+    labels: ["security"]
+  - title: "🎨 Design/UI"
+    labels: ["design"]
+  - title: "🔧 CI/CD & Chores"
+    labels: ["ci", "chore"]
+change-template: "- $TITLE (#$NUMBER) by @$AUTHOR"
+exclude-labels: ["skip-changelog"]
+template: |
+  ## Changes
+  $CHANGES
+
+  ## Contributors
+  $CONTRIBUTORS
+
+version-resolver:
+  major:
+    labels: ["breaking-change"]
+  minor:
+    labels: ["enhancement", "feature", "feat"]
+  patch:
+    labels: ["bug", "fix", "improvement", "refactor", "performance", "docs", "tests", "ci", "chore", "security"]
+  default: patch
+

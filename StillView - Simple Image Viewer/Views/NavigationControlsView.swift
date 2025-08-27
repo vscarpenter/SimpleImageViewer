@@ -146,6 +146,8 @@ struct NavigationControlsView: View {
             .accessibilityLabel("Back to folder selection")
             .accessibilityHint("Returns to the main folder selection screen")
             
+            // Favorites removed
+
             // Image counter (always visible)
             imageCounterView
             
@@ -194,8 +196,7 @@ struct NavigationControlsView: View {
     // MARK: - Responsive Right Section
     private var responsiveRightSection: some View {
         HStack(spacing: 8) {
-            // Heart/Favorite button (always visible)
-            heartButton
+            // Favorites removed
             
             // Share button (hidden in compact modes)
             if layoutManager.isItemVisible("share") {
@@ -279,55 +280,7 @@ struct NavigationControlsView: View {
         .disabled(!viewModel.canDeleteCurrentImage)
     }
     
-    // MARK: - Heart/Favorite Button
-    private var heartButton: some View {
-        Button(action: {
-            viewModel.toggleFavorite()
-            showControlsTemporarily()
-        }) {
-            Image(systemName: viewModel.isFavorite ? "heart.fill" : "heart")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(heartButtonColor)
-        }
-        .buttonStyle(ToolbarButtonStyle())
-        .help(viewModel.isFavorite ? "Remove from favorites (Cmd+F)" : "Add to favorites (Cmd+F)")
-        .accessibilityLabel(heartButtonAccessibilityLabel)
-        .accessibilityHint(heartButtonAccessibilityHint)
-        .accessibilityValue(heartButtonAccessibilityValue)
-        .accessibilityAddTraits(heartButtonAccessibilityTraits)
-        .disabled(viewModel.currentImageFile == nil)
-    }
-    
-    // MARK: - Heart Button Accessibility Helpers
-    
-    private var heartButtonColor: Color {
-        return AccessibilityService.shared.heartIndicatorColor(isFavorite: viewModel.isFavorite)
-    }
-    
-    private var heartButtonAccessibilityLabel: String {
-        let action = viewModel.isFavorite ? "Remove from favorites" : "Add to favorites"
-        let imageName = viewModel.currentImageFile?.displayName ?? "current image"
-        return "\(action): \(imageName)"
-    }
-    
-    private var heartButtonAccessibilityHint: String {
-        if viewModel.currentImageFile == nil {
-            return "No image available to favorite"
-        }
-        return AccessibilityService.shared.favoriteActionHint(isFavorite: viewModel.isFavorite)
-    }
-    
-    private var heartButtonAccessibilityValue: String {
-        return viewModel.isFavorite ? "Favorited" : "Not favorited"
-    }
-    
-    private var heartButtonAccessibilityTraits: AccessibilityTraits {
-        var traits: AccessibilityTraits = [.isButton]
-        if viewModel.isFavorite {
-            traits.insert(.isSelected)
-        }
-        return traits
-    }
+    // Favorites removed
     
     // MARK: - Image Counter View
     private var imageCounterView: some View {
@@ -700,9 +653,13 @@ struct NavigationControlsView: View {
         stopAutoHideTimer()
         
         hideControlsTimer = Timer.scheduledTimer(withTimeInterval: autoHideDelay, repeats: false) { _ in
-            if viewModel.isFullscreen && !isHovered {
-                withAnimation(.easeInOut(duration: controlsAnimationDuration)) {
-                    showControls = false
+            Task {
+                await MainActor.run {
+                    if self.viewModel.isFullscreen && !self.isHovered {
+                        withAnimation(.easeInOut(duration: self.controlsAnimationDuration)) {
+                            self.showControls = false
+                        }
+                    }
                 }
             }
         }
@@ -741,10 +698,10 @@ struct NavigationControlsView: View {
             let vm = ImageViewerViewModel()
             // Mock some data for preview
             return vm
-        }()) {
+        }(), onExit: {
             // Preview exit action
             // Exit pressed
-        }
+        })
     }
     .frame(width: 800, height: 600)
 }
@@ -757,10 +714,10 @@ struct NavigationControlsView: View {
             let vm = ImageViewerViewModel()
             vm.isFullscreen = true
             return vm
-        }()) {
+        }(), onExit: {
             // Preview exit action
             // Exit pressed
-        }
+        })
     }
     .frame(width: 800, height: 600)
 }

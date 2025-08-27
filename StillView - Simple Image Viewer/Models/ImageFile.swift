@@ -79,7 +79,7 @@ struct ImageFile: Identifiable, Equatable, Hashable {
         }
     }
     
-    /// Initialize an ImageFile with all metadata (used for favorites restoration)
+    /// Initialize an ImageFile with all metadata (used for restoring saved state)
     /// - Parameters:
     ///   - url: The file URL
     ///   - name: The file name

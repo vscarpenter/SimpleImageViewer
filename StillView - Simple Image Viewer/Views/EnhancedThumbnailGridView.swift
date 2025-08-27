@@ -108,7 +108,7 @@ struct EnhancedThumbnailGridView: View {
                 receiveCompletion: { completion in
                     loadingThumbnails.remove(imageFile.url)
                     if case .failure(let error) = completion {
-                        print("Failed to generate thumbnail for \(imageFile.url): \(error)")
+                        Logger.error("Failed to generate thumbnail for \(imageFile.url): \(error)")
                     }
                 },
                 receiveValue: { thumbnail in
@@ -221,7 +221,7 @@ private struct ThumbnailGridItem: View {
             thumbnailContentView
             selectionIndicator
             hoverOverlay
-            heartIndicatorOverlay
+            // Favorites removed
             metadataBadgesOverlay
             fileNameLabel
         }
@@ -271,13 +271,7 @@ private struct ThumbnailGridItem: View {
         }
     }
     
-    private var heartIndicatorOverlay: some View {
-        HeartIndicatorView(
-            isFavorite: viewModel.isFavorite(for: imageFile),
-            thumbnailSize: thumbnailSize,
-            isVisible: viewModel.isFavorite(for: imageFile) // Show heart indicators when favorited
-        )
-    }
+    // Favorites removed
     
     private var metadataBadgesOverlay: some View {
         VStack {
@@ -319,17 +313,13 @@ private struct ThumbnailGridItem: View {
     
     private var thumbnailAccessibilityLabel: String {
         let fileName = imageFile.url.lastPathComponent
-        let favoriteStatus = viewModel.isFavorite(for: imageFile) ? "Favorited image" : "Image"
         let position = "Item \(index + 1)"
-        return "\(favoriteStatus): \(fileName), \(position)"
+        return "Image: \(fileName), \(position)"
     }
     
     private var thumbnailAccessibilityHint: String {
         let baseHint = "Tap to select, double-tap to open in full screen, right-click for options"
-        let favoriteHint = viewModel.isFavorite(for: imageFile) 
-            ? "This image is in your favorites collection"
-            : "Use Command+F to add to favorites when selected"
-        return "\(baseHint). \(favoriteHint)"
+        return baseHint
     }
     
     private var thumbnailAccessibilityValue: String {
@@ -339,9 +329,7 @@ private struct ThumbnailGridItem: View {
             values.append("Selected")
         }
         
-        if viewModel.isFavorite(for: imageFile) {
-            values.append("Favorited")
-        }
+        // Favorites removed
         
         // Add file metadata
         let fileSize = ByteCountFormatter.string(fromByteCount: imageFile.size, countStyle: .file)

@@ -39,10 +39,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.setupMenus()
         }
         
-        // Perform favorites validation on app launch
-        Task {
-            await self.validateFavoritesOnLaunch()
-        }
+        // Favorites removed
     }
     
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -227,24 +224,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
     
-    /// Validate favorites on app launch
-    private func validateFavoritesOnLaunch() async {
-        // Create services for validation
-        let preferencesService = DefaultPreferencesService()
-        let _ = NotificationManager()
-        let errorHandlingService = ErrorHandlingService.shared
-        
-        // Create favorites service on main actor
-        let favoritesService = await MainActor.run {
-            DefaultFavoritesService(
-                preferencesService: preferencesService,
-                errorHandlingService: errorHandlingService
-            )
-        }
-        
-        // Perform validation
-        await favoritesService.validateFavoritesOnAppLaunch()
-    }
+    // Favorites removed
 }
 
 // MARK: - Window Delegate

@@ -7,21 +7,6 @@
       "type": "newFeatures",
       "items": [
         {
-          "title": "Favorites Collection",
-          "description": "Save your favorite images for quick access! Click the heart button or use Cmd+F to add images to your personal favorites collection. Access all your favorites through the dedicated Favorites view.",
-          "isHighlighted": true
-        },
-        {
-          "title": "Heart Indicators",
-          "description": "Visual heart indicators on thumbnails show which images are in your favorites collection at a glance.",
-          "isHighlighted": true
-        },
-        {
-          "title": "Favorites Navigation",
-          "description": "Browse your favorites collection with full keyboard navigation support using arrow keys, Enter for full-screen, and Delete to remove favorites.",
-          "isHighlighted": true
-        },
-        {
           "title": "What's New Feature",
           "description": "Stay informed about new features and improvements with automatic update notifications and on-demand access through the Help menu.",
           "isHighlighted": false
@@ -44,17 +29,12 @@
       "items": [
         {
           "title": "Enhanced Accessibility Support",
-          "description": "Comprehensive accessibility improvements including screen reader support for favorites, high contrast mode compatibility, and detailed accessibility hints for all interactive elements.",
+          "description": "Comprehensive accessibility improvements including high contrast mode compatibility and detailed accessibility hints for interactive elements.",
           "isHighlighted": true
         },
         {
-          "title": "Persistent Favorites Storage",
-          "description": "Your favorites are automatically saved and persist between app sessions. The app also validates favorites on startup to ensure all saved images are still accessible.",
-          "isHighlighted": false
-        },
-        {
           "title": "Keyboard Shortcuts",
-          "description": "New keyboard shortcuts for favorites management: Cmd+F to toggle favorites, Delete key to remove from favorites, and arrow keys for navigation in favorites view.",
+          "description": "New and refined keyboard shortcuts for navigation, zooming, fullscreen, grid view, and slideshow controls.",
           "isHighlighted": false
         },
         {
@@ -69,7 +49,7 @@
         },
         {
           "title": "Dark Mode Enhancements",
-          "description": "Refined dark mode appearance with better contrast and visual hierarchy, including adaptive colors for heart indicators.",
+          "description": "Refined dark mode appearance with better contrast and visual hierarchy.",
           "isHighlighted": false
         }
       ]
@@ -78,16 +58,7 @@
       "title": "Bug Fixes",
       "type": "bugFixes",
       "items": [
-        {
-          "title": "Favorites File Validation",
-          "description": "Improved handling of moved or deleted images in favorites collection with automatic cleanup of invalid entries.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Heart Indicator Animations",
-          "description": "Fixed heart indicator animations to respect reduced motion accessibility preferences.",
-          "isHighlighted": false
-        },
+        
         {
           "title": "Fixed Thumbnail Generation",
           "description": "Resolved issues with thumbnail generation for certain image formats.",

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Repository Guidelines (AGENTS.md)
+    url: https://github.com/vscarpenter/SimpleImageViewer/blob/main/AGENTS.md
+    about: Please review guidelines before filing issues or PRs.

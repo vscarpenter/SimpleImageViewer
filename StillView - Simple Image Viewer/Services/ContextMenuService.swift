@@ -64,39 +64,7 @@ class ContextMenuService: ObservableObject {
         }
     }
     
-    /// Toggle the favorite status of an image
-    func toggleFavorite(_ imageFile: ImageFile, favoritesService: any FavoritesService) {
-        let wasFavorite = favoritesService.isFavorite(imageFile)
-        let success: Bool
-        
-        if wasFavorite {
-            success = favoritesService.removeFromFavorites(imageFile)
-            if success {
-                ErrorHandlingService.shared.showNotification(
-                    "Removed from favorites",
-                    type: .success
-                )
-            } else {
-                ErrorHandlingService.shared.showNotification(
-                    "Failed to remove from favorites",
-                    type: .error
-                )
-            }
-        } else {
-            success = favoritesService.addToFavorites(imageFile)
-            if success {
-                ErrorHandlingService.shared.showNotification(
-                    "Added to favorites",
-                    type: .success
-                )
-            } else {
-                ErrorHandlingService.shared.showNotification(
-                    "Failed to add to favorites",
-                    type: .error
-                )
-            }
-        }
-    }
+    // Favorites removed
     
     // MARK: - Thumbnail Context Menu Actions
     
@@ -150,7 +118,7 @@ class ContextMenuService: ObservableObject {
     /// Check if an action is available for the given context
     func isActionAvailable(_ action: ContextMenuAction, for imageFile: ImageFile?) -> Bool {
         switch action {
-        case .copyImage, .copyPath, .share, .revealInFinder, .moveToTrash, .toggleFavorite:
+        case .copyImage, .copyPath, .share, .revealInFinder, .moveToTrash:
             return imageFile != nil
         case .jumpToImage, .removeFromView:
             return imageFile != nil
@@ -159,15 +127,7 @@ class ContextMenuService: ObservableObject {
         }
     }
     
-    /// Get the appropriate title for the toggle favorite action based on current status
-    func getFavoriteActionTitle(for imageFile: ImageFile, favoritesService: any FavoritesService) -> String {
-        return favoritesService.isFavorite(imageFile) ? "Remove from Favorites" : "Add to Favorites"
-    }
-    
-    /// Get the appropriate icon for the toggle favorite action based on current status
-    func getFavoriteActionIcon(for imageFile: ImageFile, favoritesService: any FavoritesService) -> String {
-        return favoritesService.isFavorite(imageFile) ? "heart.fill" : "heart"
-    }
+    // Favorites removed
 }
 
 /// Enumeration of available context menu actions
@@ -177,7 +137,7 @@ enum ContextMenuAction: String, CaseIterable {
     case share = "share"
     case revealInFinder = "reveal_in_finder"
     case moveToTrash = "move_to_trash"
-    case toggleFavorite = "toggle_favorite"
+    // Favorites removed
     case jumpToImage = "jump_to_image"
     case removeFromView = "remove_from_view"
     case selectFolder = "select_folder"
@@ -196,8 +156,7 @@ enum ContextMenuAction: String, CaseIterable {
             return "Reveal in Finder"
         case .moveToTrash:
             return "Move to Trash"
-        case .toggleFavorite:
-            return "Toggle Favorite"
+        // Favorites removed
         case .jumpToImage:
             return "Jump to Image"
         case .removeFromView:
@@ -223,8 +182,7 @@ enum ContextMenuAction: String, CaseIterable {
             return "folder"
         case .moveToTrash:
             return "trash"
-        case .toggleFavorite:
-            return "heart"
+        // Favorites removed
         case .jumpToImage:
             return "arrow.right.circle"
         case .removeFromView:
@@ -246,8 +204,7 @@ enum ContextMenuAction: String, CaseIterable {
             return "r"
         case .moveToTrash:
             return KeyEquivalent("\u{7F}") // Delete key
-        case .toggleFavorite:
-            return "f"
+        // Favorites removed
         case .selectFolder:
             return "o"
         default:
@@ -257,7 +214,7 @@ enum ContextMenuAction: String, CaseIterable {
     
     var keyboardModifiers: EventModifiers {
         switch self {
-        case .copyImage, .selectFolder, .toggleFavorite:
+        case .copyImage, .selectFolder:
             return .command
         case .revealInFinder:
             return [.command, .shift]
@@ -272,4 +229,3 @@ enum ContextMenuAction: String, CaseIterable {
         return self == .moveToTrash
     }
 }
-

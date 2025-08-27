@@ -344,6 +344,7 @@ struct ImageDisplayView: View {
     @State private var showZoomIndicator: Bool = false
     @State private var zoomTargetLocation: CGPoint = .zero
     @State private var showZoomTarget: Bool = false
+    // Favorites removed
     
     // MARK: - Animation Properties
     private let transitionDuration: Double = 0.08 // Under 100ms as required
@@ -445,6 +446,7 @@ struct ImageDisplayView: View {
                 }
             }
         }
+        // Favorites removed
     }
     
     // MARK: - Loading View

@@ -23,7 +23,7 @@ extension Bundle {
     /// Loads and parses a JSON file from the bundle with comprehensive error handling
     func loadJSON<T: Codable>(_ type: T.Type, from filename: String) -> T? {
         guard let url = url(forResource: filename, withExtension: "json") else {
-            print("JSON file not found: \(filename).json")
+            Logger.error("JSON file not found: \(filename).json")
             return nil
         }
         
@@ -32,7 +32,7 @@ extension Bundle {
             
             // Check for empty data
             guard !data.isEmpty else {
-                print("JSON file is empty: \(filename).json")
+                Logger.error("JSON file is empty: \(filename).json")
                 return nil
             }
             
@@ -42,20 +42,20 @@ extension Bundle {
             return try decoder.decode(type, from: data)
             
         } catch let decodingError as DecodingError {
-            print("JSON decoding error in \(filename).json: \(decodingError.localizedDescription)")
+            Logger.error("JSON decoding error in \(filename).json: \(decodingError.localizedDescription)")
             
             // Log specific decoding error details
             switch decodingError {
             case .dataCorrupted(let context):
-                print("Data corrupted: \(context.debugDescription)")
+                Logger.error("Data corrupted: \(context.debugDescription)")
             case .keyNotFound(let key, let context):
-                print("Key '\(key.stringValue)' not found: \(context.debugDescription)")
+                Logger.error("Key '\(key.stringValue)' not found: \(context.debugDescription)")
             case .typeMismatch(let type, let context):
-                print("Type mismatch for \(type): \(context.debugDescription)")
+                Logger.error("Type mismatch for \(type): \(context.debugDescription)")
             case .valueNotFound(let type, let context):
-                print("Value not found for \(type): \(context.debugDescription)")
+                Logger.error("Value not found for \(type): \(context.debugDescription)")
             @unknown default:
-                print("Unknown decoding error: \(decodingError)")
+                Logger.error("Unknown decoding error: \(decodingError)")
             }
             
             return nil
@@ -63,18 +63,18 @@ extension Bundle {
         } catch let ioError as CocoaError {
             switch ioError.code {
             case .fileReadCorruptFile:
-                print("Corrupted file: \(filename).json")
+                Logger.error("Corrupted file: \(filename).json")
             case .fileReadNoSuchFile:
-                print("File not found: \(filename).json")
+                Logger.error("File not found: \(filename).json")
             case .fileReadNoPermission:
-                print("No permission to read: \(filename).json")
+                Logger.error("No permission to read: \(filename).json")
             default:
-                print("File I/O error loading \(filename).json: \(ioError.localizedDescription)")
+                Logger.error("File I/O error loading \(filename).json: \(ioError.localizedDescription)")
             }
             return nil
             
         } catch {
-            print("Unexpected error loading JSON from \(filename).json: \(error.localizedDescription)")
+            Logger.error("Unexpected error loading JSON from \(filename).json: \(error.localizedDescription)")
             return nil
         }
     }

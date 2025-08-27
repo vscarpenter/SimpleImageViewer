@@ -111,7 +111,7 @@ struct WindowState: Codable {
                     relativeTo: nil
                 )
             } catch {
-                print("Failed to create bookmark for folder: \(error)")
+                Logger.error("Failed to create bookmark for folder: \(error)")
                 self.lastFolderBookmark = nil
             }
         }
@@ -169,7 +169,7 @@ struct WindowState: Codable {
                     relativeTo: nil
                 )
             } catch {
-                print("Failed to update bookmark for folder: \(error)")
+                Logger.error("Failed to update bookmark for folder: \(error)")
             }
         } else {
             self.lastFolderPath = nil
@@ -247,13 +247,13 @@ struct WindowState: Codable {
             )
             
             if isStale {
-                print("Bookmark is stale for folder: \(lastFolderPath ?? "unknown")")
+                Logger.warning("Bookmark is stale for folder: \(lastFolderPath ?? "unknown")")
                 return nil
             }
             
             return url
         } catch {
-            print("Failed to resolve bookmark for folder: \(error)")
+            Logger.error("Failed to resolve bookmark for folder: \(error)")
             return nil
         }
     }

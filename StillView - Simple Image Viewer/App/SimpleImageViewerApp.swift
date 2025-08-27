@@ -24,6 +24,11 @@ struct SimpleImageViewerApp: App {
     // WhatsNewService for managing version updates and content
     private let whatsNewService: WhatsNewServiceProtocol = WhatsNewService()
     
+    // Performance and memory management services
+    private let performanceService = PerformanceOptimizationService.shared
+    private let memoryService = MemoryManagementService.shared
+    private let unifiedErrorService = UnifiedErrorHandlingService.shared
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -31,6 +36,7 @@ struct SimpleImageViewerApp: App {
                 .onAppear {
                     setupWindow()
                     handleAppLaunchSequence()
+                    startPerformanceMonitoring()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     handleAppWillTerminate()
@@ -124,6 +130,20 @@ struct SimpleImageViewerApp: App {
                 self.window = window
                 Task { @MainActor in
                     self.appDelegate.setMainWindow(window)
+                }
+            }
+        }
+        
+        // Delay security-scoped bookmark restoration to prevent startup crashes
+        // This allows the app to fully initialize before accessing system resources
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            Task { @MainActor in
+                do {
+                    Logger.start("Starting bookmark restoration...")
+                    SecurityScopedBookmarkManager.shared.restoreBookmarksOnLaunch()
+                    Logger.complete("Bookmark restoration completed")
+                } catch {
+                    Logger.fail("Bookmark restoration failed", error: error)
                 }
             }
         }
@@ -230,6 +250,20 @@ struct SimpleImageViewerApp: App {
         Task { @MainActor in
             appDelegate.windowStateManager.saveWindowState()
         }
+        
+        // Stop performance monitoring
+        performanceService.stopMonitoring()
+    }
+    
+    /// Start performance monitoring and optimization
+    private func startPerformanceMonitoring() {
+        // Start performance monitoring
+        performanceService.startMonitoring()
+        
+        // Start memory monitoring
+        // Memory service starts automatically
+        
+        Logger.info("Performance and memory monitoring started")
     }
     
 

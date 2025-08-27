@@ -1,18 +1,12 @@
 import SwiftUI
 import AppKit
 
-/// Protocol for handling keyboard events in favorites view
-protocol FavoritesKeyboardHandling {
-    func handleKeyPress(_ event: NSEvent) -> Bool
-}
-
 /// Service for handling keyboard navigation and shortcuts
 @MainActor
 class KeyboardHandler: ObservableObject {
     
     // MARK: - Properties
     private weak var imageViewerViewModel: ImageViewerViewModel?
-    private var favoritesHandler: AnyObject?
     
     // MARK: - Initialization
     init(imageViewerViewModel: ImageViewerViewModel? = nil) {
@@ -27,23 +21,10 @@ class KeyboardHandler: ObservableObject {
         self.imageViewerViewModel = viewModel
     }
     
-    /// Set the favorites keyboard handler
-    /// - Parameter handler: The favorites keyboard handler
-    func setFavoritesHandler(_ handler: AnyObject) {
-        self.favoritesHandler = handler
-    }
-    
     /// Handle key press events
     /// - Parameter event: The NSEvent containing key information
     /// - Returns: True if the event was handled, false otherwise
     func handleKeyPress(_ event: NSEvent) -> Bool {
-        // First check if we have a favorites handler and should use it
-        if let favoritesHandler = self.favoritesHandler as? FavoritesKeyboardHandling {
-            if favoritesHandler.handleKeyPress(event) {
-                return true
-            }
-        }
-        
         guard let viewModel = imageViewerViewModel else { return false }
         
         let keyCode = event.keyCode
@@ -126,14 +107,9 @@ class KeyboardHandler: ObservableObject {
         for character in characters {
             switch character {
             case "f":
-                // Check if Cmd key is pressed for favorite toggle
-                if modifierFlags.contains(.command) {
-                    viewModel.toggleFavorite()
-                    return true
-                } else {
-                    viewModel.toggleFullscreen()
-                    return true
-                }
+                // Favorites removed; use F for fullscreen toggle
+                viewModel.toggleFullscreen()
+                return true
                 
             case "+", "=":
                 viewModel.zoomIn()
@@ -189,7 +165,6 @@ class KeyboardHandler: ObservableObject {
             "Home": "Go to first image",
             "End": "Go to last image",
             "F / Enter": "Toggle fullscreen",
-            "⌘F": "Toggle favorite",
             "Escape": "Exit fullscreen / Back to folder selection",
             "+ / =": "Zoom in",
             "-": "Zoom out",
@@ -234,4 +209,3 @@ extension View {
         self.modifier(KeyboardHandling(keyboardHandler: keyboardHandler))
     }
 }
-

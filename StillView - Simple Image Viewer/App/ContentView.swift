@@ -2,11 +2,10 @@ import SwiftUI
 
 struct ContentView: View {
     // MARK: - State Properties
-    @StateObject private var imageViewerViewModel = ImageViewerViewModel(
-        favoritesService: DefaultFavoritesService.shared
-    )
+    @StateObject private var imageViewerViewModel = ImageViewerViewModel()
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
     @State private var showImageViewer = false
+    // Favorites removed
     
     // MARK: - Body
     var body: some View {
@@ -58,9 +57,9 @@ struct ContentView: View {
             ImageDisplayView(viewModel: imageViewerViewModel)
                 .frame(width: geometry.size.width, height: geometry.size.height)
             
-            NavigationControlsView(viewModel: imageViewerViewModel) {
+            NavigationControlsView(viewModel: imageViewerViewModel, onExit: {
                 showImageViewer = false
-            }
+            })
             .frame(width: geometry.size.width, height: geometry.size.height)
             
             // Thumbnail Strip (when in thumbnail strip mode)
@@ -428,12 +427,7 @@ struct ThumbnailItemView: View {
                         .stroke(Color.accentColor, lineWidth: 3)
                 }
                 
-                // Heart indicator overlay
-                HeartIndicatorView(
-                    isFavorite: viewModel.isFavorite(for: imageFile),
-                    thumbnailSize: size,
-                    isVisible: true
-                )
+                // Favorites removed
                 
                 // Image index overlay
                 VStack {
@@ -676,12 +670,7 @@ struct GridThumbnailItemView: View {
                             .fill(Color.accentColor.opacity(0.1))
                     }
                     
-                    // Heart indicator overlay
-                    HeartIndicatorView(
-                        isFavorite: viewModel.isFavorite(for: imageFile),
-                        thumbnailSize: size,
-                        isVisible: true // Always show heart indicators when favorited
-                    )
+                    // Favorites removed
                     
                     // Index badge
                     VStack {

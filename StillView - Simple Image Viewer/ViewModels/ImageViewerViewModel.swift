@@ -80,11 +80,7 @@ class ImageViewerViewModel: ObservableObject {
         return imageFiles
     }
     
-    /// Check if the current image is favorited
-    var isFavorite: Bool {
-        guard let currentImageFile = currentImageFile else { return false }
-        return favoritesService.isFavorite(currentImageFile)
-    }
+    // Favorites removed
     
     // MARK: - Private Properties
     private var imageFiles: [ImageFile] = []
@@ -93,7 +89,7 @@ class ImageViewerViewModel: ObservableObject {
     private let imageLoaderService: ImageLoaderService
     private var preferencesService: PreferencesService
     private let errorHandlingService: ErrorHandlingService
-    private let favoritesService: any FavoritesService
+    // Favorites removed
     private var slideshowTimer: Timer?
     private let thumbnailCache = NSCache<NSURL, NSImage>()
     private let sharingDelegate = SharingServiceDelegate()
@@ -105,12 +101,10 @@ class ImageViewerViewModel: ObservableObject {
     // MARK: - Initialization
     init(imageLoaderService: ImageLoaderService = DefaultImageLoaderService(),
          preferencesService: PreferencesService = DefaultPreferencesService(),
-         errorHandlingService: ErrorHandlingService = ErrorHandlingService.shared,
-         favoritesService: (any FavoritesService)? = nil) {
+         errorHandlingService: ErrorHandlingService = ErrorHandlingService.shared) {
         self.imageLoaderService = imageLoaderService
         self.preferencesService = preferencesService
         self.errorHandlingService = errorHandlingService
-        self.favoritesService = favoritesService ?? DefaultFavoritesService.shared
         
         // Setup thumbnail cache
         thumbnailCache.countLimit = 100
@@ -127,8 +121,7 @@ class ImageViewerViewModel: ObservableObject {
         // Set up memory warning handling
         setupMemoryWarningHandling()
         
-        // Set up favorites service binding
-        setupFavoritesBinding()
+        // Favorites removed
     }
     
     // MARK: - Public Methods
@@ -140,6 +133,8 @@ class ImageViewerViewModel: ObservableObject {
         self.imageFiles = folderContent.imageFiles
         self.totalImages = folderContent.totalImages
         self.currentIndex = folderContent.currentIndex
+        
+        // Favorites removed
         
         // Load the current image
         if folderContent.hasImages {
@@ -337,16 +332,7 @@ class ImageViewerViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    private func setupFavoritesBinding() {
-        // Listen for changes in favorites service to update heart indicators
-        favoritesService.favoriteImagesPublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                // Force UI update when favorites change
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-    }
+    // Favorites removed
     
     private func handleMemoryWarning() {
         // Clear the image loader cache
@@ -528,6 +514,8 @@ class ImageViewerViewModel: ObservableObject {
         
         // Clear the image cache to free memory
         imageLoaderService.clearCache()
+        
+        // Favorites removed
         
         currentImage = nil
         expectedImageSize = nil
@@ -834,65 +822,7 @@ class ImageViewerViewModel: ObservableObject {
         return currentImageFile != nil
     }
     
-    // MARK: - Favorites Methods
-    
-    /// Check if a specific image file is favorited
-    /// - Parameter imageFile: The image file to check
-    /// - Returns: True if the image is favorited, false otherwise
-    func isFavorite(for imageFile: ImageFile) -> Bool {
-        return favoritesService.isFavorite(imageFile)
-    }
-    
-    /// Toggle the favorite status of the current image
-    func toggleFavorite() {
-        guard let currentImageFile = currentImageFile else {
-            errorHandlingService.showNotification("No image to favorite", type: .warning)
-            return
-        }
-        
-        let wasAlreadyFavorite = favoritesService.isFavorite(currentImageFile)
-        print("DEBUG: ImageViewerViewModel.toggleFavorite() - Image: \(currentImageFile.name), wasAlreadyFavorite: \(wasAlreadyFavorite)")
-        
-        let success: Bool
-        
-        if wasAlreadyFavorite {
-            success = favoritesService.removeFromFavorites(currentImageFile)
-            print("DEBUG: ImageViewerViewModel.toggleFavorite() - Remove success: \(success)")
-            if success {
-                errorHandlingService.showNotification(
-                    "Removed from favorites",
-                    type: .success
-                )
-            } else {
-                errorHandlingService.showNotification(
-                    "Failed to remove from favorites",
-                    type: .error
-                )
-            }
-        } else {
-            success = favoritesService.addToFavorites(currentImageFile)
-            print("DEBUG: ImageViewerViewModel.toggleFavorite() - Add success: \(success)")
-            if success {
-                errorHandlingService.showNotification(
-                    "Added to favorites",
-                    type: .success
-                )
-            } else {
-                errorHandlingService.showNotification(
-                    "Failed to add to favorites",
-                    type: .error
-                )
-            }
-        }
-        
-        // Debug: Check total favorites count after operation
-        print("DEBUG: ImageViewerViewModel.toggleFavorite() - Total favorites after operation: \(favoritesService.favoriteImages.count)")
-        
-        // Force UI update by triggering objectWillChange
-        if success {
-            objectWillChange.send()
-        }
-    }
+    // Favorites removed
 }
 
 // MARK: - Sharing Service Delegate

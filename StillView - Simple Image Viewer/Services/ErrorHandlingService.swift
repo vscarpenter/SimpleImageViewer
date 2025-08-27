@@ -203,6 +203,12 @@ class ErrorHandlingService: ObservableObject {
         case .loadingCancelled:
             // Don't show notification for cancelled loading
             break
+            
+        case .fileSystemError:
+            showNotification(
+                "File system error: \(imageURL.lastPathComponent)",
+                type: .error
+            )
         }
     }
     

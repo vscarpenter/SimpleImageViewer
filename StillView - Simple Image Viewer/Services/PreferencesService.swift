@@ -39,7 +39,7 @@ protocol PreferencesService {
     var useResponsiveGridLayout: Bool { get set }
     
     /// Favorited images data
-    var favoriteImages: [FavoriteImageFile] { get set }
+    // Favorites removed
     
     /// Add a folder to the recent folders list
     /// - Parameter url: The folder URL to add
@@ -71,10 +71,7 @@ protocol PreferencesService {
     
     /// Update favorites data
     /// - Parameter favorites: The new favorites array
-    func updateFavorites(_ favorites: [FavoriteImageFile])
-    
-    /// Load favorites from persistent storage
-    func loadFavorites() -> [FavoriteImageFile]
+    // Favorites removed
 }
 
 /// Default implementation using UserDefaults
@@ -101,7 +98,7 @@ class DefaultPreferencesService: PreferencesService {
         static let windowState = "windowState"
         static let defaultThumbnailGridSize = "defaultThumbnailGridSize"
         static let useResponsiveGridLayout = "useResponsiveGridLayout"
-        static let favoriteImages = "favoriteImages"
+        // Favorites removed
     }
     
     // MARK: - Properties
@@ -207,7 +204,7 @@ class DefaultPreferencesService: PreferencesService {
                 let decoder = JSONDecoder()
                 return try decoder.decode(WindowState.self, from: data)
             } catch {
-                print("Failed to decode window state: \(error)")
+                Logger.error("Failed to decode window state: \(error)")
                 return nil
             }
         }
@@ -218,7 +215,7 @@ class DefaultPreferencesService: PreferencesService {
                     let data = try encoder.encode(windowState)
                     userDefaults.set(data, forKey: Keys.windowState)
                 } catch {
-                    print("Failed to encode window state: \(error)")
+                    Logger.error("Failed to encode window state: \(error)")
                 }
             } else {
                 userDefaults.removeObject(forKey: Keys.windowState)
@@ -262,20 +259,7 @@ class DefaultPreferencesService: PreferencesService {
         }
     }
     
-    var favoriteImages: [FavoriteImageFile] {
-        get {
-            guard let data = userDefaults.data(forKey: Keys.favoriteImages),
-                  let favorites = try? JSONDecoder().decode([FavoriteImageFile].self, from: data) else {
-                return []
-            }
-            return favorites
-        }
-        set {
-            if let data = try? JSONEncoder().encode(newValue) {
-                userDefaults.set(data, forKey: Keys.favoriteImages)
-            }
-        }
-    }
+    // Favorites removed
     
     // MARK: - Methods
     func addRecentFolder(_ url: URL) {
@@ -322,12 +306,5 @@ class DefaultPreferencesService: PreferencesService {
         savePreferences()
     }
     
-    func updateFavorites(_ favorites: [FavoriteImageFile]) {
-        favoriteImages = favorites
-    }
-    
-    func loadFavorites() -> [FavoriteImageFile] {
-        return favoriteImages
-    }
+    // Favorites removed
 }
-
