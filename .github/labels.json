@@ -1,0 +1,15 @@
+[
+  { "name": "bug",           "color": "d73a4a", "description": "Something isn't working" },
+  { "name": "enhancement",   "color": "a2eeef", "description": "New feature or request" },
+  { "name": "improvement",   "color": "1d76db", "description": "Refinement or quality improvement" },
+  { "name": "refactor",      "color": "0366d6", "description": "Code restructure without behavior change" },
+  { "name": "chore",         "color": "cccccc", "description": "Build, deps, or repo maintenance" },
+  { "name": "ci",            "color": "0e8a16", "description": "Continuous Integration / workflow" },
+  { "name": "tests",         "color": "5319e7", "description": "Unit/UI tests" },
+  { "name": "docs",          "color": "0075ca", "description": "Documentation-only changes" },
+  { "name": "performance",   "color": "fbca04", "description": "Performance or memory improvements" },
+  { "name": "design",        "color": "ff87b2", "description": "UI/UX changes" },
+  { "name": "security",      "color": "b60205", "description": "Security-related changes" },
+  { "name": "accessibility", "color": "c2e0c6", "description": "A11y fixes or improvements" }
+]
+

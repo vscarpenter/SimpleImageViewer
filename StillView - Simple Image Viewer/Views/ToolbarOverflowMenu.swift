@@ -119,13 +119,13 @@ struct ToolbarOverflowMenu: View {
             if viewModel.showImageInfo {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.appAccent)
+                    .foregroundColor(.systemAccent)
             }
         case "slideshow":
             if viewModel.isSlideshow {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.appAccent)
+                    .foregroundColor(.systemAccent)
             } else {
                 Text("S")
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -135,7 +135,7 @@ struct ToolbarOverflowMenu: View {
             if viewModel.viewMode == .thumbnailStrip {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.appAccent)
+                    .foregroundColor(.systemAccent)
             } else {
                 Text("T")
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -145,7 +145,7 @@ struct ToolbarOverflowMenu: View {
             if viewModel.viewMode == .grid {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.appAccent)
+                    .foregroundColor(.systemAccent)
             } else {
                 Text("G")
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -155,7 +155,7 @@ struct ToolbarOverflowMenu: View {
             if viewModel.showFileName {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.appAccent)
+                    .foregroundColor(.systemAccent)
             }
         case "share":
             Text("⌘S")
@@ -192,15 +192,15 @@ struct ToolbarOverflowMenu: View {
     private func getItemColor(_ item: ToolbarItem) -> Color {
         switch item.id {
         case "info":
-            return viewModel.showImageInfo ? .appAccent : .appSecondaryText
+            return viewModel.showImageInfo ? .systemAccent : .appSecondaryText
         case "slideshow":
-            return viewModel.isSlideshow ? .appAccent : .appSecondaryText
+            return viewModel.isSlideshow ? .systemAccent : .appSecondaryText
         case "thumbnails":
-            return viewModel.viewMode == .thumbnailStrip ? .appAccent : .appSecondaryText
+            return viewModel.viewMode == .thumbnailStrip ? .systemAccent : .appSecondaryText
         case "grid":
-            return viewModel.viewMode == .grid ? .appAccent : .appSecondaryText
+            return viewModel.viewMode == .grid ? .systemAccent : .appSecondaryText
         case "filename":
-            return viewModel.showFileName ? .appAccent : .appSecondaryText
+            return viewModel.showFileName ? .systemAccent : .appSecondaryText
         default:
             return .appSecondaryText
         }

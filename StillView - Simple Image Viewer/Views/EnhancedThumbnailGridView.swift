@@ -24,6 +24,13 @@ struct EnhancedThumbnailGridView: View {
     /// Callback when an image is double-clicked
     let onImageDoubleClicked: (ImageFile) -> Void
     
+    // MARK: - Services
+    
+    /// Favorites service for checking favorite status (will be injected when available)
+    // @StateObject private var favoritesService = DefaultFavoritesService(
+    //     preferencesService: DefaultPreferencesService()
+    // )
+    
     // MARK: - State Properties
     
     @State private var hoveredImageFile: ImageFile?
@@ -50,6 +57,7 @@ struct EnhancedThumbnailGridView: View {
                             imageFile: imageFile,
                             index: index,
                             viewModel: viewModel,
+                            // favoritesService: favoritesService, // Will be enabled when FavoritesService is added to project
                             isSelected: selectedImageFile?.url == imageFile.url,
                             isHovered: hoveredImageFile?.url == imageFile.url,
                             thumbnail: thumbnailCache[imageFile.url],
@@ -100,7 +108,7 @@ struct EnhancedThumbnailGridView: View {
                 receiveCompletion: { completion in
                     loadingThumbnails.remove(imageFile.url)
                     if case .failure(let error) = completion {
-                        print("Failed to generate thumbnail for \(imageFile.url): \(error)")
+                        Logger.error("Failed to generate thumbnail for \(imageFile.url): \(error)")
                     }
                 },
                 receiveValue: { thumbnail in
@@ -153,6 +161,7 @@ private struct ThumbnailGridItem: View {
     let imageFile: ImageFile
     let index: Int
     let viewModel: ImageViewerViewModel
+    // let favoritesService: DefaultFavoritesService // Will be enabled when FavoritesService is added to project
     let isSelected: Bool
     let isHovered: Bool
     let thumbnail: NSImage?
@@ -199,9 +208,10 @@ private struct ThumbnailGridItem: View {
             onDoubleTap()
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Image: \(imageFile.url.lastPathComponent)")
-        .accessibilityHint("Tap to select, double-tap to open, right-click for options")
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityLabel(thumbnailAccessibilityLabel)
+        .accessibilityHint(thumbnailAccessibilityHint)
+        .accessibilityValue(thumbnailAccessibilityValue)
+        .accessibilityAddTraits(thumbnailAccessibilityTraits)
         .thumbnailContextMenu(for: imageFile, at: index, viewModel: viewModel)
     }
     
@@ -211,6 +221,7 @@ private struct ThumbnailGridItem: View {
             thumbnailContentView
             selectionIndicator
             hoverOverlay
+            // Favorites removed
             metadataBadgesOverlay
             fileNameLabel
         }
@@ -244,7 +255,7 @@ private struct ThumbnailGridItem: View {
     private var selectionIndicator: some View {
         if isSelected {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.appAccent, lineWidth: 3)
+                .stroke(Color.systemAccent, lineWidth: 3)
                 .frame(width: thumbnailSize.width, height: thumbnailSize.height)
                 .transition(.scale.combined(with: .opacity))
         }
@@ -254,11 +265,13 @@ private struct ThumbnailGridItem: View {
     private var hoverOverlay: some View {
         if isHovered && !isSelected {
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color.appAccent.opacity(0.2))
+                .fill(Color.systemAccent.opacity(0.2))
                 .frame(width: thumbnailSize.width, height: thumbnailSize.height)
                 .transition(.opacity)
         }
     }
+    
+    // Favorites removed
     
     private var metadataBadgesOverlay: some View {
         VStack {
@@ -294,6 +307,48 @@ private struct ThumbnailGridItem: View {
             .multilineTextAlignment(.center)
             .frame(width: thumbnailSize.width)
             .opacity(isHovered || isSelected ? 1.0 : 0.7)
+    }
+    
+    // MARK: - Accessibility Helpers
+    
+    private var thumbnailAccessibilityLabel: String {
+        let fileName = imageFile.url.lastPathComponent
+        let position = "Item \(index + 1)"
+        return "Image: \(fileName), \(position)"
+    }
+    
+    private var thumbnailAccessibilityHint: String {
+        let baseHint = "Tap to select, double-tap to open in full screen, right-click for options"
+        return baseHint
+    }
+    
+    private var thumbnailAccessibilityValue: String {
+        var values: [String] = []
+        
+        if isSelected {
+            values.append("Selected")
+        }
+        
+        // Favorites removed
+        
+        // Add file metadata
+        let fileSize = ByteCountFormatter.string(fromByteCount: imageFile.size, countStyle: .file)
+        values.append("Size: \(fileSize)")
+        
+        let fileType = imageFile.url.pathExtension.uppercased()
+        values.append("Format: \(fileType)")
+        
+        return values.joined(separator: ", ")
+    }
+    
+    private var thumbnailAccessibilityTraits: AccessibilityTraits {
+        var traits: AccessibilityTraits = [.isButton, .isImage]
+        
+        if isSelected {
+            traits.insert(.isSelected)
+        }
+        
+        return traits
     }
 }
 

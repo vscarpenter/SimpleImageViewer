@@ -135,7 +135,9 @@ class ErrorHandlingService: ObservableObject {
         case .insufficientMemory:
             showModalError(error, title: "Memory Warning", actions: [
                 ModalErrorAction(title: "Close Other Apps", action: {
-                    NSWorkspace.shared.launchApplication("Activity Monitor")
+                    if let activityMonitorURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.ActivityMonitor") {
+                        NSWorkspace.shared.openApplication(at: activityMonitorURL, configuration: NSWorkspace.OpenConfiguration()) { _, _ in }
+                    }
                 }),
                 ModalErrorAction.defaultOK
             ])
@@ -190,7 +192,9 @@ class ErrorHandlingService: ObservableObject {
         case .insufficientMemory:
             showModalError(error, title: "Memory Warning", actions: [
                 ModalErrorAction(title: "Close Other Apps", action: {
-                    NSWorkspace.shared.launchApplication("Activity Monitor")
+                    if let activityMonitorURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.ActivityMonitor") {
+                        NSWorkspace.shared.openApplication(at: activityMonitorURL, configuration: NSWorkspace.OpenConfiguration()) { _, _ in }
+                    }
                 }),
                 ModalErrorAction(title: "Try Smaller Images", action: {}),
                 ModalErrorAction.defaultOK
@@ -199,6 +203,12 @@ class ErrorHandlingService: ObservableObject {
         case .loadingCancelled:
             // Don't show notification for cancelled loading
             break
+            
+        case .fileSystemError:
+            showNotification(
+                "File system error: \(imageURL.lastPathComponent)",
+                type: .error
+            )
         }
     }
     

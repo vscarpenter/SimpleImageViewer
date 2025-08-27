@@ -36,6 +36,7 @@ enum ImageLoaderError: LocalizedError {
     case corruptedImage
     case insufficientMemory
     case loadingCancelled
+    case fileSystemError
     
     var errorDescription: String? {
         switch self {
@@ -49,6 +50,8 @@ enum ImageLoaderError: LocalizedError {
             return "Not enough memory to load image"
         case .loadingCancelled:
             return "Image loading was cancelled"
+        case .fileSystemError:
+            return "File system error occurred while loading image"
         }
     }
 }
@@ -148,12 +151,12 @@ final class DefaultImageLoaderService: ImageLoaderService {
     // MARK: - Private Methods
     
     private func loadImageFromDisk(url: URL) throws -> NSImage {
-        // Ensure we have security-scoped access to this file
-        guard accessManager.ensureAccess(to: url) else {
-            print("❌ ImageLoaderService: No security-scoped access to \(url.path)")
-            throw ImageLoaderError.fileNotFound
+        // Ensure we have security-scoped access
+        guard SecurityScopedAccessManager.shared.hasAccess(to: url) else {
+            Logger.error("No security-scoped access to \(url.path)")
+            throw ImageLoaderError.fileSystemError
         }
-        
+    
         // Check if file exists
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw ImageLoaderError.fileNotFound

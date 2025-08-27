@@ -115,7 +115,7 @@ jobs:
         
         # Run SwiftLint
         swiftlint --reporter github-actions-logging
-      continue-on-error: true
+      # Lint is required; fail CI on violations
       
     - name: Swift Format Check
       run: |

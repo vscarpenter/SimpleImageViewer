@@ -7,6 +7,7 @@ struct ContextMenuProvider {
     // MARK: - Image Context Menu
     
     /// Creates a context menu for the main image view
+    @MainActor
     static func imageContextMenu(
         for imageFile: ImageFile?,
         viewModel: ImageViewerViewModel,
@@ -123,6 +124,7 @@ struct ContextMenuProvider {
     // MARK: - Empty Area Context Menu
     
     /// Creates a context menu for empty areas
+    @MainActor
     static func emptyAreaContextMenu(viewModel: ImageViewerViewModel) -> some View {
         Group {
             // Folder selection

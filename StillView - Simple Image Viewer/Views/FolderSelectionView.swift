@@ -6,7 +6,12 @@ struct FolderSelectionView: View {
     @StateObject private var viewModel = FolderSelectionViewModel()
     @State private var showingErrorAlert = false
     
-    var body: some View {
+    /// Callback when an image is selected for full-screen viewing from favorites
+    let onImageSelected: ((FolderContent, ImageFile) -> Void)?
+    
+    var body: some View { folderSelectionContent }
+    
+    private var folderSelectionContent: some View {
         ZStack {
             // Adaptive gradient background with context menu
             LinearGradient(
@@ -44,6 +49,8 @@ struct FolderSelectionView: View {
                     if viewModel.isScanning {
                         scanningView
                     }
+                    
+                    // Favorites removed
                     
                     if !viewModel.recentFolders.isEmpty && !viewModel.isScanning {
                         recentFoldersView
@@ -100,6 +107,8 @@ struct FolderSelectionView: View {
                 Label("Select Folder...", systemImage: "folder.badge.plus")
             }
             .keyboardShortcut("o", modifiers: .command)
+            
+            // Favorites removed
             
             Divider()
             
@@ -235,8 +244,8 @@ struct FolderSelectionView: View {
             .background(
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color.appAccent,
-                        Color.appAccent.opacity(0.8)
+                        Color.systemAccent,
+                        Color.systemAccent.opacity(0.8)
                     ]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -244,7 +253,7 @@ struct FolderSelectionView: View {
             )
             .foregroundColor(.white)
             .cornerRadius(12)
-            .shadow(color: Color.appAccent.opacity(0.4), radius: 8, x: 0, y: 4)
+            .shadow(color: Color.systemAccent.opacity(0.4), radius: 8, x: 0, y: 4)
             .scaleEffect(viewModel.isScanning ? 0.95 : 1.0)
         }
         .buttonStyle(.plain)
@@ -260,7 +269,7 @@ struct FolderSelectionView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.0)
-                .tint(.appAccent)
+                .tint(.systemAccent)
                 .accessibilityLabel("Scanning folder")
             
             VStack(spacing: 8) {
@@ -271,7 +280,7 @@ struct FolderSelectionView: View {
                 if viewModel.scanProgress > 0 {
                     ProgressView(value: viewModel.scanProgress)
                         .frame(width: 240)
-                        .tint(.appAccent)
+                        .tint(.systemAccent)
                         .accessibilityLabel("Scan progress")
                         .accessibilityValue("\(Int(viewModel.scanProgress * 100)) percent complete")
                 }
@@ -318,6 +327,8 @@ struct FolderSelectionView: View {
                 )
         )
     }
+    
+    // Favorites removed
     
     // MARK: - Recent Folders View
     private var recentFoldersView: some View {
@@ -394,8 +405,8 @@ private struct RecentFolderRow: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.appAccent.opacity(0.2),
-                                Color.appAccent.opacity(0.1)
+                                Color.systemAccent.opacity(0.2),
+                                Color.systemAccent.opacity(0.1)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -405,7 +416,7 @@ private struct RecentFolderRow: View {
                 
                 Image(systemName: "folder.fill")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.appAccent)
+                    .foregroundColor(.systemAccent)
                     .accessibilityHidden(true)
             }
             
@@ -447,8 +458,8 @@ private struct RecentFolderRow: View {
                     isHovered ? 
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.appAccent.opacity(0.08),
-                            Color.appAccent.opacity(0.04)
+                            Color.systemAccent.opacity(0.08),
+                            Color.systemAccent.opacity(0.04)
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -465,7 +476,7 @@ private struct RecentFolderRow: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(
-                            isHovered ? Color.appAccent.opacity(0.2) : Color.clear,
+                            isHovered ? Color.systemAccent.opacity(0.2) : Color.clear,
                             lineWidth: 1
                         )
                 )
@@ -493,20 +504,20 @@ private struct RecentFolderRow: View {
 }
 
 #Preview {
-    FolderSelectionView()
+    FolderSelectionView(onImageSelected: nil)
         .frame(width: 600, height: 500)
 }
 
 #Preview("With Recent Folders") {
-    let viewModel = FolderSelectionViewModel()
+    let _ = FolderSelectionViewModel()
     // Note: In a real preview, you'd inject mock data
-    return FolderSelectionView()
+    FolderSelectionView(onImageSelected: nil)
         .frame(width: 600, height: 500)
 }
 
 #Preview("Scanning State") {
-    let viewModel = FolderSelectionViewModel()
+    let _ = FolderSelectionViewModel()
     // Note: In a real preview, you'd set isScanning to true
-    return FolderSelectionView()
+    FolderSelectionView(onImageSelected: nil)
         .frame(width: 600, height: 500)
 }

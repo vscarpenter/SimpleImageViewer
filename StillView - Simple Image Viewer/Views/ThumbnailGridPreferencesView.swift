@@ -121,7 +121,7 @@ private struct ThumbnailSizeOption: View {
                 
                 if isSelected {
                     Circle()
-                        .fill(Color.appAccent)
+                        .fill(Color.systemAccent)
                         .frame(width: 12, height: 12)
                         .transition(.scale.combined(with: .opacity))
                 }
@@ -153,13 +153,13 @@ private struct ThumbnailSizeOption: View {
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(
-                    isSelected ? Color.appAccent.opacity(0.1) :
+                    isSelected ? Color.systemAccent.opacity(0.1) :
                     isHovered ? Color.appSecondaryBackground : Color.clear
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(
-                            isSelected ? Color.appAccent.opacity(0.3) : Color.clear,
+                            isSelected ? Color.systemAccent.opacity(0.3) : Color.clear,
                             lineWidth: 1
                         )
                 )
@@ -193,7 +193,7 @@ private struct ThumbnailSizePreview: View {
         HStack(spacing: gridSize.spacing / 2) {
             ForEach(0..<min(3, gridSize.columnCount), id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.appAccent.opacity(0.3))
+                    .fill(Color.systemAccent.opacity(0.3))
                     .frame(
                         width: gridSize.thumbnailSize.width / 8,
                         height: gridSize.thumbnailSize.height / 8
@@ -225,8 +225,8 @@ private struct ThumbnailGridPreview: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.appAccent.opacity(0.4),
-                                    Color.appAccent.opacity(0.2)
+                                    Color.systemAccent.opacity(0.4),
+                                    Color.systemAccent.opacity(0.2)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -236,7 +236,7 @@ private struct ThumbnailGridPreview: View {
                         .overlay(
                             Image(systemName: "photo")
                                 .font(.system(size: 8))
-                                .foregroundColor(.appAccent)
+                                .foregroundColor(.systemAccent)
                         )
                 }
             }

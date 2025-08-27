@@ -65,7 +65,14 @@ struct ImageFile: Identifiable, Equatable, Hashable {
         ])
         
         guard let contentType = resourceValues.contentType else {
-            throw FileSystemError.scanningFailed(NSError(domain: "ImageFile", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not determine file type"]))
+            let error = NSError(
+                domain: "ImageFile",
+                code: 1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Could not determine file type"
+                ]
+            )
+            throw FileSystemError.scanningFailed(error)
         }
         
         self.type = contentType
@@ -75,8 +82,32 @@ struct ImageFile: Identifiable, Equatable, Hashable {
         
         // Verify it's a supported image type
         guard Self.isSupportedImageType(contentType) else {
-            throw FileSystemError.scanningFailed(NSError(domain: "ImageFile", code: 2, userInfo: [NSLocalizedDescriptionKey: "Unsupported image type: \(contentType.identifier)"]))
+            let error = NSError(
+                domain: "ImageFile",
+                code: 2,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Unsupported image type: \(contentType.identifier)"
+                ]
+            )
+            throw FileSystemError.scanningFailed(error)
         }
+    }
+    
+    /// Initialize an ImageFile with all metadata (used for restoring saved state)
+    /// - Parameters:
+    ///   - url: The file URL
+    ///   - name: The file name
+    ///   - type: The UTType of the image
+    ///   - size: The file size in bytes
+    ///   - creationDate: The file creation date
+    ///   - modificationDate: The file modification date
+    init(url: URL, name: String, type: UTType, size: Int64, creationDate: Date, modificationDate: Date) {
+        self.url = url
+        self.name = name
+        self.type = type
+        self.size = size
+        self.creationDate = creationDate
+        self.modificationDate = modificationDate
     }
     
     /// Check if a UTType represents a supported image format

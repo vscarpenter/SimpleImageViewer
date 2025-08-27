@@ -3,6 +3,7 @@ import AppKit
 import UniformTypeIdentifiers
 
 /// Service for handling context menu actions throughout the app
+@MainActor
 class ContextMenuService: ObservableObject {
     
     // MARK: - Shared Instance
@@ -62,6 +63,8 @@ class ContextMenuService: ObservableObject {
             await viewModel.moveCurrentImageToTrash()
         }
     }
+    
+    // Favorites removed
     
     // MARK: - Thumbnail Context Menu Actions
     
@@ -123,6 +126,8 @@ class ContextMenuService: ObservableObject {
             return true
         }
     }
+    
+    // Favorites removed
 }
 
 /// Enumeration of available context menu actions
@@ -132,6 +137,7 @@ enum ContextMenuAction: String, CaseIterable {
     case share = "share"
     case revealInFinder = "reveal_in_finder"
     case moveToTrash = "move_to_trash"
+    // Favorites removed
     case jumpToImage = "jump_to_image"
     case removeFromView = "remove_from_view"
     case selectFolder = "select_folder"
@@ -150,6 +156,7 @@ enum ContextMenuAction: String, CaseIterable {
             return "Reveal in Finder"
         case .moveToTrash:
             return "Move to Trash"
+        // Favorites removed
         case .jumpToImage:
             return "Jump to Image"
         case .removeFromView:
@@ -175,6 +182,7 @@ enum ContextMenuAction: String, CaseIterable {
             return "folder"
         case .moveToTrash:
             return "trash"
+        // Favorites removed
         case .jumpToImage:
             return "arrow.right.circle"
         case .removeFromView:
@@ -196,6 +204,7 @@ enum ContextMenuAction: String, CaseIterable {
             return "r"
         case .moveToTrash:
             return KeyEquivalent("\u{7F}") // Delete key
+        // Favorites removed
         case .selectFolder:
             return "o"
         default:
@@ -220,4 +229,3 @@ enum ContextMenuAction: String, CaseIterable {
         return self == .moveToTrash
     }
 }
-

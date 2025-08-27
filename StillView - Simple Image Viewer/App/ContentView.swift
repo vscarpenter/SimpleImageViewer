@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 
 struct ContentView: View {
@@ -5,6 +6,7 @@ struct ContentView: View {
     @StateObject private var imageViewerViewModel = ImageViewerViewModel()
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
     @State private var showImageViewer = false
+    // Favorites removed
     
     // MARK: - Body
     var body: some View {
@@ -56,9 +58,9 @@ struct ContentView: View {
             ImageDisplayView(viewModel: imageViewerViewModel)
                 .frame(width: geometry.size.width, height: geometry.size.height)
             
-            NavigationControlsView(viewModel: imageViewerViewModel) {
+            NavigationControlsView(viewModel: imageViewerViewModel, onExit: {
                 showImageViewer = false
-            }
+            })
             .frame(width: geometry.size.width, height: geometry.size.height)
             
             // Thumbnail Strip (when in thumbnail strip mode)
@@ -109,8 +111,22 @@ struct ContentView: View {
     
     @ViewBuilder
     private var folderSelectionInterface: some View {
-        FolderSelectionView()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        FolderSelectionView(onImageSelected: { folderContent, imageFile in
+            // Load the folder content with the selected image
+            imageViewerViewModel.loadFolderContent(folderContent)
+            showImageViewer = true
+            
+            // Update window state manager with new folder and image
+            if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+                Task { @MainActor in
+                    appDelegate.windowStateManager.updateFolderState(
+                        folderURL: folderContent.folderURL,
+                        imageIndex: folderContent.currentIndex
+                    )
+                }
+            }
+        })
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     @ViewBuilder
@@ -412,6 +428,8 @@ struct ThumbnailItemView: View {
                         .stroke(Color.accentColor, lineWidth: 3)
                 }
                 
+                // Favorites removed
+                
                 // Image index overlay
                 VStack {
                     Spacer()
@@ -589,6 +607,13 @@ struct GridThumbnailItemView: View {
     
     @Environment(\.colorScheme) private var colorScheme
     
+    // MARK: - Services
+    
+    /// Favorites service for checking favorite status (will be injected when available)
+    // @StateObject private var favoritesService = DefaultFavoritesService(
+    //     preferencesService: DefaultPreferencesService()
+    // )
+    
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 8) {
@@ -645,6 +670,8 @@ struct GridThumbnailItemView: View {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(Color.accentColor.opacity(0.1))
                     }
+                    
+                    // Favorites removed
                     
                     // Index badge
                     VStack {

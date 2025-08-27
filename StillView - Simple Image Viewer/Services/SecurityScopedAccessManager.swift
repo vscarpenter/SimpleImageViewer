@@ -20,7 +20,17 @@ class SecurityScopedAccessManager: ObservableObject {
     
     // MARK: - Private Properties
     private var currentAccessURL: URL?
+    private var favoriteFolderURLs: Set<URL> = []
     private let accessQueue = DispatchQueue(label: "com.vinny.security-scoped-access", qos: .userInitiated)
+    
+    // MARK: - Public Properties
+    
+    /// Get the set of favorite folder URLs that are being tracked for persistent access
+    var trackedFavoriteFolders: Set<URL> {
+        return accessQueue.sync {
+            return favoriteFolderURLs
+        }
+    }
     
     private init() {}
     
@@ -31,15 +41,33 @@ class SecurityScopedAccessManager: ObservableObject {
     /// - Returns: True if access was registered successfully
     func startAccess(for url: URL) -> Bool {
         return accessQueue.sync {
-            // Only stop existing access if it's for a different URL
+            // Check if this URL is a favorite folder or contains favorite folders
+            let isFavoriteFolder = favoriteFolderURLs.contains(url) || 
+                favoriteFolderURLs.contains { favoriteURL in
+                    url.path.hasPrefix(favoriteURL.path)
+                }
+            
+            // CRITICAL FIX: Never stop access to favorite folders
+            // Only stop existing access if it's for a different URL AND it's not a favorite folder
             if let currentURL = currentAccessURL, currentURL != url {
-                print("🛑 SecurityScopedAccessManager: Stopping access for \(currentURL.path)")
-                currentURL.stopAccessingSecurityScopedResource()
+                // Check if current URL is a favorite folder
+                let currentIsFavoriteFolder = favoriteFolderURLs.contains(currentURL) || 
+                    favoriteFolderURLs.contains { favoriteURL in
+                        currentURL.path.hasPrefix(favoriteURL.path)
+                    }
+                
+                // Only stop access if current URL is NOT a favorite folder
+                if !currentIsFavoriteFolder {
+                    Logger.info("Stopping access for non-favorite folder \(currentURL.path)", context: "security")
+                    currentURL.stopAccessingSecurityScopedResource()
+                } else {
+                    Logger.info("Preserving access to favorite folder \(currentURL.path)", context: "security")
+                }
             }
             
             // Register the new access (URL already has security-scoped access started)
             currentAccessURL = url
-            print("✅ SecurityScopedAccessManager: Registered access for \(url.path)")
+            Logger.success("Registered access for \(url.path)", context: "security")
             return true
         }
     }
@@ -48,9 +76,29 @@ class SecurityScopedAccessManager: ObservableObject {
     func stopCurrentAccess() {
         accessQueue.sync {
             if let url = currentAccessURL {
-                print("🛑 SecurityScopedAccessManager: Stopping access for \(url.path)")
+                Logger.info("Stopping access for \(url.path)", context: "security")
                 url.stopAccessingSecurityScopedResource()
                 currentAccessURL = nil
+            }
+        }
+    }
+    
+    /// Add a folder URL to maintain security-scoped access for favorites
+    /// - Parameter folderURL: The folder URL to maintain access for
+    func addFavoriteFolder(_ folderURL: URL) {
+        accessQueue.sync {
+            // Always add to tracking (don't try to start new access, just track for protection)
+            favoriteFolderURLs.insert(folderURL)
+            Logger.info("Tracking favorite folder \(folderURL.path)", context: "security")
+        }
+    }
+    
+    /// Remove a folder URL from maintained security-scoped access
+    /// - Parameter folderURL: The folder URL to stop maintaining access for
+    func removeFavoriteFolder(_ folderURL: URL) {
+        accessQueue.sync {
+            if favoriteFolderURLs.remove(folderURL) != nil {
+                Logger.info("Stopped tracking favorite folder \(folderURL.path)", context: "security")
             }
         }
     }
@@ -60,16 +108,48 @@ class SecurityScopedAccessManager: ObservableObject {
     /// - Returns: True if we have access to this URL or its containing folder
     func hasAccess(to url: URL) -> Bool {
         return accessQueue.sync {
-            guard let currentURL = currentAccessURL else { return false }
-            
-            // Check if the URL is the same as current access URL
-            if url == currentURL {
-                return true
+            // Check current access URL
+            if let currentURL = currentAccessURL {
+                // Check if the URL is the same as current access URL
+                if url == currentURL {
+                    return true
+                }
+                
+                // Check if the URL is contained within the current access URL
+                if url.path.hasPrefix(currentURL.path + "/") || url.path == currentURL.path {
+                    return true
+                }
             }
             
-            // Check if the URL is contained within the current access URL
-            if url.path.hasPrefix(currentURL.path) {
-                return true
+            // Check favorite folder URLs (more precise path matching)
+            for favoriteURL in favoriteFolderURLs {
+                if url == favoriteURL || url.path.hasPrefix(favoriteURL.path + "/") {
+                    return true
+                }
+            }
+            
+            // Check if we have bookmark-based access
+            let folderURL = url.hasDirectoryPath ? url : url.deletingLastPathComponent()
+            
+            if SecurityScopedBookmarkManager.shared.hasBookmark(for: folderURL) {
+                // Try to restore access if we have a bookmark
+                if SecurityScopedBookmarkManager.shared.restoreAccessWithRetry(for: folderURL) {
+                    // Add to tracked folders to maintain access
+                    addFavoriteFolder(folderURL)
+                    return true
+                }
+            }
+            
+            // Check if the URL is contained within any bookmarked folder
+            let bookmarkedFolders = SecurityScopedBookmarkManager.shared.getBookmarkedFolders()
+            for bookmarkedFolder in bookmarkedFolders {
+                if url.path.hasPrefix(bookmarkedFolder.path + "/") || url.path == bookmarkedFolder.path {
+                    // Try to restore access to the bookmarked folder
+                    if SecurityScopedBookmarkManager.shared.restoreAccessWithRetry(for: bookmarkedFolder) {
+                        addFavoriteFolder(bookmarkedFolder)
+                        return true
+                    }
+                }
             }
             
             return false
@@ -79,6 +159,7 @@ class SecurityScopedAccessManager: ObservableObject {
     /// Get the current security-scoped access URL
     var currentURL: URL? {
         return accessQueue.sync {
+            // Return a copy to ensure thread safety
             return currentAccessURL
         }
     }
@@ -90,14 +171,16 @@ class SecurityScopedAccessManager: ObservableObject {
         let hasCurrentAccess = hasAccess(to: url)
         
         if !hasCurrentAccess {
-            print("⚠️ SecurityScopedAccessManager: No access to \(url.path)")
-            print("   Current access URL: \(currentURL?.path ?? "none")")
+            Logger.warning("No access to \(url.path)", context: "security")
+            Logger.debug("Current access URL: \(currentURL?.path ?? "none")", context: "security")
         }
         
         return hasCurrentAccess
     }
     
     deinit {
-        stopCurrentAccess()
+        Task { @MainActor in
+            stopCurrentAccess()
+        }
     }
 }

@@ -108,11 +108,11 @@ final class EnhancedThumbnailGenerator: EnhancedThumbnailGeneratorProtocol {
     
     func generateThumbnailSync(from url: URL, quality: ThumbnailQuality = .medium) -> NSImage? {
         // Ensure we have security-scoped access
-        guard accessManager.ensureAccess(to: url) else {
-            print("❌ EnhancedThumbnailGenerator: No security-scoped access to \(url.path)")
+        guard SecurityScopedAccessManager.shared.hasAccess(to: url) else {
+            Logger.error("No security-scoped access to \(url.path)")
             return nil
         }
-        
+    
         // Check if file exists
         guard FileManager.default.fileExists(atPath: url.path) else {
             return nil

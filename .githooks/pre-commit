@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Run SwiftLint before commit to enforce style rules.
+set -euo pipefail
+
+if ! command -v swiftlint >/dev/null 2>&1; then
+  echo "[pre-commit] SwiftLint not found. Install with: brew install swiftlint" >&2
+  exit 1
+fi
+
+echo "[pre-commit] Running SwiftLint..."
+swiftlint --quiet || {
+  echo "[pre-commit] SwiftLint reported violations. Fix them or run 'swiftlint autocorrect' where safe." >&2
+  exit 1
+}
+
+echo "[pre-commit] SwiftLint passed."
+

@@ -520,6 +520,8 @@ class ImageViewerViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentFileName, "test_image_0")
     }
     
+    // Removed feature tests
+    
     // MARK: - Helper Methods
     
     private func createMockImageFiles(count: Int) throws -> [ImageFile] {
@@ -593,8 +595,14 @@ class MockPreferencesService: PreferencesService {
     var recentFolders: [URL] = []
     var windowFrame: CGRect = CGRect(x: 0, y: 0, width: 800, height: 600)
     var showFileName: Bool = false
+    var showImageInfo: Bool = false
+    var slideshowInterval: Double = 3.0
     var lastSelectedFolder: URL?
     var folderBookmarks: [Data] = []
+    var windowState: WindowState?
+    var defaultThumbnailGridSize: ThumbnailGridSize = .medium
+    var useResponsiveGridLayout: Bool = true
+    // Favorites removed
     
     var savePreferencesCalled = false
     var loadPreferencesCalled = false
@@ -618,5 +626,42 @@ class MockPreferencesService: PreferencesService {
     func loadPreferences() {
         loadPreferencesCalled = true
     }
+    
+    func saveWindowState(_ windowState: WindowState) {
+        self.windowState = windowState
+    }
+    
+    func loadWindowState() -> WindowState? {
+        return windowState
+    }
+    
+    // Favorites removed
 }
 
+
+class MockErrorHandlingService: ErrorHandlingService {
+    var showNotificationCalled = false
+    var showModalErrorCalled = false
+    var showPermissionRequestCalled = false
+    
+    var lastNotificationMessage: String?
+    var lastNotificationType: NotificationView.NotificationType?
+    var lastModalError: Error?
+    var lastPermissionRequest: PermissionRequestInfo?
+    
+    override func showNotification(_ message: String, type: NotificationView.NotificationType) {
+        showNotificationCalled = true
+        lastNotificationMessage = message
+        lastNotificationType = type
+    }
+    
+    override func showModalError(_ error: Error, title: String? = nil, actions: [ModalErrorAction] = []) {
+        showModalErrorCalled = true
+        lastModalError = error
+    }
+    
+    override func showPermissionRequest(_ request: PermissionRequestInfo) {
+        showPermissionRequestCalled = true
+        lastPermissionRequest = request
+    }
+}

@@ -146,6 +146,8 @@ struct NavigationControlsView: View {
             .accessibilityLabel("Back to folder selection")
             .accessibilityHint("Returns to the main folder selection screen")
             
+            // Favorites removed
+
             // Image counter (always visible)
             imageCounterView
             
@@ -194,22 +196,24 @@ struct NavigationControlsView: View {
     // MARK: - Responsive Right Section
     private var responsiveRightSection: some View {
         HStack(spacing: 8) {
+            // Favorites removed
+            
             // Share button (hidden in compact modes)
             if layoutManager.isItemVisible("share") {
-                shareButton
-                
                 Divider()
                     .frame(height: 16)
                     .padding(.horizontal, 4)
+                
+                shareButton
             }
             
             // Delete button (hidden in compact modes)
             if layoutManager.isItemVisible("delete") {
-                deleteButton
-                
                 Divider()
                     .frame(height: 16)
                     .padding(.horizontal, 4)
+                
+                deleteButton
             }
             
             // Zoom controls (always visible, but may be simplified)
@@ -275,6 +279,8 @@ struct NavigationControlsView: View {
         .accessibilityHint("Move the current image to Trash")
         .disabled(!viewModel.canDeleteCurrentImage)
     }
+    
+    // Favorites removed
     
     // MARK: - Image Counter View
     private var imageCounterView: some View {
@@ -442,7 +448,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.showImageInfo ? "info.circle.fill" : "info.circle")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.showImageInfo ? .appAccent : .appSecondaryText)
+                .foregroundColor(viewModel.showImageInfo ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.showImageInfo ? "Hide image info (I)" : "Show image info (I)")
@@ -458,7 +464,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.isSlideshow ? "pause.circle.fill" : "play.circle")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.isSlideshow ? .appAccent : .appSecondaryText)
+                .foregroundColor(viewModel.isSlideshow ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.isSlideshow ? "Stop slideshow (S)" : "Start slideshow (S)")
@@ -475,7 +481,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.viewMode == .thumbnailStrip ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.viewMode == .thumbnailStrip ? .appAccent : .appSecondaryText)
+                .foregroundColor(viewModel.viewMode == .thumbnailStrip ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.viewMode == .thumbnailStrip ? "Hide thumbnail strip (T)" : "Show thumbnail strip (T)")
@@ -492,7 +498,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.viewMode == .grid ? "square.grid.3x3.fill" : "square.grid.3x3")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.viewMode == .grid ? .appAccent : .appSecondaryText)
+                .foregroundColor(viewModel.viewMode == .grid ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.viewMode == .grid ? "Exit grid view (G)" : "Show grid view (G)")
@@ -509,7 +515,7 @@ struct NavigationControlsView: View {
         }) {
             Image(systemName: viewModel.showFileName ? "eye.fill" : "eye.slash")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.showFileName ? .appAccent : .appSecondaryText)
+                .foregroundColor(viewModel.showFileName ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.showFileName ? "Hide file name" : "Show file name")
@@ -647,9 +653,13 @@ struct NavigationControlsView: View {
         stopAutoHideTimer()
         
         hideControlsTimer = Timer.scheduledTimer(withTimeInterval: autoHideDelay, repeats: false) { _ in
-            if viewModel.isFullscreen && !isHovered {
-                withAnimation(.easeInOut(duration: controlsAnimationDuration)) {
-                    showControls = false
+            Task {
+                await MainActor.run {
+                    if self.viewModel.isFullscreen && !self.isHovered {
+                        withAnimation(.easeInOut(duration: self.controlsAnimationDuration)) {
+                            self.showControls = false
+                        }
+                    }
                 }
             }
         }
@@ -688,10 +698,10 @@ struct NavigationControlsView: View {
             let vm = ImageViewerViewModel()
             // Mock some data for preview
             return vm
-        }()) {
+        }(), onExit: {
             // Preview exit action
             // Exit pressed
-        }
+        })
     }
     .frame(width: 800, height: 600)
 }
@@ -704,10 +714,10 @@ struct NavigationControlsView: View {
             let vm = ImageViewerViewModel()
             vm.isFullscreen = true
             return vm
-        }()) {
+        }(), onExit: {
             // Preview exit action
             // Exit pressed
-        }
+        })
     }
     .frame(width: 800, height: 600)
 }

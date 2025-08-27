@@ -120,7 +120,7 @@ class WindowStateManager: ObservableObject {
         
         // Start accessing the security-scoped resource
         guard folderURL.startAccessingSecurityScopedResource() else {
-            print("Failed to start accessing security-scoped resource for folder: \(folderURL)")
+            Logger.error("Failed to start accessing security-scoped resource for folder: \(folderURL)")
             return nil
         }
         

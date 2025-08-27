@@ -117,13 +117,13 @@ struct EnhancedToolbarButtonStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundColor(configuration.isPressed ? .appAccent : .appText)
+            .foregroundColor(configuration.isPressed ? .systemAccent : .appText)
             .padding(8)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(
                         configuration.isPressed 
-                        ? Color.appAccent.opacity(0.2)
+                        ? Color.systemAccent.opacity(0.2)
                         : Color.appButtonBackground.opacity(0.8)
                     )
             )
@@ -131,7 +131,7 @@ struct EnhancedToolbarButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(
                         configuration.isPressed 
-                        ? Color.appAccent.opacity(0.3)
+                        ? Color.systemAccent.opacity(0.3)
                         : Color.appBorder.opacity(0.2), 
                         lineWidth: 0.5
                     )
@@ -156,13 +156,13 @@ struct EnhancedCompactToolbarButtonStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundColor(configuration.isPressed ? .appAccent : .appText)
+            .foregroundColor(configuration.isPressed ? .systemAccent : .appText)
             .padding(6)
             .background(
                 RoundedRectangle(cornerRadius: 4)
                     .fill(
                         configuration.isPressed 
-                        ? Color.appAccent.opacity(0.2)
+                        ? Color.systemAccent.opacity(0.2)
                         : Color.appButtonBackground.opacity(0.8)
                     )
             )
@@ -170,7 +170,7 @@ struct EnhancedCompactToolbarButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 4)
                     .stroke(
                         configuration.isPressed 
-                        ? Color.appAccent.opacity(0.3)
+                        ? Color.systemAccent.opacity(0.3)
                         : Color.appBorder.opacity(0.2), 
                         lineWidth: 0.5
                     )

@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 
 /// Service for handling keyboard navigation and shortcuts
+@MainActor
 class KeyboardHandler: ObservableObject {
     
     // MARK: - Properties
@@ -27,7 +28,7 @@ class KeyboardHandler: ObservableObject {
         guard let viewModel = imageViewerViewModel else { return false }
         
         let keyCode = event.keyCode
-        let _ = event.modifierFlags // Unused modifier flags
+        let modifierFlags = event.modifierFlags
         
         // Handle special keys first
         switch keyCode {
@@ -106,6 +107,7 @@ class KeyboardHandler: ObservableObject {
         for character in characters {
             switch character {
             case "f":
+                // Favorites removed; use F for fullscreen toggle
                 viewModel.toggleFullscreen()
                 return true
                 
@@ -207,4 +209,3 @@ extension View {
         self.modifier(KeyboardHandling(keyboardHandler: keyboardHandler))
     }
 }
-

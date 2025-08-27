@@ -65,6 +65,64 @@ class AccessibilityService: ObservableObject {
         return isReducedMotionEnabled ? nil : normalAnimation
     }
     
+    /// Post accessibility announcement for favorites actions
+    /// - Parameters:
+    ///   - message: The message to announce
+    ///   - priority: The priority of the announcement
+    func announceFavoritesAction(_ message: String, priority: NSAccessibilityPriorityLevel = .medium) {
+        guard isVoiceOverEnabled else { return }
+        
+        DispatchQueue.main.async {
+            // Post accessibility notification with the message
+            let notification = NSAccessibility.Notification.announcementRequested
+            NSAccessibility.post(element: NSApp.mainWindow as Any, notification: notification)
+        }
+    }
+    
+    /// Get accessibility description for favorite status
+    /// - Parameters:
+    ///   - isFavorite: Whether the item is favorited
+    ///   - itemName: Name of the item
+    /// - Returns: Accessibility description
+    func favoriteStatusDescription(isFavorite: Bool, itemName: String) -> String {
+        if isFavorite {
+            return "\(itemName) is in your favorites collection"
+        } else {
+            return "\(itemName) is not favorited"
+        }
+    }
+    
+    /// Get accessibility hint for favorite actions
+    /// - Parameter isFavorite: Whether the item is currently favorited
+    /// - Returns: Accessibility hint for the action
+    func favoriteActionHint(isFavorite: Bool) -> String {
+        if isFavorite {
+            return "Double-tap to remove from favorites, or use Command+F"
+        } else {
+            return "Double-tap to add to favorites, or use Command+F"
+        }
+    }
+    
+    /// Get high contrast color for heart indicators
+    /// - Parameter isFavorite: Whether the item is favorited
+    /// - Returns: Appropriate color for high contrast mode
+    func heartIndicatorColor(isFavorite: Bool) -> Color {
+        if isHighContrastEnabled {
+            return isFavorite ? .red : .primary
+        } else {
+            return isFavorite ? .red : .secondary
+        }
+    }
+    
+    /// Get high contrast background color for heart indicators
+    /// - Returns: Appropriate background color for high contrast mode
+    func heartIndicatorBackgroundColor() -> Color {
+        return adaptiveColor(
+            normal: Color.black.opacity(0.6),
+            highContrast: Color.black.opacity(0.9)
+        )
+    }
+    
     // MARK: - Private Methods
     
     private func setupAccessibilityMonitoring() {

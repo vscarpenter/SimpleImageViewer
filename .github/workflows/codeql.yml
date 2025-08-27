@@ -1,0 +1,47 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 7 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (Swift)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: swift
+
+      # Prefer manual build for Swift projects to avoid signing issues
+      - name: Build (CodeQL)
+        run: |
+          xcodebuild -project "StillView - Simple Image Viewer.xcodeproj" \
+                     -scheme "StillView - Simple Image Viewer" \
+                     -configuration Debug \
+                     -destination "platform=macOS" \
+                     clean build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY=""
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+

@@ -1,5 +1,10 @@
 import Foundation
 import CoreGraphics
+import SwiftUI
+import Combine
+import UniformTypeIdentifiers
+
+// MARK: - PreferencesService Protocol
 
 /// Protocol defining preferences management for StillView - Simple Image Viewer
 protocol PreferencesService {
@@ -33,6 +38,9 @@ protocol PreferencesService {
     /// Whether to use responsive grid layout that adapts to window size
     var useResponsiveGridLayout: Bool { get set }
     
+    /// Favorited images data
+    // Favorites removed
+    
     /// Add a folder to the recent folders list
     /// - Parameter url: The folder URL to add
     func addRecentFolder(_ url: URL)
@@ -57,10 +65,19 @@ protocol PreferencesService {
     /// Load window state from persistent storage
     /// - Returns: The saved window state, or nil if none exists
     func loadWindowState() -> WindowState?
+    
+    /// Save favorites to persistent storage
+    func saveFavorites()
+    
+    /// Update favorites data
+    /// - Parameter favorites: The new favorites array
+    // Favorites removed
 }
 
 /// Default implementation using UserDefaults
 class DefaultPreferencesService: PreferencesService {
+    static let shared = DefaultPreferencesService()
+    
     private let userDefaults: UserDefaults
     
     /// Initialize with custom UserDefaults (useful for testing)
@@ -81,6 +98,7 @@ class DefaultPreferencesService: PreferencesService {
         static let windowState = "windowState"
         static let defaultThumbnailGridSize = "defaultThumbnailGridSize"
         static let useResponsiveGridLayout = "useResponsiveGridLayout"
+        // Favorites removed
     }
     
     // MARK: - Properties
@@ -186,7 +204,7 @@ class DefaultPreferencesService: PreferencesService {
                 let decoder = JSONDecoder()
                 return try decoder.decode(WindowState.self, from: data)
             } catch {
-                print("Failed to decode window state: \(error)")
+                Logger.error("Failed to decode window state: \(error)")
                 return nil
             }
         }
@@ -197,7 +215,7 @@ class DefaultPreferencesService: PreferencesService {
                     let data = try encoder.encode(windowState)
                     userDefaults.set(data, forKey: Keys.windowState)
                 } catch {
-                    print("Failed to encode window state: \(error)")
+                    Logger.error("Failed to encode window state: \(error)")
                 }
             } else {
                 userDefaults.removeObject(forKey: Keys.windowState)
@@ -241,6 +259,8 @@ class DefaultPreferencesService: PreferencesService {
         }
     }
     
+    // Favorites removed
+    
     // MARK: - Methods
     func addRecentFolder(_ url: URL) {
         var folders = recentFolders
@@ -281,4 +301,10 @@ class DefaultPreferencesService: PreferencesService {
     func loadWindowState() -> WindowState? {
         return windowState
     }
+    
+    func saveFavorites() {
+        savePreferences()
+    }
+    
+    // Favorites removed
 }

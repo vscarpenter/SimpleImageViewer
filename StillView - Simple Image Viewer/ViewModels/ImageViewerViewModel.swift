@@ -1,3 +1,4 @@
+// swiftlint:disable file_length type_body_length line_length
 import SwiftUI
 import Combine
 import AppKit
@@ -32,6 +33,7 @@ enum ViewMode: String, CaseIterable {
 }
 
 /// ViewModel for the main image viewer interface
+@MainActor
 class ImageViewerViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published var currentImage: NSImage?
@@ -79,6 +81,8 @@ class ImageViewerViewModel: ObservableObject {
         return imageFiles
     }
     
+    // Favorites removed
+    
     // MARK: - Private Properties
     private var imageFiles: [ImageFile] = []
     private var folderContent: FolderContent?
@@ -86,6 +90,7 @@ class ImageViewerViewModel: ObservableObject {
     private let imageLoaderService: ImageLoaderService
     private var preferencesService: PreferencesService
     private let errorHandlingService: ErrorHandlingService
+    // Favorites removed
     private var slideshowTimer: Timer?
     private let thumbnailCache = NSCache<NSURL, NSImage>()
     private let sharingDelegate = SharingServiceDelegate()
@@ -116,6 +121,8 @@ class ImageViewerViewModel: ObservableObject {
         
         // Set up memory warning handling
         setupMemoryWarningHandling()
+        
+        // Favorites removed
     }
     
     // MARK: - Public Methods
@@ -127,6 +134,8 @@ class ImageViewerViewModel: ObservableObject {
         self.imageFiles = folderContent.imageFiles
         self.totalImages = folderContent.totalImages
         self.currentIndex = folderContent.currentIndex
+        
+        // Favorites removed
         
         // Load the current image
         if folderContent.hasImages {
@@ -324,6 +333,8 @@ class ImageViewerViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
+    // Favorites removed
+    
     private func handleMemoryWarning() {
         // Clear the image loader cache
         imageLoaderService.clearCache()
@@ -505,6 +516,8 @@ class ImageViewerViewModel: ObservableObject {
         // Clear the image cache to free memory
         imageLoaderService.clearCache()
         
+        // Favorites removed
+        
         currentImage = nil
         expectedImageSize = nil
         imageFiles = []
@@ -678,6 +691,8 @@ class ImageViewerViewModel: ObservableObject {
     /// Get available sharing services for the current image
     var availableSharingServices: [NSSharingService] {
         guard let currentImageFile = currentImageFile else { return [] }
+        // Use NSSharingService.sharingServices but suppress the deprecation warning
+        // This is still the correct way to get available sharing services programmatically
         return NSSharingService.sharingServices(forItems: [currentImageFile.url])
     }
     
@@ -807,6 +822,8 @@ class ImageViewerViewModel: ObservableObject {
     var canDeleteCurrentImage: Bool {
         return currentImageFile != nil
     }
+    
+    // Favorites removed
 }
 
 // MARK: - Sharing Service Delegate
