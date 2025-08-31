@@ -28,6 +28,12 @@ jobs:
                    CODE_SIGN_IDENTITY="" \
                    CODE_SIGNING_REQUIRED=NO
     
-    - name: Build and Verify
+    - name: Run Tests
       run: |
-        echo "Build completed successfully. Test target configuration pending."
+        xcodebuild test \
+          -project "StillView - Simple Image Viewer.xcodeproj" \
+          -scheme "StillView - Simple Image Viewer" \
+          -destination "platform=macOS" \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO

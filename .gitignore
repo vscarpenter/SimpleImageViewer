@@ -54,6 +54,20 @@ playground.xcworkspace
 
 .build/
 
+# Xcode build results and user state
+*.xcuserstate
+*.xcresult
+
+# SwiftPM working data (safe to ignore)
+.swiftpm/
+SourcePackages/
+
+# SwiftLint cache
+.swiftlint.cache
+
+# Local build logs/output
+build_output.txt
+
 # CocoaPods
 #
 # We recommend against adding the Pods directory to your .gitignore. However

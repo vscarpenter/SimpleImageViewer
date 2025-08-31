@@ -87,10 +87,16 @@ class SecurityScopedAccessManager: ObservableObject {
     /// - Parameter folderURL: The folder URL to maintain access for
     func addFavoriteFolder(_ folderURL: URL) {
         accessQueue.sync {
-            // Always add to tracking (don't try to start new access, just track for protection)
-            favoriteFolderURLs.insert(folderURL)
-            Logger.info("Tracking favorite folder \(folderURL.path)", context: "security")
+            _addFavoriteFolder(folderURL)
         }
+    }
+    
+    /// Private method to add favorite folder without queue synchronization
+    /// Used when already within the accessQueue context
+    private func _addFavoriteFolder(_ folderURL: URL) {
+        // Always add to tracking (don't try to start new access, just track for protection)
+        favoriteFolderURLs.insert(folderURL)
+        Logger.info("Tracking favorite folder \(folderURL.path)", context: "security")
     }
     
     /// Remove a folder URL from maintained security-scoped access
@@ -135,7 +141,7 @@ class SecurityScopedAccessManager: ObservableObject {
                 // Try to restore access if we have a bookmark
                 if SecurityScopedBookmarkManager.shared.restoreAccessWithRetry(for: folderURL) {
                     // Add to tracked folders to maintain access
-                    addFavoriteFolder(folderURL)
+                    _addFavoriteFolder(folderURL)
                     return true
                 }
             }
@@ -146,7 +152,7 @@ class SecurityScopedAccessManager: ObservableObject {
                 if url.path.hasPrefix(bookmarkedFolder.path + "/") || url.path == bookmarkedFolder.path {
                     // Try to restore access to the bookmarked folder
                     if SecurityScopedBookmarkManager.shared.restoreAccessWithRetry(for: bookmarkedFolder) {
-                        addFavoriteFolder(bookmarkedFolder)
+                        _addFavoriteFolder(bookmarkedFolder)
                         return true
                     }
                 }

@@ -72,19 +72,15 @@ final class DefaultPreviewGeneratorService: PreviewGeneratorService {
         
         return Future<NSImage, Error> { [weak self] promise in
             self?.previewQueue.async {
-                do {
-                    guard let preview = self?.generatePreviewSync(from: url, maxSize: maxSize) else {
-                        promise(.failure(PreviewGeneratorError.generationFailed))
-                        return
-                    }
-                    
-                    // Cache the generated preview
-                    self?.previewCache.setObject(preview, forKey: url as NSURL)
-                    
-                    promise(.success(preview))
-                } catch {
-                    promise(.failure(error))
+                guard let preview = self?.generatePreviewSync(from: url, maxSize: maxSize) else {
+                    promise(.failure(PreviewGeneratorError.generationFailed))
+                    return
                 }
+                
+                // Cache the generated preview
+                self?.previewCache.setObject(preview, forKey: url as NSURL)
+                
+                promise(.success(preview))
             }
         }
         .eraseToAnyPublisher()
@@ -292,6 +288,8 @@ final class EnhancedImageLoaderService: ImageLoaderService {
         // Store both cancellables
         cancellablesQueue.async { [weak self] in
             self?.loadingCancellables[url] = imageCancellable
+            // Store preview cancellable separately to avoid conflicts
+            self?.loadingCancellables[URL(string: "\(url.absoluteString)_preview")!] = previewCancellable
         }
         
         return subject.eraseToAnyPublisher()

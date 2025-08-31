@@ -65,6 +65,57 @@ class AccessibilityService: ObservableObject {
         return isReducedMotionEnabled ? nil : normalAnimation
     }
     
+    /// Get focus ring color that adapts to accessibility settings
+    /// - Returns: Appropriate focus ring color
+    func focusRingColor() -> Color {
+        if isHighContrastEnabled {
+            return .accentColor
+        } else {
+            return .accentColor.opacity(0.7)
+        }
+    }
+    
+    /// Get focus ring width that adapts to accessibility settings
+    /// - Returns: Appropriate focus ring width
+    func focusRingWidth() -> CGFloat {
+        return isHighContrastEnabled ? 3.0 : 2.0
+    }
+    
+    /// Check if system prefers reduced transparency
+    /// - Returns: Whether reduced transparency is enabled
+    func isReducedTransparencyEnabled() -> Bool {
+        return UserDefaults.standard.bool(forKey: "ReduceTransparency")
+    }
+    
+    /// Get background opacity that respects transparency preferences
+    /// - Parameter normalOpacity: Normal opacity value
+    /// - Returns: Adjusted opacity for accessibility preferences
+    func adaptiveBackgroundOpacity(_ normalOpacity: Double) -> Double {
+        return isReducedTransparencyEnabled() ? 1.0 : normalOpacity
+    }
+    
+    /// Announce preference changes for screen readers
+    /// - Parameters:
+    ///   - setting: Name of the setting that changed
+    ///   - newValue: New value of the setting
+    func announcePreferenceChange(setting: String, newValue: String) {
+        guard isVoiceOverEnabled else { return }
+        
+        let message = "\(setting) changed to \(newValue)"
+        DispatchQueue.main.async {
+            NSAccessibility.post(
+                element: NSApp.mainWindow as Any,
+                notification: .announcementRequested
+            )
+        }
+    }
+    
+    /// Get appropriate contrast ratio for text
+    /// - Returns: Minimum contrast ratio to use
+    func minimumContrastRatio() -> Double {
+        return isHighContrastEnabled ? 7.0 : 4.5 // WCAG AAA vs AA standards
+    }
+    
     /// Post accessibility announcement for favorites actions
     /// - Parameters:
     ///   - message: The message to announce
@@ -157,20 +208,21 @@ class AccessibilityService: ObservableObject {
     }
     
     private func updateHighContrastSetting() {
-        // Check for high contrast mode using UserDefaults
-        isHighContrastEnabled = UserDefaults.standard.bool(forKey: "AppleInterfaceStyleSwitchesAutomatically") ||
-                               UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+        // Check for high contrast mode using system preferences
+        let increaseContrast = UserDefaults.standard.bool(forKey: "AppleAquaColorVariant")
+        let differentiateWithoutColor = UserDefaults.standard.bool(forKey: "DifferentiateWithoutColor")
+        
+        isHighContrastEnabled = increaseContrast || differentiateWithoutColor
     }
     
     private func updateReducedMotionSetting() {
-        // Check for reduced motion preference using UserDefaults
-        isReducedMotionEnabled = UserDefaults.standard.bool(forKey: "ReduceMotion")
+        // Check for reduced motion preference using system accessibility settings
+        isReducedMotionEnabled = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
     
     private func updateVoiceOverSetting() {
         // Check if VoiceOver is running using accessibility APIs
-        // Note: This is a basic implementation - for production use more robust detection
-        isVoiceOverEnabled = false // Simplified for now - can be enhanced with proper accessibility detection
+        isVoiceOverEnabled = NSWorkspace.shared.isVoiceOverEnabled
     }
 }
 
@@ -216,6 +268,37 @@ struct ReducedMotionAdaptive: ViewModifier {
     }
 }
 
+/// View modifier that adapts focus rings for accessibility
+struct AccessibilityFocusRing: ViewModifier {
+    @ObservedObject private var accessibilityService = AccessibilityService.shared
+    
+    let isVisible: Bool
+    
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(
+                        accessibilityService.focusRingColor(),
+                        lineWidth: isVisible ? accessibilityService.focusRingWidth() : 0
+                    )
+                    .animation(accessibilityService.adaptiveAnimation(.easeInOut(duration: 0.2)), value: isVisible)
+            )
+    }
+}
+
+/// View modifier that adapts transparency for accessibility
+struct AccessibilityTransparency: ViewModifier {
+    @ObservedObject private var accessibilityService = AccessibilityService.shared
+    
+    let normalOpacity: Double
+    
+    func body(content: Content) -> some View {
+        content
+            .opacity(accessibilityService.adaptiveBackgroundOpacity(normalOpacity))
+    }
+}
+
 extension View {
     /// Apply high contrast adaptive coloring
     func highContrastAdaptive(normal normalColor: Color, highContrast highContrastColor: Color) -> some View {
@@ -225,5 +308,15 @@ extension View {
     /// Apply reduced motion adaptive animation
     func reducedMotionAdaptive(animation: Animation) -> some View {
         self.modifier(ReducedMotionAdaptive(normalAnimation: animation))
+    }
+    
+    /// Apply accessibility-aware focus ring
+    func accessibilityFocusRing(isVisible: Bool) -> some View {
+        self.modifier(AccessibilityFocusRing(isVisible: isVisible))
+    }
+    
+    /// Apply accessibility-aware transparency
+    func accessibilityTransparency(_ opacity: Double) -> some View {
+        self.modifier(AccessibilityTransparency(normalOpacity: opacity))
     }
 }
