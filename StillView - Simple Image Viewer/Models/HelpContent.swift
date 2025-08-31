@@ -23,6 +23,7 @@ struct HelpContent {
         .navigation,
         .thumbnailViewing,
         .zoomAndView,
+        .preferences,
         .additionalFeatures,
         .supportedFormats,
         .troubleshooting,
@@ -352,6 +353,74 @@ extension HelpSection {
                 title: "High DPI Support",
                 description: "StillView automatically handles Retina displays and high-DPI images, ensuring crisp rendering at all zoom levels.",
                 type: .information
+            )
+        ]
+    )
+    
+    static let preferences = HelpSection(
+        title: "Preferences & Customization",
+        icon: "gearshape",
+        items: [
+            HelpItem(
+                title: "Opening Preferences",
+                description: "Access preferences by pressing ⌘, (Command-Comma) or selecting 'Preferences...' from the StillView menu. The preferences window organizes settings into three main tabs.",
+                shortcut: "⌘,",
+                type: .information
+            ),
+            HelpItem(
+                title: "General Settings",
+                description: "Configure image display options (file names, info overlay), slideshow behavior (duration, looping), file management (deletion confirmation, folder memory), and thumbnail preferences (size, metadata badges).",
+                type: .information
+            ),
+            HelpItem(
+                title: "Appearance Customization",
+                description: "Personalize the interface with toolbar style options (floating vs. attached), animation intensity levels (minimal, normal, enhanced), glassmorphism effects, and hover feedback controls. Changes are previewed in real-time.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Keyboard Shortcuts",
+                description: "Customize all keyboard shortcuts to match your workflow. Click any shortcut to record a new key combination. The system automatically detects conflicts with existing shortcuts and system shortcuts.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Live Preview",
+                description: "The Appearance tab includes a live preview panel showing how your settings affect the toolbar, thumbnails, and notifications. Switch between preview modes to see different interface elements.",
+                type: .tip
+            ),
+            HelpItem(
+                title: "Shortcut Management",
+                description: "Search for specific shortcuts using the search field. Reset individual shortcuts or all shortcuts to defaults. Export and import shortcut configurations to share between devices.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Validation & Feedback",
+                description: "Preferences include real-time validation with helpful error messages and warnings. Performance-impacting settings show warnings to help you make informed choices.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Accessibility Integration",
+                description: "All preference controls support full keyboard navigation and VoiceOver. Animation settings respect system accessibility preferences like Reduce Motion.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Immediate Application",
+                description: "Most preference changes take effect immediately without requiring an app restart. Settings are automatically saved and restored when you reopen the app.",
+                type: .tip
+            ),
+            HelpItem(
+                title: "Backup & Restore",
+                description: "Preferences are automatically backed up before major changes. If settings become corrupted, the app will restore sensible defaults and notify you of the reset.",
+                type: .information
+            ),
+            HelpItem(
+                title: "Performance Optimization",
+                description: "Enhanced animations and glass effects may impact performance on older Macs. The preferences system warns you about performance-heavy combinations and suggests alternatives.",
+                type: .warning
+            ),
+            HelpItem(
+                title: "Shortcut Conflicts",
+                description: "When recording new shortcuts, the system checks for conflicts with existing app shortcuts and system shortcuts. Conflicting shortcuts are highlighted with suggestions for alternatives.",
+                type: .warning
             )
         ]
     )

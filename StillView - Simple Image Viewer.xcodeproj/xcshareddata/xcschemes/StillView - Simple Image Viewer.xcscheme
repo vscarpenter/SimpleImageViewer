@@ -30,6 +30,16 @@
       shouldUseLaunchSchemeArgsEnv = "YES"
       codeCoverageEnabled = "NO">
       <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C0C0C0C0C0C0C0C0C0C0C0C1"
+               BuildableName = "StillView - Simple Image Viewer Tests.xctest"
+               BlueprintName = "StillView - Simple Image Viewer Tests"
+               ReferencedContainer = "container:StillView - Simple Image Viewer.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

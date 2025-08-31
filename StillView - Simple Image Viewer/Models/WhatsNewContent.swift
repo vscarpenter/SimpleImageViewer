@@ -35,9 +35,9 @@ struct WhatsNewSection: Codable, Equatable {
 
 /// Defines the types of sections available in "What's New" content
 enum SectionType: String, Codable, CaseIterable {
-    case newFeatures = "newFeatures"
-    case improvements = "improvements"
-    case bugFixes = "bugFixes"
+    case newFeatures
+    case improvements
+    case bugFixes
     
     var displayTitle: String {
         switch self {

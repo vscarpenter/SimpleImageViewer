@@ -29,6 +29,12 @@ struct SimpleImageViewerApp: App {
     private let memoryService = MemoryManagementService.shared
     private let unifiedErrorService = UnifiedErrorHandlingService.shared
     
+    // Preferences coordinator for managing preferences window
+    @StateObject private var preferencesCoordinator = PreferencesCoordinator()
+    
+    // Accessibility service for system-wide accessibility support
+    private let accessibilityService = AccessibilityService.shared
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -37,6 +43,8 @@ struct SimpleImageViewerApp: App {
                     setupWindow()
                     handleAppLaunchSequence()
                     startPerformanceMonitoring()
+                    // Initialize accessibility service
+                    _ = AccessibilityService.shared
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     handleAppWillTerminate()
@@ -67,6 +75,17 @@ struct SimpleImageViewerApp: App {
                 Button("About StillView") {
                     showingAbout = true
                 }
+            }
+            
+            // Add Preferences menu command
+            CommandGroup(after: .appInfo) {
+                Button("Preferences...") {
+                    Task { @MainActor in
+                        preferencesCoordinator.showPreferences()
+                    }
+                }
+                .keyboardShortcut(",", modifiers: .command)
+                .help("Open application preferences")
             }
             
             // Add File menu commands

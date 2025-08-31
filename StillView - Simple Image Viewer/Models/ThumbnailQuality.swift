@@ -3,9 +3,9 @@ import AppKit
 
 /// Enumeration for thumbnail quality levels
 enum ThumbnailQuality: String, CaseIterable {
-    case low = "low"
-    case medium = "medium"
-    case high = "high"
+    case low
+    case medium
+    case high
     
     /// Display name for the quality level
     var displayName: String {
@@ -73,9 +73,9 @@ enum ThumbnailQuality: String, CaseIterable {
 
 /// Enumeration for thumbnail grid sizes
 enum ThumbnailGridSize: String, CaseIterable {
-    case small = "small"
-    case medium = "medium"
-    case large = "large"
+    case small
+    case medium
+    case large
     
     /// Display name for the grid size
     var displayName: String {

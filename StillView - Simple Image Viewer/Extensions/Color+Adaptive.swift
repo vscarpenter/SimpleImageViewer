@@ -21,6 +21,18 @@ extension Color {
     
     /// Tertiary background color for additional depth
     static let appTertiaryBackground = Color(NSColor.windowBackgroundColor)
+
+    /// Softer surface background tuned for dark mode (used for panels/preferences)
+    static let appSurface = Color.adaptive(
+        light: Color(NSColor.controlBackgroundColor),
+        dark: Color(hex: "#2A2D33") // lighter background for better visibility
+    )
+
+    /// Secondary surface for cards/sections on surfaces
+    static let appSecondarySurface = Color.adaptive(
+        light: Color(NSColor.underPageBackgroundColor),
+        dark: Color(hex: "#323539")
+    )
     
     // MARK: - Text Colors
     
@@ -90,6 +102,12 @@ extension Color {
     static let appGlassTertiary = Color.adaptive(
         light: Color.white.opacity(0.4),
         dark: Color.black.opacity(0.3)
+    )
+    
+    /// General glass background for UI elements
+    static let appGlassBackground = Color.adaptive(
+        light: Color.white.opacity(0.7),
+        dark: Color.black.opacity(0.5)
     )
     
     /// Glass border color for subtle outlines
@@ -289,4 +307,3 @@ extension Color {
         }
     }
 }
-
