@@ -55,8 +55,14 @@ struct ContentView: View {
     @ViewBuilder
     private func imageViewerInterface(geometry: GeometryProxy) -> some View {
         ZStack {
-            ImageDisplayView(viewModel: imageViewerViewModel)
-                .frame(width: geometry.size.width, height: geometry.size.height)
+            // Use enhanced image display view when available
+            if #available(macOS 15.0, *) {
+                EnhancedImageDisplayView(viewModel: imageViewerViewModel)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+            } else {
+                ImageDisplayView(viewModel: imageViewerViewModel)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+            }
             
             NavigationControlsView(viewModel: imageViewerViewModel, onExit: {
                 showImageViewer = false
@@ -104,6 +110,11 @@ struct ContentView: View {
                 .allowsHitTesting(false)
                 .transition(.move(edge: .leading).combined(with: .opacity))
                 .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.showImageInfo)
+            }
+            
+            // AI Insights Overlay (macOS 26+)
+            if #available(macOS 26.0, *) {
+                aiInsightsOverlay(geometry: geometry)
             }
             
         }
@@ -240,6 +251,25 @@ struct ContentView: View {
                 .shadow(radius: 10)
             }
         }
+    }
+    
+    @ViewBuilder
+    private func aiInsightsOverlay(geometry: GeometryProxy) -> some View {
+        VStack {
+            HStack {
+                Spacer()
+                AIInsightsView(viewModel: imageViewerViewModel)
+                    .frame(width: 400, height: 600)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .shadow(radius: 10)
+            }
+            Spacer()
+        }
+        .padding(.top, 20)
+        .padding(.trailing, 20)
+        .allowsHitTesting(true)
+        .transition(.move(edge: .trailing).combined(with: .opacity))
+        .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.showImageInfo)
     }
     
     // MARK: - Private Methods

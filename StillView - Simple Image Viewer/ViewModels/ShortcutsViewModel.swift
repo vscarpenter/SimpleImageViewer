@@ -8,7 +8,7 @@ class ShortcutsViewModel: ObservableObject {
     // MARK: - Published Properties
     
     /// All available shortcuts organized by category
-    @Published var shortcutCategories: [ShortcutCategory_Group] = []
+    @Published var shortcutCategories: [ShortcutCategoryGroup] = []
     
     /// Search text for filtering shortcuts
     @Published var searchText: String = ""
@@ -32,7 +32,7 @@ class ShortcutsViewModel: ObservableObject {
     // MARK: - Computed Properties
     
     /// Filtered shortcuts based on search text
-    var filteredShortcuts: [ShortcutCategory_Group] {
+    var filteredShortcuts: [ShortcutCategoryGroup] {
         if searchText.isEmpty {
             return shortcutCategories
         }
@@ -44,7 +44,7 @@ class ShortcutsViewModel: ObservableObject {
                 shortcut.currentShortcut.displayString.localizedCaseInsensitiveContains(searchText)
             }
             
-            return matchingShortcuts.isEmpty ? nil : ShortcutCategory_Group(
+            return matchingShortcuts.isEmpty ? nil : ShortcutCategoryGroup(
                 category: category.category,
                 shortcuts: matchingShortcuts
             )
@@ -236,7 +236,7 @@ class ShortcutsViewModel: ObservableObject {
                 guard let categoryShortcuts = groupedShortcuts[category] else { return nil }
                 
                 let sortedShortcuts = categoryShortcuts.sorted { $0.name < $1.name }
-                return ShortcutCategory_Group(category: category, shortcuts: sortedShortcuts)
+                return ShortcutCategoryGroup(category: category, shortcuts: sortedShortcuts)
             }
     }
     

@@ -274,7 +274,7 @@ extension ResponsiveGridLayoutManager {
     /// - Returns: True if layout should be updated
     func shouldUpdateLayout(for newSize: CGSize) -> Bool {
         let sizeDifference = abs(newSize.width - windowSize.width) + abs(newSize.height - windowSize.height)
-        
+
         // Update if the size difference is significant (more than 50 points)
         return sizeDifference > 50
     }

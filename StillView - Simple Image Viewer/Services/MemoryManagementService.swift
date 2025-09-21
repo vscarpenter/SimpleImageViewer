@@ -215,7 +215,10 @@ final class MemoryManagementService: ObservableObject {
         let usagePercentage = Double(currentMemoryUsage) / Double(availableSystemMemory)
         memoryPressureLevel = MemoryPressureLevel.allCases.first { usagePercentage <= $0.threshold } ?? .critical
         
-        Logger.performance("Memory stats updated: \(ByteCountFormatter.string(fromByteCount: Int64(currentMemoryUsage), countStyle: .memory)) / \(ByteCountFormatter.string(fromByteCount: Int64(availableSystemMemory), countStyle: .memory)) (\(Int(usagePercentage * 100))%)")
+        Logger.performance(
+            "Memory stats updated: \(ByteCountFormatter.string(fromByteCount: Int64(currentMemoryUsage), countStyle: .memory)) / " +
+            "\(ByteCountFormatter.string(fromByteCount: Int64(availableSystemMemory), countStyle: .memory)) (\(Int(usagePercentage * 100))%)"
+        )
     }
     
     private func handleMemoryPressure() {

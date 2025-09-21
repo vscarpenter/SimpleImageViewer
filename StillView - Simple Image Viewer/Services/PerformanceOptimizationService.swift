@@ -145,7 +145,10 @@ final class PerformanceOptimizationService: ObservableObject {
         // Check cooldown to prevent excessive optimization
         let timeSinceLastOptimization = Date().timeIntervalSince(lastOptimizationTime)
         guard timeSinceLastOptimization >= optimizationCooldown else {
-            Logger.performance("Skipping optimization due to cooldown (last: \(String(format: "%.1f", timeSinceLastOptimization))s ago, cooldown: \(String(format: "%.1f", optimizationCooldown))s)")
+            Logger.performance(
+                "Skipping optimization due to cooldown (last: \(String(format: "%.1f", timeSinceLastOptimization))s ago, " +
+                "cooldown: \(String(format: "%.1f", optimizationCooldown))s)"
+            )
             return
         }
         
@@ -347,9 +350,15 @@ final class PerformanceOptimizationService: ObservableObject {
         if !currentMetrics.isOptimal {
             // Only log if performance is actually poor, not just sub-optimal
             if fps < 40.0 || avgFrameTime > 0.033 || memoryUsage > 4 * 1024 * 1024 * 1024 {
-                Logger.performance("Performance issue detected: FPS: \(String(format: "%.1f", fps)), Frame time: \(String(format: "%.3f", avgFrameTime))s")
+                Logger.performance(
+                    "Performance issue detected: FPS: \(String(format: "%.1f", fps)), " +
+                    "Frame time: \(String(format: "%.3f", avgFrameTime))s"
+                )
             } else {
-                Logger.performance("Performance is acceptable: FPS: \(String(format: "%.1f", fps)), Frame time: \(String(format: "%.3f", avgFrameTime))s")
+                Logger.performance(
+                    "Performance is acceptable: FPS: \(String(format: "%.1f", fps)), " +
+                    "Frame time: \(String(format: "%.3f", avgFrameTime))s"
+                )
             }
         } else {
             Logger.performance("Performance is optimal: FPS: \(String(format: "%.1f", fps)), Frame time: \(String(format: "%.3f", avgFrameTime))s")
@@ -546,7 +555,8 @@ enum PerformanceBottleneck: Equatable {
         case .highFrameTime(let current, let target):
             return "High frame time: \(String(format: "%.3f", current))s (target: \(String(format: "%.3f", target))s)"
         case .highMemoryUsage(let current, let target):
-            return "High memory usage: \(ByteCountFormatter.string(fromByteCount: Int64(current), countStyle: .memory)) (target: \(ByteCountFormatter.string(fromByteCount: Int64(target), countStyle: .memory)))"
+            return "High memory usage: \(ByteCountFormatter.string(fromByteCount: Int64(current), countStyle: .memory)) " +
+                   "(target: \(ByteCountFormatter.string(fromByteCount: Int64(target), countStyle: .memory)))"
         case .slowOperation(let name, let current, let target):
             return "Slow operation '\(name)': \(String(format: "%.3f", current))s (target: \(String(format: "%.3f", target))s)"
         }

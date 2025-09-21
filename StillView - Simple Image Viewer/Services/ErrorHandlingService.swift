@@ -116,7 +116,8 @@ class ErrorHandlingService: ObservableObject {
             
         case .noImagesFound:
             showNotification(
-                "No supported images found in the selected folder. Please select a folder containing JPEG, PNG, GIF, HEIF, or other supported image files.",
+                "No supported images found in the selected folder. " +
+                "Please select a folder containing JPEG, PNG, GIF, HEIF, or other supported image files.",
                 type: .warning
             )
             

@@ -735,7 +735,7 @@ struct ShortcutsPreferencesView: View {
                     try data.write(to: url)
                 } catch {
                     // Handle error - could show an alert
-                    print("Failed to export shortcuts: \(error)")
+                    Logger.error("Failed to export shortcuts: \(error.localizedDescription)")
                 }
             }
         }
@@ -756,7 +756,7 @@ struct ShortcutsPreferencesView: View {
                     }
                 } catch {
                     // Handle error - could show an alert
-                    print("Failed to import shortcuts: \(error)")
+                    Logger.error("Failed to import shortcuts: \(error.localizedDescription)")
                 }
             }
         }
@@ -768,7 +768,7 @@ struct ShortcutCategorySection: View {
     
     // MARK: - Properties
     
-    let category: ShortcutCategory_Group
+    let category: ShortcutCategoryGroup
     @Binding var editingShortcut: String?
     @ObservedObject var viewModel: ShortcutsViewModel
     

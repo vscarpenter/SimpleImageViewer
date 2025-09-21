@@ -95,6 +95,11 @@ class ImageViewerViewModel: ObservableObject {
     private let thumbnailCache = NSCache<NSURL, NSImage>()
     private let sharingDelegate = SharingServiceDelegate()
     
+    // MARK: - macOS 26 Enhanced Services
+    private let compatibilityService = MacOS26CompatibilityService.shared
+    private let enhancedImageProcessing = EnhancedImageProcessingService.shared
+    private let enhancedSecurity = EnhancedSecurityService.shared
+    
     // Zoom levels for quick access
     private let zoomLevels: [Double] = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 5.0]
     private let fitToWindowZoom: Double = -1.0 // Special value for fit-to-window
@@ -371,7 +376,42 @@ class ImageViewerViewModel: ObservableObject {
         // Try to get expected image size from metadata for better skeleton loading
         loadExpectedImageSize(for: imageFile)
         
-        // Load the image
+        // Load the image with enhanced processing if available
+        loadImageWithEnhancements(imageFile)
+    }
+    
+    /// Load image with macOS 26 enhancements
+    private func loadImageWithEnhancements(_ imageFile: ImageFile) {
+        // Use enhanced image processing if available
+        if compatibilityService.isFeatureAvailable(.enhancedImageProcessing) {
+            loadImageWithEnhancedProcessing(imageFile)
+        } else {
+            loadImageStandard(imageFile)
+        }
+    }
+    
+    /// Load image with enhanced processing
+    private func loadImageWithEnhancedProcessing(_ imageFile: ImageFile) {
+        imageLoaderService.loadImage(from: imageFile.url)
+            .receive(on: DispatchQueue.main)
+            .sink(
+                receiveCompletion: { [weak self] completion in
+                    self?.isLoading = false
+                    self?.loadingProgress = 0.0
+                    
+                    if case .failure(let error) = completion {
+                        self?.handleImageLoadingError(error, for: imageFile)
+                    }
+                },
+                receiveValue: { [weak self] image in
+                    self?.processImageWithEnhancements(image, for: imageFile)
+                }
+            )
+            .store(in: &cancellables)
+    }
+    
+    /// Load image with standard processing
+    private func loadImageStandard(_ imageFile: ImageFile) {
         imageLoaderService.loadImage(from: imageFile.url)
             .receive(on: DispatchQueue.main)
             .sink(
@@ -393,6 +433,42 @@ class ImageViewerViewModel: ObservableObject {
                 }
             )
             .store(in: &cancellables)
+    }
+    
+    /// Process image with macOS 26 enhancements
+    private func processImageWithEnhancements(_ image: NSImage, for imageFile: ImageFile) {
+        Task {
+            do {
+                // Apply enhanced processing features
+                let features: Set<ProcessingFeature> = [
+                    .smartCropping,
+                    .colorEnhancement,
+                    .noiseReduction
+                ]
+                
+                let processedImage = try await enhancedImageProcessing.processImageAsync(
+                    image,
+                    with: features
+                )
+                
+                await MainActor.run {
+                    self.currentImage = processedImage.currentImage
+                    self.isLoading = false
+                    self.loadingProgress = 1.0
+                    
+                    // Reset zoom to fit when loading new image
+                    self.zoomToFit()
+                }
+            } catch {
+                await MainActor.run {
+                    // Fallback to standard image if processing fails
+                    self.currentImage = image
+                    self.isLoading = false
+                    self.loadingProgress = 1.0
+                    self.zoomToFit()
+                }
+            }
+        }
     }
     
     private func loadExpectedImageSize(for imageFile: ImageFile) {

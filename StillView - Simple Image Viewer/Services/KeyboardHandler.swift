@@ -26,133 +26,150 @@ class KeyboardHandler: ObservableObject {
     /// - Returns: True if the event was handled, false otherwise
     func handleKeyPress(_ event: NSEvent) -> Bool {
         guard let viewModel = imageViewerViewModel else { return false }
-        
+
         let keyCode = event.keyCode
-        let modifierFlags = event.modifierFlags
-        
+
         // Handle special keys first
+        if handleSpecialKeys(keyCode: keyCode, viewModel: viewModel) {
+            return true
+        }
+
+        // Handle character keys
+        return handleCharacterKeys(event: event, viewModel: viewModel)
+    }
+
+    private func handleSpecialKeys(keyCode: UInt16, viewModel: ImageViewerViewModel) -> Bool {
         switch keyCode {
         case 123: // Left arrow
             viewModel.previousImage()
             return true
-            
+
         case 124: // Right arrow
             viewModel.nextImage()
             return true
-            
+
         case 115: // Home
             viewModel.goToFirst()
             return true
-            
+
         case 119: // End
             viewModel.goToLast()
             return true
-            
+
         case 116: // Page Up
             viewModel.previousImage()
             return true
-            
+
         case 121: // Page Down
             viewModel.nextImage()
             return true
-            
+
         case 53: // Escape
-            if viewModel.isFullscreen {
-                viewModel.exitFullscreen()
-                return true
-            } else if viewModel.viewMode != .normal {
-                // Exit thumbnail views back to normal view
-                viewModel.setViewMode(.normal)
-                return true
-            } else {
-                // Return to folder selection
-                viewModel.navigateToFolderSelection()
-                return true
-            }
-            
+            return handleEscapeKey(viewModel: viewModel)
+
         case 36: // Enter/Return
             viewModel.toggleFullscreen()
             return true
-            
+
         case 49: // Spacebar
-            // In slideshow mode, spacebar pauses/resumes. Otherwise, advances to next image
-            if viewModel.isSlideshow {
-                viewModel.toggleSlideshow()
-            } else {
-                viewModel.nextImage()
-            }
-            return true
-            
-        case 51: // Delete key
+            return handleSpacebarKey(viewModel: viewModel)
+
+        case 51, 117: // Delete key or Backspace key
             Task { @MainActor in
                 await viewModel.moveCurrentImageToTrash()
             }
             return true
-            
-        case 117: // Backspace key (alternative delete)
-            Task { @MainActor in
-                await viewModel.moveCurrentImageToTrash()
-            }
-            return true
-            
+
         default:
-            break
+            return false
         }
-        
-        // Handle character keys
+    }
+
+    private func handleEscapeKey(viewModel: ImageViewerViewModel) -> Bool {
+        if viewModel.isFullscreen {
+            viewModel.exitFullscreen()
+            return true
+        } else if viewModel.viewMode != .normal {
+            // Exit thumbnail views back to normal view
+            viewModel.setViewMode(.normal)
+            return true
+        } else {
+            // Return to folder selection
+            viewModel.navigateToFolderSelection()
+            return true
+        }
+    }
+
+    private func handleSpacebarKey(viewModel: ImageViewerViewModel) -> Bool {
+        // In slideshow mode, spacebar pauses/resumes. Otherwise, advances to next image
+        if viewModel.isSlideshow {
+            viewModel.toggleSlideshow()
+        } else {
+            viewModel.nextImage()
+        }
+        return true
+    }
+
+    private func handleCharacterKeys(event: NSEvent, viewModel: ImageViewerViewModel) -> Bool {
         guard let characters = event.charactersIgnoringModifiers?.lowercased() else {
             return false
         }
-        
+
         for character in characters {
-            switch character {
-            case "f":
-                // Favorites removed; use F for fullscreen toggle
-                viewModel.toggleFullscreen()
+            if handleSingleCharacter(character, viewModel: viewModel) {
                 return true
-                
-            case "+", "=":
-                viewModel.zoomIn()
-                return true
-                
-            case "-":
-                viewModel.zoomOut()
-                return true
-                
-            case "0":
-                viewModel.zoomToFit()
-                return true
-                
-            case "1":
-                viewModel.zoomToActualSize()
-                return true
-                
-            case "i":
-                viewModel.toggleImageInfo()
-                return true
-                
-            case "s":
-                viewModel.toggleSlideshow()
-                return true
-                
-            case "g":
-                viewModel.toggleGridView()
-                return true
-                
-            case "t":
-                viewModel.toggleThumbnailStrip()
-                return true
-                
-            case "b":
-                viewModel.navigateToFolderSelection()
-                return true
-                
-            default:
-                continue
             }
         }
-        
+
         return false
+    }
+
+    private func handleSingleCharacter(_ character: Character, viewModel: ImageViewerViewModel) -> Bool {
+        switch character {
+        case "f":
+            // Favorites removed; use F for fullscreen toggle
+            viewModel.toggleFullscreen()
+            return true
+
+        case "+", "=":
+            viewModel.zoomIn()
+            return true
+
+        case "-":
+            viewModel.zoomOut()
+            return true
+
+        case "0":
+            viewModel.zoomToFit()
+            return true
+
+        case "1":
+            viewModel.zoomToActualSize()
+            return true
+
+        case "i":
+            viewModel.toggleImageInfo()
+            return true
+
+        case "s":
+            viewModel.toggleSlideshow()
+            return true
+
+        case "g":
+            viewModel.toggleGridView()
+            return true
+
+        case "t":
+            viewModel.toggleThumbnailStrip()
+            return true
+
+        case "b":
+            viewModel.navigateToFolderSelection()
+            return true
+
+        default:
+            return false
+        }
     }
     
     /// Get a description of available keyboard shortcuts

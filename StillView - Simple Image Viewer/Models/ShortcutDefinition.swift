@@ -300,7 +300,7 @@ struct ModifierFlags: OptionSet, Codable, Hashable {
 }
 
 /// Category of shortcuts with associated shortcuts
-struct ShortcutCategory_Group: Identifiable {
+struct ShortcutCategoryGroup: Identifiable {
     let category: ShortcutCategory
     let shortcuts: [ShortcutDefinition]
     

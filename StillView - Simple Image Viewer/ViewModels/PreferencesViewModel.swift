@@ -58,7 +58,7 @@ class PreferencesViewModel: ObservableObject {
             updateValidation()
         } catch {
             // Handle corrupted preferences
-            print("Failed to load preferences: \(error)")
+            Logger.error("Failed to load preferences: \(error.localizedDescription)")
             recoverFromCorruption()
         }
     }

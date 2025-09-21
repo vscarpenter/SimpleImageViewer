@@ -178,7 +178,11 @@ class SecurityScopedBookmarkManager: ObservableObject {
                     Logger.success("Restored access to \(resolvedURL.path) on attempt \(attempt)", context: "security")
                     return true
                 } else {
-                    lastError = NSError(domain: "SecurityScopedBookmarkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to start accessing security-scoped resource"])
+                    lastError = NSError(
+                        domain: "SecurityScopedBookmarkManager",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to start accessing security-scoped resource"]
+                    )
                 }
                 
             } catch {

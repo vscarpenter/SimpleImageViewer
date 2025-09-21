@@ -237,99 +237,46 @@ class ShortcutManager: ObservableObject {
         }
     }
     
-    private func keyStringFromEvent(_ event: NSEvent) -> String {
-        // Convert NSEvent to key string
-        let keyCode = event.keyCode
-        
-        // Map common key codes to strings
-        switch keyCode {
-        case 0x00: return "a"
-        case 0x0B: return "b"
-        case 0x08: return "c"
-        case 0x02: return "d"
-        case 0x0E: return "e"
-        case 0x03: return "f"
-        case 0x05: return "g"
-        case 0x04: return "h"
-        case 0x22: return "i"
-        case 0x26: return "j"
-        case 0x28: return "k"
-        case 0x25: return "l"
-        case 0x2E: return "m"
-        case 0x2D: return "n"
-        case 0x1F: return "o"
-        case 0x23: return "p"
-        case 0x0C: return "q"
-        case 0x0F: return "r"
-        case 0x01: return "s"
-        case 0x11: return "t"
-        case 0x20: return "u"
-        case 0x09: return "v"
-        case 0x0D: return "w"
-        case 0x07: return "x"
-        case 0x10: return "y"
-        case 0x06: return "z"
-        
+    private static let keyCodeMapping: [UInt16: String] = [
+        // Letters
+        0x00: "a", 0x0B: "b", 0x08: "c", 0x02: "d", 0x0E: "e", 0x03: "f",
+        0x05: "g", 0x04: "h", 0x22: "i", 0x26: "j", 0x28: "k", 0x25: "l",
+        0x2E: "m", 0x2D: "n", 0x1F: "o", 0x23: "p", 0x0C: "q", 0x0F: "r",
+        0x01: "s", 0x11: "t", 0x20: "u", 0x09: "v", 0x0D: "w", 0x07: "x",
+        0x10: "y", 0x06: "z",
+
         // Numbers
-        case 0x1D: return "0"
-        case 0x12: return "1"
-        case 0x13: return "2"
-        case 0x14: return "3"
-        case 0x15: return "4"
-        case 0x17: return "5"
-        case 0x16: return "6"
-        case 0x1A: return "7"
-        case 0x1C: return "8"
-        case 0x19: return "9"
-        
+        0x1D: "0", 0x12: "1", 0x13: "2", 0x14: "3", 0x15: "4",
+        0x17: "5", 0x16: "6", 0x1A: "7", 0x1C: "8", 0x19: "9",
+
         // Special keys
-        case 0x31: return "space"
-        case 0x24: return "return"
-        case 0x30: return "tab"
-        case 0x33: return "delete"
-        case 0x35: return "escape"
-        case 0x7B: return "arrowleft"
-        case 0x7C: return "arrowright"
-        case 0x7D: return "arrowdown"
-        case 0x7E: return "arrowup"
-        case 0x73: return "home"
-        case 0x77: return "end"
-        case 0x74: return "pageup"
-        case 0x79: return "pagedown"
-        
+        0x31: "space", 0x24: "return", 0x30: "tab", 0x33: "delete", 0x35: "escape",
+        0x7B: "arrowleft", 0x7C: "arrowright", 0x7D: "arrowdown", 0x7E: "arrowup",
+        0x73: "home", 0x77: "end", 0x74: "pageup", 0x79: "pagedown",
+
         // Symbols
-        case 0x18: return "="
-        case 0x1B: return "-"
-        case 0x21: return "["
-        case 0x1E: return "]"
-        case 0x2A: return "\\"
-        case 0x29: return ";"
-        case 0x27: return "'"
-        case 0x2B: return ","
-        case 0x2F: return "."
-        case 0x2C: return "/"
-        
+        0x18: "=", 0x1B: "-", 0x21: "[", 0x1E: "]", 0x2A: "\\",
+        0x29: ";", 0x27: "'", 0x2B: ",", 0x2F: ".", 0x2C: "/",
+
         // Function keys
-        case 0x7A: return "f1"
-        case 0x78: return "f2"
-        case 0x63: return "f3"
-        case 0x76: return "f4"
-        case 0x60: return "f5"
-        case 0x61: return "f6"
-        case 0x62: return "f7"
-        case 0x64: return "f8"
-        case 0x65: return "f9"
-        case 0x6D: return "f10"
-        case 0x67: return "f11"
-        case 0x6F: return "f12"
-        
-        default:
-            // Fallback to character representation
-            if let characters = event.charactersIgnoringModifiers, !characters.isEmpty {
-                return characters.lowercased()
-            }
-            return "unknown"
+        0x7A: "f1", 0x78: "f2", 0x63: "f3", 0x76: "f4", 0x60: "f5", 0x61: "f6",
+        0x62: "f7", 0x64: "f8", 0x65: "f9", 0x6D: "f10", 0x67: "f11", 0x6F: "f12"
+    ]
+
+    private func keyStringFromEvent(_ event: NSEvent) -> String {
+        let keyCode = event.keyCode
+
+        // Use dictionary lookup for known key codes
+        if let keyString = ShortcutManager.keyCodeMapping[keyCode] {
+            return keyString
         }
+
+        // Fallback to character representation
+        if let characters = event.charactersIgnoringModifiers, !characters.isEmpty {
+            return characters.lowercased()
+        }
+
+        return "unknown"
     }
     
     private func isCommonSystemShortcut(_ shortcut: KeyboardShortcut) -> Bool {

@@ -289,7 +289,8 @@ final class WhatsNewService: WhatsNewServiceProtocol {
             items: [
                 WhatsNewItem(
                     title: "New Version Available",
-                    description: "This version includes various improvements and bug fixes. We apologize that detailed release notes are not available at this time.",
+                    description: "This version includes various improvements and bug fixes. " +
+                                 "We apologize that detailed release notes are not available at this time.",
                     isHighlighted: true
                 )
             ],

@@ -416,8 +416,7 @@ class FolderSelectionViewModel: ObservableObject {
         selectedFolderURL = folderURL
         scanFolder(folderURL)
     }
-    
+
     // Favorites removed
 }
-
 

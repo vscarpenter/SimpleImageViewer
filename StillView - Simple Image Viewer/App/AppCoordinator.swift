@@ -108,7 +108,7 @@ extension AppCoordinator {
         // Handle app becoming inactive
         // Could pause any ongoing operations
     }
-    
+
     func handleAppWillTerminate() {
         handleAppTermination()
     }

@@ -161,21 +161,41 @@ struct Logger {
     }
     
     /// Log operation failure
-    static func fail(_ operation: String, error: Error? = nil, category: OSLog = error, file: String = #file, function: String = #function, line: Int = #line) {
+    static func fail(
+        _ operation: String,
+        error: Error? = nil,
+        category: OSLog = error,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
         let errorMessage = error != nil ? " - Error: \(error!.localizedDescription)" : ""
         let message = "❌ Failed: \(operation)\(errorMessage)"
         Logger.error(message, category: category, file: file, function: function, line: line)
     }
     
     /// Log operation failure with context
-    static func fail(_ operation: String, error: Error? = nil, context: String, file: String = #file, function: String = #function, line: Int = #line) {
+    static func fail(
+        _ operation: String,
+        error: Error? = nil,
+        context: String,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
         let errorMessage = error != nil ? " - Error: \(error!.localizedDescription)" : ""
         let message = "❌ Failed: \(operation)\(errorMessage)"
         Logger.error(message, context: context, file: file, function: function, line: line)
     }
     
     /// Log success messages with context
-    static func success(_ message: String, context: String, file: String = #file, function: String = #function, line: Int = #line) {
+    static func success(
+        _ message: String,
+        context: String,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function) [\(context)]: \(message)"
         os_log(.info, log: general, "✅ %{public}@", logMessage)

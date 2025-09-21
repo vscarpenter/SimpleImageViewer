@@ -240,7 +240,8 @@ final class WhatsNewContentProvider: WhatsNewContentProviderProtocol {
             items: [
                 WhatsNewItem(
                     title: "App Updated",
-                    description: "This version includes various improvements and bug fixes. We apologize that detailed release notes are not available at this time.",
+                    description: "This version includes various improvements and bug fixes. " +
+                                 "We apologize that detailed release notes are not available at this time.",
                     isHighlighted: false
                 )
             ],

@@ -170,7 +170,9 @@ extension PreferencesHelpTooltip {
     static func animationIntensity() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
             title: "Animation Intensity",
-            content: "Controls how dramatic interface animations appear. Minimal uses simple fades, Normal adds smooth transitions, and Enhanced includes bouncy spring animations. Enhanced animations may impact performance on older Macs.",
+            content: "Controls how dramatic interface animations appear. Minimal uses simple fades, " +
+                     "Normal adds smooth transitions, and Enhanced includes bouncy spring animations. " +
+                     "Enhanced animations may impact performance on older Macs.",
             type: .performance
         )
     }
@@ -179,7 +181,9 @@ extension PreferencesHelpTooltip {
     static func glassEffects() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
             title: "Glassmorphism Effects",
-            content: "Modern translucent visual effects that create depth and visual hierarchy. Uses system materials and blur effects for a contemporary look. May reduce performance on older hardware or when combined with enhanced animations.",
+            content: "Modern translucent visual effects that create depth and visual hierarchy. " +
+                     "Uses system materials and blur effects for a contemporary look. " +
+                     "May reduce performance on older hardware or when combined with enhanced animations.",
             type: .performance
         )
     }
@@ -188,7 +192,9 @@ extension PreferencesHelpTooltip {
     static func hoverEffects() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
             title: "Hover Effects",
-            content: "Visual feedback when hovering over interface elements like buttons and thumbnails. Includes subtle scaling, color changes, and shadow effects. Automatically disabled when Reduce Motion is enabled in System Preferences.",
+            content: "Visual feedback when hovering over interface elements like buttons and thumbnails. " +
+                     "Includes subtle scaling, color changes, and shadow effects. " +
+                     "Automatically disabled when Reduce Motion is enabled in System Preferences.",
             type: .accessibility
         )
     }
@@ -197,7 +203,9 @@ extension PreferencesHelpTooltip {
     static func toolbarStyle() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
             title: "Toolbar Style",
-            content: "Floating toolbars appear as rounded panels with shadows, while attached toolbars connect directly to the window edge. Floating style works best with glassmorphism effects enabled.",
+            content: "Floating toolbars appear as rounded panels with shadows, " +
+                     "while attached toolbars connect directly to the window edge. " +
+                     "Floating style works best with glassmorphism effects enabled.",
             type: .information
         )
     }
@@ -206,7 +214,9 @@ extension PreferencesHelpTooltip {
     static func thumbnailSize() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
             title: "Thumbnail Size",
-            content: "Affects both the thumbnail strip and grid view. Larger thumbnails show more detail but use more memory and may scroll more slowly with large image collections. Small thumbnails are recommended for collections over 500 images.",
+            content: "Affects both the thumbnail strip and grid view. Larger thumbnails show more detail " +
+                     "but use more memory and may scroll more slowly with large image collections. " +
+                     "Small thumbnails are recommended for collections over 500 images.",
             type: .performance
         )
     }
@@ -215,7 +225,9 @@ extension PreferencesHelpTooltip {
     static func slideshowInterval() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
             title: "Slideshow Duration",
-            content: "How long each image is displayed during automatic slideshow mode. Shorter intervals work well for quick previews, while longer intervals are better for detailed viewing or presentations.",
+            content: "How long each image is displayed during automatic slideshow mode. " +
+                     "Shorter intervals work well for quick previews, " +
+                     "while longer intervals are better for detailed viewing or presentations.",
             type: .information
         )
     }
@@ -224,7 +236,9 @@ extension PreferencesHelpTooltip {
     static func keyboardShortcuts() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
             title: "Keyboard Shortcuts",
-            content: "Click any shortcut to record a new key combination. The system automatically checks for conflicts with existing shortcuts and system shortcuts. Use the search field to quickly find specific shortcuts.",
+            content: "Click any shortcut to record a new key combination. " +
+                     "The system automatically checks for conflicts with existing shortcuts and system shortcuts. " +
+                     "Use the search field to quickly find specific shortcuts.",
             type: .information
         )
     }
@@ -233,7 +247,9 @@ extension PreferencesHelpTooltip {
     static func shortcutConflicts() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
             title: "Shortcut Conflicts",
-            content: "Red indicators show shortcuts that conflict with system shortcuts or other app shortcuts. Click the conflicting shortcut to record a new, unique combination. Some system shortcuts cannot be overridden.",
+            content: "Red indicators show shortcuts that conflict with system shortcuts or other app shortcuts. " +
+                     "Click the conflicting shortcut to record a new, unique combination. " +
+                     "Some system shortcuts cannot be overridden.",
             type: .warning
         )
     }
@@ -242,7 +258,9 @@ extension PreferencesHelpTooltip {
     static func metadataBadges() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
             title: "Metadata Badges",
-            content: "Small labels on thumbnails showing file format (JPG, PNG, etc.) and file size. Helpful for identifying different image types in mixed collections, but may clutter the view with many thumbnails.",
+            content: "Small labels on thumbnails showing file format (JPG, PNG, etc.) and file size. " +
+                     "Helpful for identifying different image types in mixed collections, " +
+                     "but may clutter the view with many thumbnails.",
             type: .information
         )
     }

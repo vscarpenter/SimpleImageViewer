@@ -76,7 +76,7 @@ class PreferencesBackupService: ObservableObject {
             return true
             
         } catch {
-            print("Failed to create backup: \(error)")
+            Logger.error("Failed to create backup: \(error.localizedDescription)")
             return false
         }
     }
@@ -102,7 +102,7 @@ class PreferencesBackupService: ObservableObject {
             
             // Validate backup before restoring
             guard validateBackup(backup) else {
-                print("Backup validation failed")
+                Logger.error("Backup validation failed")
                 return false
             }
             
@@ -115,7 +115,7 @@ class PreferencesBackupService: ObservableObject {
             return true
             
         } catch {
-            print("Failed to restore backup: \(error)")
+            Logger.error("Failed to restore backup: \(error.localizedDescription)")
             return false
         }
     }
@@ -145,7 +145,7 @@ class PreferencesBackupService: ObservableObject {
             }.sorted { $0.timestamp > $1.timestamp }
             
         } catch {
-            print("Failed to list backups: \(error)")
+            Logger.error("Failed to list backups: \(error.localizedDescription)")
             return []
         }
     }
@@ -159,7 +159,7 @@ class PreferencesBackupService: ObservableObject {
             try FileManager.default.removeItem(at: backupURL)
             return true
         } catch {
-            print("Failed to delete backup: \(error)")
+            Logger.error("Failed to delete backup: \(error.localizedDescription)")
             return false
         }
     }
@@ -197,7 +197,7 @@ class PreferencesBackupService: ObservableObject {
         do {
             try FileManager.default.createDirectory(at: backupDirectory, withIntermediateDirectories: true)
         } catch {
-            print("Failed to create backup directory: \(error)")
+            Logger.error("Failed to create backup directory: \(error.localizedDescription)")
         }
     }
     

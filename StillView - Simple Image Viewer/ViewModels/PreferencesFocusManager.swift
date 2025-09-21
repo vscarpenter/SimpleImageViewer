@@ -123,7 +123,7 @@ enum PreferencesField: CaseIterable, Hashable {
         guard let currentIndex = allCases.firstIndex(of: self) else {
             return allCases.last ?? .showMetadataBadges
         }
-        
+
         let previousIndex = currentIndex == 0 ? allCases.count - 1 : currentIndex - 1
         return allCases[previousIndex]
     }

@@ -303,8 +303,8 @@ extension ToolbarLayoutManager {
         let sectionSpacing: CGFloat = 24
         let dividerWidth: CGFloat = 20
         
-        return CGFloat(allItems.count) * buttonWidth + 
-               CGFloat(max(0, allItems.count - 1)) * spacing + 
+        return CGFloat(allItems.count) * buttonWidth +
+               CGFloat(max(0, allItems.count - 1)) * spacing +
                sectionSpacing * 3 + // Section spacing
                dividerWidth * 2 + // Dividers between sections
                100 // Buffer for image counter and zoom indicator

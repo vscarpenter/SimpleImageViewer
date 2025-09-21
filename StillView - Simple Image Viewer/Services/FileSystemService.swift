@@ -112,7 +112,13 @@ class DefaultFileSystemService: FileSystemService, @unchecked Sendable {
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let self = self else {
-                    continuation.resume(throwing: FileSystemError.scanningFailed(NSError(domain: "FileSystemService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Service deallocated"])))
+                    continuation.resume(throwing: FileSystemError.scanningFailed(
+                        NSError(
+                            domain: "FileSystemService",
+                            code: 1,
+                            userInfo: [NSLocalizedDescriptionKey: "Service deallocated"]
+                        )
+                    ))
                     return
                 }
                 
