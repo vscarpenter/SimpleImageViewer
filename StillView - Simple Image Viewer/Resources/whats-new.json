@@ -1,5 +1,5 @@
 {
-  "version": "2.4.0",
+  "version": "2.5.0",
   "releaseDate": "2025-09-29T00:00:00Z",
   "sections": [
     {
@@ -7,14 +7,29 @@
       "type": "newFeatures",
       "items": [
         {
+          "title": "AI-Powered Image Analysis (macOS 26+)",
+          "description": "Revolutionary on-device AI analyzes your images to identify objects, scenes, text, colors, and quality—all processed locally with complete privacy. Smart tags, search, and organization powered by Vision and Core ML.",
+          "isHighlighted": true
+        },
+        {
+          "title": "Smart Search & Organization",
+          "description": "Find images instantly with AI-powered search by detected content, text, colors, and scenes. Automatic categorization into smart collections makes organizing thousands of images effortless.",
+          "isHighlighted": true
+        },
+        {
+          "title": "Enhanced Accessibility with AI",
+          "description": "AI-generated image descriptions provide rich, detailed VoiceOver experiences. Multi-language support and context-aware descriptions make images accessible to everyone.",
+          "isHighlighted": true
+        },
+        {
           "title": "Comprehensive Preferences System",
           "description": "Complete preferences interface with tabbed navigation for General settings, Appearance customization, and Keyboard shortcuts management. Features live previews and comprehensive validation.",
-          "isHighlighted": true
+          "isHighlighted": false
         },
         {
           "title": "Advanced Keyboard Shortcuts",
           "description": "Fully customizable keyboard shortcuts with conflict detection, import/export functionality, and comprehensive help documentation. Record new shortcuts with intuitive interface.",
-          "isHighlighted": true
+          "isHighlighted": false
         },
         {
           "title": "Enhanced Appearance Controls",
@@ -33,9 +48,19 @@
       "type": "improvements",
       "items": [
         {
+          "title": "AI Features with Complete Privacy",
+          "description": "All AI processing happens entirely on your Mac using Apple's Vision and Core ML. No cloud services, no data collection, no tracking. Your images never leave your device.",
+          "isHighlighted": true
+        },
+        {
+          "title": "Lightning-Fast AI Analysis",
+          "description": "Optimized AI pipeline analyzes images in 1-2 seconds with intelligent caching. Background processing ensures smooth browsing while AI works. Results appear progressively as analysis completes.",
+          "isHighlighted": true
+        },
+        {
           "title": "Improved Dark Mode Interface",
           "description": "Lighter, more pleasant background colors in preferences and throughout the app for better visibility and reduced eye strain.",
-          "isHighlighted": true
+          "isHighlighted": false
         },
         {
           "title": "Enhanced User Experience",
