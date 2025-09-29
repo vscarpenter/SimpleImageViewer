@@ -23,6 +23,7 @@ struct HelpContent {
         .navigation,
         .thumbnailViewing,
         .zoomAndView,
+        .aiFeatures,
         .preferences,
         .additionalFeatures,
         .supportedFormats,
@@ -356,7 +357,129 @@ extension HelpSection {
             )
         ]
     )
-    
+
+    static let aiFeatures = HelpSection(
+        title: "AI-Powered Insights (macOS 26+)",
+        icon: "brain.head.profile",
+        items: [
+            HelpContentItem(
+                title: "Intelligent Image Analysis",
+                description: "StillView uses advanced on-device AI to understand your images. The system automatically analyzes image content, detects objects and scenes, recognizes text, evaluates quality, and generates smart tags—all processed locally on your Mac with no internet connection required.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "First-Time Setup",
+                description: "When you first open StillView on macOS 26, you'll see a consent dialog explaining AI features. You can enable AI insights to unlock smart features or decline to use StillView without AI. Your choice is saved and can be changed anytime in Preferences.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "AI Insights Panel",
+                description: "View comprehensive AI analysis by opening the AI Insights panel. See image classifications, detected objects (people, animals, vehicles), scene types (indoor/outdoor, nature/urban), recognized text with OCR, dominant colors and palettes, and quality assessments with enhancement suggestions.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Smart Image Classification",
+                description: "The AI automatically identifies what's in your images: primary subjects (people, animals, objects), scene contexts (beach, forest, city, indoor), activities and events, and visual themes. Each classification includes a confidence score showing the AI's certainty.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Object Detection",
+                description: "Advanced object detection locates and identifies specific items in your images: people and faces with positioning, animals and pets with species recognition, vehicles and transportation, common objects and items, and architectural elements. Objects are highlighted with confidence scores.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Text Recognition (OCR)",
+                description: "Extract text from images automatically with multi-language support. The AI recognizes printed and handwritten text, signs and labels, documents and receipts, and provides confidence scoring for recognized text. Perfect for finding images containing specific words or phrases.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Scene Understanding",
+                description: "The AI understands the context and setting of your images: indoor vs. outdoor classification, natural vs. urban environments, lighting conditions (day, night, sunset), weather and seasonal indicators, and location types (beach, mountains, city).",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Color Analysis",
+                description: "Automatic color analysis identifies dominant colors with hex codes, complementary color palettes, color temperature (warm/cool), saturation and vibrancy levels, and color harmony patterns. Useful for design work and photo organization.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Quality Assessment",
+                description: "AI evaluates technical image quality including sharpness and focus analysis, exposure and lighting evaluation, resolution and detail assessment, noise and artifact detection, and composition suggestions. Get actionable recommendations for image enhancement.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Smart Tags",
+                description: "Automatically generated tags organize and categorize your images by content, themes, and characteristics. Tags are grouped by category (subjects, scenes, colors, activities) and can be used for quick search and filtering. Tags update in real-time as you browse.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Actionable Insights",
+                description: "The AI provides context-aware suggestions: enhancement recommendations (brightness, contrast, sharpness), organization ideas based on content patterns, similar image discovery for finding related photos, and smart search queries based on detected content.",
+                type: .tip
+            ),
+            HelpContentItem(
+                title: "Smart Search Integration",
+                description: "AI analysis powers intelligent search capabilities. Search by detected objects and subjects, scene types and environments, recognized text content, colors and visual themes, and quality characteristics. Search suggestions appear as you type based on AI-detected content.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Smart Organization",
+                description: "AI helps automatically organize your image collection into smart categories (People, Animals, Nature, Food, Vehicles, Architecture, Sports, Art, Travel), time-based collections (daily, monthly), content-based groups, and similarity clusters for finding related images.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Enhanced Accessibility",
+                description: "AI generates comprehensive image descriptions for VoiceOver users: primary subject descriptions, detailed scene explanations, spatial relationship information, and multi-language support. Descriptions are optimized for screen readers with natural language flow.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Privacy & Security",
+                description: "All AI processing happens entirely on your Mac using Apple's Vision and Core ML frameworks. No data ever leaves your device—no internet connection required, no cloud processing, no data collection or tracking, and complete privacy for your images. AI features respect your privacy completely.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Performance Optimization",
+                description: "AI analysis is optimized for speed and efficiency: background processing doesn't block the UI, intelligent caching stores results for instant access, memory management prevents system slowdowns, and progressive analysis shows results as they're ready. Analysis typically completes in 1-2 seconds per image.",
+                type: .tip
+            ),
+            HelpContentItem(
+                title: "Enabling/Disabling AI",
+                description: "Control AI features in Preferences > General. Toggle 'Enable AI Analysis' on or off. When disabled, StillView stops all AI processing immediately and clears cached insights. When re-enabled, the current image is automatically re-analyzed. Changes take effect instantly without restarting the app.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "AI Analysis Progress",
+                description: "Watch real-time progress during analysis. A progress indicator shows analysis stages: image classification (20%), scene classification (40%), object detection (60%), text recognition (80%), color and quality analysis (100%). Results appear progressively as each stage completes.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Error Handling",
+                description: "If AI analysis fails (corrupted image, unsupported content, or system issues), StillView shows a clear error message with retry options. Most errors are temporary and can be resolved by retrying. The app continues working normally even if AI features encounter issues.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "System Requirements",
+                description: "AI features require macOS 26.0 (Tahoe) or later with Apple Silicon or Intel Mac. Older macOS versions can still use StillView but without AI insights. The app automatically detects feature availability and shows appropriate messaging.",
+                type: .warning
+            ),
+            HelpContentItem(
+                title: "Testing Your Setup",
+                description: "To verify AI features work correctly: Open any image and check for the AI Insights button in the toolbar, enable AI analysis in Preferences if disabled, view the AI Insights panel to see detected content, check that smart tags appear and update, and test smart search with detected objects or text.",
+                type: .tip
+            ),
+            HelpContentItem(
+                title: "Best Practices",
+                description: "Get the most from AI features: allow initial analysis to complete for best accuracy, review smart tags and insights to understand AI capabilities, use smart search to quickly find specific image content, leverage quality assessments for photo improvement, and explore similar image suggestions for better organization.",
+                type: .tip
+            ),
+            HelpContentItem(
+                title: "Limitations",
+                description: "AI analysis works best with clear, well-lit images. Very dark, blurry, or abstract images may have limited results. Text recognition requires readable text. Object detection works better with common subjects. Quality assessment is subjective and may not match artistic intent.",
+                type: .warning
+            )
+        ]
+    )
+
     static let preferences = HelpSection(
         title: "Preferences & Customization",
         icon: "gearshape",
@@ -369,7 +492,12 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "General Settings",
-                description: "Configure image display options (file names, info overlay), slideshow behavior (duration, looping), file management (deletion confirmation, folder memory), and thumbnail preferences (size, metadata badges).",
+                description: "Configure image display options (file names, info overlay), slideshow behavior (duration, looping), file management (deletion confirmation, folder memory), thumbnail preferences (size, metadata badges), and AI analysis settings (enable/disable AI features on macOS 26+).",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "AI Features Control",
+                description: "On macOS 26+, the General tab includes an 'Enable AI Analysis' toggle. Turn this on to enable intelligent image analysis, smart search, and organization features. Turn it off to disable all AI processing. Changes take effect immediately, and your preference is saved across app launches.",
                 type: .information
             ),
             HelpContentItem(
@@ -564,27 +692,37 @@ extension HelpSection {
         items: [
             HelpContentItem(
                 title: "Privacy First",
-                description: "StillView works completely offline and never collects or transmits any data. Your images and viewing habits remain completely private.",
+                description: "StillView works completely offline and never collects or transmits any data. Your images and viewing habits remain completely private. All AI processing (on macOS 26+) happens entirely on your device using Apple's frameworks—no cloud services, no data collection, no tracking.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "AI Privacy Commitment",
+                description: "AI features (macOS 26+) use only Apple's built-in Vision and Core ML frameworks running locally on your Mac. No image data ever leaves your device. No analytics, telemetry, or usage tracking. You have complete control to enable or disable AI features at any time in Preferences.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Universal Binary",
-                description: "Optimized for both Intel and Apple Silicon Macs, ensuring excellent performance on all modern Mac computers.",
+                description: "Optimized for both Intel and Apple Silicon Macs, ensuring excellent performance on all modern Mac computers. AI features on macOS 26+ leverage Neural Engine on Apple Silicon for enhanced performance.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Accessibility",
-                description: "Full VoiceOver support, keyboard navigation, and compatibility with macOS accessibility features.",
+                description: "Full VoiceOver support, keyboard navigation, and compatibility with macOS accessibility features. AI-powered image descriptions (macOS 26+) provide enhanced VoiceOver experiences with detailed, context-aware descriptions of image content.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Open Source",
-                description: "StillView is open source software. Visit the GitHub repository for source code, issues, and contributions.",
+                description: "StillView is open source software. Visit the GitHub repository for source code, issues, and contributions at github.com/vscarpenter/SimpleImageViewer.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Support",
-                description: "For support, bug reports, or feature requests, visit the GitHub Issues page or contact the developer through the repository.",
+                description: "For support, bug reports, or feature requests, visit the GitHub Issues page or contact the developer through the repository. For AI-related questions, see the AI Features section of this help guide.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "App Sandbox Security",
+                description: "StillView operates within Apple's App Sandbox for enhanced security. The app only accesses folders you explicitly select and requires your permission for file operations. All security-scoped bookmarks are stored locally and encrypted.",
                 type: .information
             )
         ]
