@@ -7,19 +7,19 @@ class AppearanceService: ObservableObject {
     // MARK: - Published Properties
     
     /// Current toolbar style setting
-    @Published var toolbarStyle: ToolbarStyle = .floating
+    @Published var toolbarStyle: Preferences.ToolbarStyle = .floating
     
     /// Whether glass effects are enabled
     @Published var enableGlassEffects: Bool = true
     
     /// Current animation intensity level
-    @Published var animationIntensity: AnimationIntensity = .normal
+    @Published var animationIntensity: Preferences.AnimationIntensity = .normal
     
     /// Whether hover effects are enabled
     @Published var enableHoverEffects: Bool = true
     
     /// Current thumbnail size setting
-    @Published var thumbnailSize: ThumbnailSize = .medium
+    @Published var thumbnailSize: Preferences.ThumbnailSize = .medium
     
     /// Whether metadata badges are shown on thumbnails
     @Published var showMetadataBadges: Bool = true
@@ -150,11 +150,11 @@ class AppearanceService: ObservableObject {
     ///   - thumbnailSize: New thumbnail size
     ///   - showMetadataBadges: Whether to show metadata badges
     func updateSettings(
-        toolbarStyle: ToolbarStyle? = nil,
+        toolbarStyle: Preferences.ToolbarStyle? = nil,
         enableGlassEffects: Bool? = nil,
-        animationIntensity: AnimationIntensity? = nil,
+        animationIntensity: Preferences.AnimationIntensity? = nil,
         enableHoverEffects: Bool? = nil,
-        thumbnailSize: ThumbnailSize? = nil,
+        thumbnailSize: Preferences.ThumbnailSize? = nil,
         showMetadataBadges: Bool? = nil
     ) {
         if let toolbarStyle = toolbarStyle {
@@ -191,14 +191,14 @@ class AppearanceService: ObservableObject {
         
         // Load toolbar style
         let toolbarRawValue = userDefaults.string(forKey: "PreferencesToolbarStyle") ?? "floating"
-        toolbarStyle = ToolbarStyle(rawValue: toolbarRawValue) ?? .floating
+        toolbarStyle = Preferences.ToolbarStyle(rawValue: toolbarRawValue) ?? .floating
         
         // Load glass effects
         enableGlassEffects = userDefaults.object(forKey: "PreferencesEnableGlassEffects") as? Bool ?? true
         
         // Load animation intensity
         let animationRawValue = userDefaults.string(forKey: "PreferencesAnimationIntensity") ?? "normal"
-        animationIntensity = AnimationIntensity(rawValue: animationRawValue) ?? .normal
+        animationIntensity = Preferences.AnimationIntensity(rawValue: animationRawValue) ?? .normal
         
         // Load hover effects
         enableHoverEffects = userDefaults.object(forKey: "PreferencesEnableHoverEffects") as? Bool ?? true

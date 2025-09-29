@@ -47,7 +47,7 @@ class PreferencesValidator {
     /// Validate zoom level setting
     /// - Parameter zoomLevel: The default zoom level
     /// - Returns: Validation result with feedback
-    func validateZoomLevel(_ zoomLevel: ZoomLevel) -> ValidationResult {
+    func validateZoomLevel(_ zoomLevel: Preferences.ZoomLevel) -> ValidationResult {
         switch zoomLevel {
         case .fitToWindow:
             return .success(message: "Images will be scaled to fit the window")
@@ -66,7 +66,7 @@ class PreferencesValidator {
     /// Validate animation intensity setting
     /// - Parameter intensity: The animation intensity level
     /// - Returns: Validation result with feedback
-    func validateAnimationIntensity(_ intensity: AnimationIntensity) -> ValidationResult {
+    func validateAnimationIntensity(_ intensity: Preferences.AnimationIntensity) -> ValidationResult {
         switch intensity {
         case .minimal:
             return .info("Animations will be subtle and fast")
@@ -83,7 +83,7 @@ class PreferencesValidator {
     /// Validate thumbnail size setting
     /// - Parameter size: The thumbnail size
     /// - Returns: Validation result with feedback
-    func validateThumbnailSize(_ size: ThumbnailSize) -> ValidationResult {
+    func validateThumbnailSize(_ size: Preferences.ThumbnailSize) -> ValidationResult {
         switch size {
         case .small:
             return .info("Small thumbnails use less memory but show less detail")
@@ -164,7 +164,25 @@ class PreferencesValidator {
                 "Large thumbnails with metadata badges use more memory"
             ))
         }
-        
+
+        if viewModel.enableImageEnhancements && !MacOS26CompatibilityService.shared.isFeatureAvailable(.enhancedImageProcessing) {
+            results.append(.warning(
+                "Automatic enhancements require macOS 26 features",
+                suggestion: "Disable image enhancements or update macOS to access this capability"
+            ))
+        } else if viewModel.enableImageEnhancements {
+            results.append(.info(
+                "Automatic enhancements may increase image load time slightly"
+            ))
+        }
+
+        if viewModel.enableAIAnalysis && !MacOS26CompatibilityService.shared.isFeatureAvailable(.aiImageAnalysis) {
+            results.append(.warning(
+                "AI analysis requires macOS 26 or newer hardware",
+                suggestion: "Disable AI analysis or update macOS to access these features"
+            ))
+        }
+
         return results
     }
     

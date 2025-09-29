@@ -213,6 +213,158 @@ class ErrorHandlingService: ObservableObject {
         }
     }
     
+    /// Handle AI Analysis errors with appropriate user feedback
+    /// - Parameters:
+    ///   - error: The AIAnalysisError to handle
+    ///   - retryAction: Optional retry action for recoverable errors
+    func handleAIAnalysisError(_ error: AIAnalysisError, retryAction: (() -> Void)? = nil) {
+        Logger.error("AI Analysis error: \(error.localizedDescription)", context: "AIAnalysis")
+        
+        // Don't show user notifications for errors that shouldn't be displayed
+        guard error.shouldDisplayToUser else {
+            return
+        }
+        
+        switch error {
+        case .featureNotAvailable:
+            showNotification(
+                "AI analysis requires macOS 26 or later",
+                type: .warning
+            )
+            
+        case .invalidImage, .unsupportedImageFormat:
+            showNotification(
+                error.localizedDescription ?? "Image format not supported for AI analysis",
+                type: .warning
+            )
+            
+        case .modelLoadingFailed(let model):
+            showModalError(error, title: "AI Model Error", actions: [
+                ModalErrorAction(title: "Restart App", action: {
+                    NSApplication.shared.terminate(nil)
+                }),
+                ModalErrorAction.defaultOK
+            ])
+            
+        case .analysisTimeout:
+            if let retryAction = retryAction {
+                showModalError(error, title: "Analysis Timeout", actions: [
+                    ModalErrorAction(title: "Try Again", action: retryAction),
+                    ModalErrorAction.defaultOK
+                ])
+            } else {
+                showNotification(
+                    "AI analysis timed out - try a smaller image",
+                    type: .error
+                )
+            }
+            
+        case .insufficientMemory:
+            showModalError(error, title: "Memory Warning", actions: [
+                ModalErrorAction(title: "Activity Monitor", action: {
+                    if let activityMonitorURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.ActivityMonitor") {
+                        NSWorkspace.shared.openApplication(at: activityMonitorURL, configuration: NSWorkspace.OpenConfiguration()) { _, _ in }
+                    }
+                }),
+                ModalErrorAction(title: "Try Again", action: retryAction ?? {}),
+                ModalErrorAction.defaultOK
+            ])
+            
+        case .preferenceSyncFailed:
+            showModalError(error, title: "Preference Error", actions: [
+                ModalErrorAction(title: "Open Preferences", action: {
+                    NotificationCenter.default.post(name: .openPreferences, object: nil)
+                }),
+                ModalErrorAction(title: "Try Again", action: retryAction ?? {}),
+                ModalErrorAction.defaultOK
+            ])
+            
+        case .systemResourcesUnavailable:
+            showModalError(error, title: "System Resources", actions: [
+                ModalErrorAction(title: "Restart App", action: {
+                    NSApplication.shared.terminate(nil)
+                }),
+                ModalErrorAction.defaultOK
+            ])
+            
+        case .networkError, .coreMLError, .visionError:
+            if let retryAction = retryAction, error.isRetryable {
+                showModalError(error, title: "AI Analysis Error", actions: [
+                    ModalErrorAction(title: "Try Again", action: retryAction),
+                    ModalErrorAction.defaultOK
+                ])
+            } else {
+                showNotification(
+                    error.localizedDescription ?? "AI analysis failed",
+                    type: .error
+                )
+            }
+            
+        case .notificationSystemFailed:
+            // This is handled by handleNotificationSystemFailure
+            showNotification(
+                "AI notification system failed - some features may be limited",
+                type: .warning
+            )
+            
+        case .analysisInterrupted:
+            // Don't show notification for interruptions as they're usually intentional
+            break
+        }
+    }
+    
+    /// Handle AI Analysis errors with generic Error type (for compatibility)
+    /// - Parameters:
+    ///   - error: The error to handle
+    ///   - retryAction: Optional retry action for recoverable errors
+    func handleAIAnalysisError(_ error: Error, retryAction: (() -> Void)? = nil) {
+        if let aiError = error as? AIAnalysisError {
+            handleAIAnalysisError(aiError, retryAction: retryAction)
+        } else {
+            Logger.error("Generic AI analysis error: \(error.localizedDescription)", context: "AIAnalysis")
+            showNotification(
+                "AI analysis error: \(error.localizedDescription)",
+                type: .error
+            )
+        }
+    }
+    
+    /// Handle preference synchronization failures with fallback mechanisms
+    /// - Parameters:
+    ///   - error: The error that occurred during preference sync
+    ///   - fallbackAction: Fallback action to attempt
+    func handlePreferenceSyncFailure(_ error: Error, fallbackAction: @escaping () -> Void) {
+        Logger.error("Preference synchronization failed: \(error.localizedDescription)", context: "PreferenceSync")
+        
+        // Attempt fallback mechanism
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            fallbackAction()
+        }
+        
+        // Show user notification about the issue
+        showNotification(
+            "Preference sync failed - using fallback mechanism",
+            type: .warning
+        )
+    }
+    
+    /// Handle notification system failures with graceful degradation
+    /// - Parameter error: The notification system error
+    func handleNotificationSystemFailure(_ error: Error) {
+        Logger.error("Notification system failed: \(error.localizedDescription)", context: "NotificationSystem")
+        
+        // Clear any corrupted notification state
+        notifications.removeAll()
+        
+        // Try to recover by posting a simple notification
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.showNotification(
+                "Notification system recovered",
+                type: .info
+            )
+        }
+    }
+    
     /// Clear the current modal error
     func clearModalError() {
         modalError = nil
@@ -322,4 +474,9 @@ extension Notification.Name {
     static let requestFolderSelection = Notification.Name("requestFolderSelection")
     static let showWhatsNew = Notification.Name("showWhatsNew")
     static let whatsNewDismissed = Notification.Name("whatsNewDismissed")
+    static let openPreferences = Notification.Name("openPreferences")
+    static let aiAnalysisPreferenceDidChange = Notification.Name("aiAnalysisPreferenceDidChange")
+    static let imageEnhancementsPreferenceDidChange = Notification.Name("imageEnhancementsPreferenceDidChange")
+    static let notificationSystemFailure = Notification.Name("notificationSystemFailure")
+    // aiInsightsInitializationComplete is defined in SimpleImageViewerApp.swift
 }

@@ -45,6 +45,8 @@ struct SimpleImageViewerApp: App {
                     startPerformanceMonitoring()
                     // Initialize accessibility service
                     _ = AccessibilityService.shared
+                    // Initialize AI Insights state after app setup
+                    initializeAIInsightsState()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     handleAppWillTerminate()
@@ -116,21 +118,28 @@ struct SimpleImageViewerApp: App {
                 Button("What's New") {
                     whatsNewService.showWhatsNewSheet()
                 }
-                
+
                 Divider()
-                
+
                 Button("StillView Help") {
                     showingHelp = true
                 }
                 .keyboardShortcut("/", modifiers: [.command, .shift])
-                
+
                 Button("Keyboard Shortcuts") {
                     showingHelp = true
                 }
                 .keyboardShortcut("?", modifiers: .command)
-                
+
                 Divider()
-                
+
+                Button("Reset AI Consent (Debug)") {
+                    resetAIConsentForTesting()
+                }
+                .keyboardShortcut("r", modifiers: [.command, .option, .shift])
+
+                Divider()
+
                 Button("Visit GitHub Repository") {
                     if let url = URL(string: "https://github.com/vscarpenter/SimpleImageViewer") {
                         NSWorkspace.shared.open(url)
@@ -285,7 +294,38 @@ struct SimpleImageViewerApp: App {
         Logger.info("Performance and memory monitoring started")
     }
     
+    /// Initialize AI Insights state during app launch
+    private func initializeAIInsightsState() {
+        // Delay AI Insights initialization to ensure all services are ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            Logger.info("AI Insights state initialization completed during app launch")
+            
+            // Post notification that AI Insights initialization is complete
+            NotificationCenter.default.post(name: .aiInsightsInitializationComplete, object: nil)
+        }
+    }
 
+    // MARK: - Debug Methods
+
+    /// Reset AI consent for testing the first-run experience
+    private func resetAIConsentForTesting() {
+        AIConsentManager.shared.resetConsentState()
+
+        // Show alert to confirm reset
+        let alert = NSAlert()
+        alert.messageText = "AI Consent Reset"
+        alert.informativeText = "AI consent has been reset. Restart the app to see the first-run dialog."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+}
+
+// MARK: - Notification Extensions
+
+extension Notification.Name {
+    /// Posted when AI Insights initialization is complete
+    static let aiInsightsInitializationComplete = Notification.Name("aiInsightsInitializationComplete")
 }
 
 // MARK: - Compatibility Extensions

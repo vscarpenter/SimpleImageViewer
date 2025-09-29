@@ -11,9 +11,16 @@ struct NavigationControlsView: View {
     @State private var hideControlsTimer: Timer?
     
     // MARK: - Responsive Layout Properties
-    @StateObject private var layoutManager = ToolbarLayoutManager()
+    @StateObject private var layoutManager: ToolbarLayoutManager
     @State private var availableWidth: CGFloat = 800
     @State private var isOverflowMenuPresented = false
+    
+    // Initialize layout manager with view model reference
+    init(viewModel: ImageViewerViewModel, onExit: @escaping () -> Void) {
+        self.viewModel = viewModel
+        self.onExit = onExit
+        self._layoutManager = StateObject(wrappedValue: ToolbarLayoutManager(imageViewerViewModel: viewModel))
+    }
     
     // MARK: - Animation Properties
     private let controlsAnimationDuration: Double = 0.3
@@ -70,6 +77,9 @@ struct NavigationControlsView: View {
             if viewModel.isFullscreen {
                 showControlsTemporarily()
             }
+        }
+        .onChange(of: viewModel.isAIInsightsAvailable) { _ in
+            layoutManager.updateAIInsightsAvailability()
         }
     }
     
@@ -169,6 +179,11 @@ struct NavigationControlsView: View {
             // Image Info toggle button
             if layoutManager.isItemVisible("info") {
                 imageInfoToggleButton
+            }
+            
+            // AI Insights toggle button (when available and visible in layout)
+            if layoutManager.isItemVisible("aiInsights") {
+                aiInsightsToggleButton
             }
             
             // Slideshow toggle button
@@ -293,6 +308,9 @@ struct NavigationControlsView: View {
             Text(viewModel.imageCounterText)
                 .font(.system(size: 14, weight: .medium, design: .monospaced))
                 .foregroundColor(.appText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: true, vertical: false)
                 .accessibilityLabel("Image \(viewModel.currentIndex + 1) of \(viewModel.totalImages)")
         }
         .padding(.horizontal, 8)
@@ -454,6 +472,22 @@ struct NavigationControlsView: View {
         .help(viewModel.showImageInfo ? "Hide image info (I)" : "Show image info (I)")
         .accessibilityLabel(viewModel.showImageInfo ? "Hide image info" : "Show image info")
         .accessibilityHint("Toggle image metadata display")
+    }
+    
+    // MARK: - AI Insights Toggle Button
+    private var aiInsightsToggleButton: some View {
+        Button(action: {
+            viewModel.toggleAIInsights()
+            showControlsTemporarily()
+        }) {
+            Image(systemName: viewModel.showAIInsights ? "brain.head.profile.fill" : "brain.head.profile")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(viewModel.showAIInsights ? .systemAccent : .appSecondaryText)
+        }
+        .buttonStyle(ToolbarButtonStyle())
+        .help(viewModel.showAIInsights ? "Hide AI Insights" : "Show AI Insights")
+        .accessibilityLabel(viewModel.showAIInsights ? "Hide AI Insights" : "Show AI Insights")
+        .accessibilityHint("Toggle AI-powered image analysis panel")
     }
     
     // MARK: - Slideshow Toggle Button

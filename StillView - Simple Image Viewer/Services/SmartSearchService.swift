@@ -19,7 +19,7 @@ final class SmartSearchService: ObservableObject {
     @Published private(set) var searchResults: [SearchResult] = []
     
     /// Search suggestions
-    @Published private(set) var searchSuggestions: [SearchSuggestion] = []
+    @Published private(set) var searchSuggestions: [SmartSearchSuggestion] = []
     
     /// Recent searches
     @Published private(set) var recentSearches: [String] = []
@@ -37,7 +37,7 @@ final class SmartSearchService: ObservableObject {
     
     // Search cache
     private var searchCache: [String: [SearchResult]] = [:]
-    private var suggestionCache: [String: [SearchSuggestion]] = [:]
+    private var suggestionCache: [String: [SmartSearchSuggestion]] = [:]
     
     // MARK: - Initialization
     
@@ -94,7 +94,7 @@ final class SmartSearchService: ObservableObject {
     }
     
     /// Generate search suggestions based on query and collection
-    func generateSearchSuggestions(for query: String, in images: [ImageFile]) async throws -> [SearchSuggestion] {
+    func generateSearchSuggestions(for query: String, in images: [ImageFile]) async throws -> [SmartSearchSuggestion] {
         let cacheKey = "suggestions_\(query)_\(images.count)"
         
         // Check cache first
@@ -105,18 +105,18 @@ final class SmartSearchService: ObservableObject {
             return cachedSuggestions
         }
         
-        var suggestions: [SearchSuggestion] = []
+        var suggestions: [SmartSearchSuggestion] = []
         
         // Generate AI-powered suggestions if available
         if compatibilityService.isFeatureAvailable(.aiImageAnalysis) {
             let aiSuggestions = try await aiAnalysisService.generateSearchSuggestions(for: query, in: images)
-            suggestions.append(contentsOf: aiSuggestions)
+            suggestions.append(contentsOf: aiSuggestions.map(SmartSearchSuggestion.init))
         }
         
         // Generate content-based suggestions
         let contentSuggestions = try await generateContentBasedSuggestions(query, in: images)
         suggestions.append(contentsOf: contentSuggestions)
-        
+
         // Generate metadata-based suggestions
         let metadataSuggestions = generateMetadataBasedSuggestions(query, in: images)
         suggestions.append(contentsOf: metadataSuggestions)
@@ -135,6 +135,7 @@ final class SmartSearchService: ObservableObject {
     }
     
     /// Find similar images using AI
+    /// Migration Note: Returns canonical SimilarImageResult type for consistency across services
     func findSimilarImages(to referenceImage: ImageFile, in collection: [ImageFile]) async throws -> [SimilarImageResult] {
         guard compatibilityService.isFeatureAvailable(.aiImageAnalysis) else {
             return []
@@ -386,8 +387,8 @@ final class SmartSearchService: ObservableObject {
         return results
     }
     
-    private func generateContentBasedSuggestions(_ query: String, in images: [ImageFile]) async throws -> [SearchSuggestion] {
-        var suggestions: [SearchSuggestion] = []
+    private func generateContentBasedSuggestions(_ query: String, in images: [ImageFile]) async throws -> [SmartSearchSuggestion] {
+        var suggestions: [SmartSearchSuggestion] = []
         
         // Analyze query for entities
         let tagger = NLTagger(tagSchemes: [.nameType, .lexicalClass])
@@ -397,7 +398,7 @@ final class SmartSearchService: ObservableObject {
         tagger.enumerateTags(in: range, unit: .word, scheme: .nameType) { tag, tokenRange in
             if let tag = tag {
                 let keyword = String(query[tokenRange])
-                suggestions.append(SearchSuggestion(
+                suggestions.append(SmartSearchSuggestion(
                     text: keyword,
                     type: .entity,
                     confidence: 0.8
@@ -409,20 +410,20 @@ final class SmartSearchService: ObservableObject {
         // Generate suggestions based on image content
         if compatibilityService.isFeatureAvailable(.aiImageAnalysis) {
             let aiSuggestions = try await aiAnalysisService.generateSearchSuggestions(for: query, in: images)
-            suggestions.append(contentsOf: aiSuggestions)
+            suggestions.append(contentsOf: aiSuggestions.map(SmartSearchSuggestion.init))
         }
         
         return suggestions
     }
     
-    private func generateMetadataBasedSuggestions(_ query: String, in images: [ImageFile]) -> [SearchSuggestion] {
-        var suggestions: [SearchSuggestion] = []
+    private func generateMetadataBasedSuggestions(_ query: String, in images: [ImageFile]) -> [SmartSearchSuggestion] {
+        var suggestions: [SmartSearchSuggestion] = []
         
         // Extract unique formats
         let formats = Set(images.map { $0.formatDescription })
         for format in formats {
             if format.localizedCaseInsensitiveContains(query) {
-                suggestions.append(SearchSuggestion(
+                suggestions.append(SmartSearchSuggestion(
                     text: format,
                     type: .format,
                     confidence: 0.9
@@ -434,7 +435,7 @@ final class SmartSearchService: ObservableObject {
         let sizes = images.map { $0.size }.sorted()
         if let minSize = sizes.first, let maxSize = sizes.last {
             let sizeRange = "\(formatFileSize(minSize)) - \(formatFileSize(maxSize))"
-            suggestions.append(SearchSuggestion(
+            suggestions.append(SmartSearchSuggestion(
                 text: sizeRange,
                 type: .fileSize,
                 confidence: 0.7
@@ -667,8 +668,8 @@ enum MatchType {
     }
 }
 
-/// Search suggestion
-struct SearchSuggestion: Identifiable, Hashable {
+/// Search suggestion used by the smart search service
+struct SmartSearchSuggestion: Identifiable, Hashable {
     let id = UUID()
     let text: String
     let type: SuggestionType
@@ -678,8 +679,31 @@ struct SearchSuggestion: Identifiable, Hashable {
         hasher.combine(text)
     }
     
-    static func == (lhs: SearchSuggestion, rhs: SearchSuggestion) -> Bool {
+    static func == (lhs: SmartSearchSuggestion, rhs: SmartSearchSuggestion) -> Bool {
         return lhs.text == rhs.text
+    }
+
+    init(text: String, type: SuggestionType, confidence: Double) {
+        self.text = text
+        self.type = type
+        self.confidence = confidence
+    }
+
+    init(_ suggestion: SearchSuggestion) {
+        // Convert SearchSuggestionType to SuggestionType
+        let convertedType: SuggestionType
+        switch suggestion.type {
+        case .entity:
+            convertedType = .entity
+        case .classification:
+            convertedType = .classification
+        case .object:
+            convertedType = .object
+        case .scene:
+            convertedType = .scene
+        }
+
+        self.init(text: suggestion.text, type: convertedType, confidence: suggestion.confidence)
     }
 }
 
@@ -713,7 +737,7 @@ enum SuggestionType {
 /// Search criteria
 struct SearchCriteria {
     let criteria: [SearchCriterion]
-    let operator: SearchOperator
+    let operatorType: SearchOperator
     
     enum SearchOperator {
         case and
@@ -743,7 +767,10 @@ struct SearchHistoryItem: Codable, Identifiable {
     let timestamp: Date
 }
 
-/// Similar image result
+/// Similar image result - Canonical type for all similar image operations
+/// Migration Note: This is the unified type used across SmartSearchService, SmartImageOrganizationService,
+/// and AIImageAnalysisService to ensure consistency. Previously, AI.SimilarImageResult was used
+/// but has been migrated to use this canonical definition.
 struct SimilarImageResult: Identifiable {
     let id = UUID()
     let imageFile: ImageFile

@@ -355,8 +355,14 @@ class MockPreferencesService: PreferencesService {
     var recentFolders: [URL] = []
     var windowFrame: CGRect = .zero
     var showFileName: Bool = false
+    var showImageInfo: Bool = false
+    var slideshowInterval: Double = 3.0
     var lastSelectedFolder: URL?
     var folderBookmarks: [Data] = []
+    var windowState: WindowState?
+    var defaultThumbnailGridSize: ThumbnailGridSize = .medium
+    var useResponsiveGridLayout: Bool = true
+    var enableAIAnalysis: Bool = true
     
     var addRecentFolderCalled = false
     var removeRecentFolderCalled = false
@@ -392,4 +398,14 @@ class MockPreferencesService: PreferencesService {
     func loadPreferences() {
         loadPreferencesCalled = true
     }
+
+    func saveWindowState(_ windowState: WindowState) {
+        self.windowState = windowState
+    }
+
+    func loadWindowState() -> WindowState? {
+        return windowState
+    }
+
+    func saveFavorites() { }
 }

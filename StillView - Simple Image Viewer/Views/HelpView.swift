@@ -189,7 +189,7 @@ struct HelpView: View {
     }
     
     // MARK: - Help Item View
-    private func helpItemView(item: HelpItem) -> some View {
+    private func helpItemView(item: HelpContentItem) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: item.type.iconName)
@@ -301,13 +301,13 @@ struct HelpView: View {
         }
     }
     
-    private func getSearchResults() -> [(section: HelpSection, item: HelpItem)] {
+    private func getSearchResults() -> [(section: HelpSection, item: HelpContentItem)] {
         guard !searchText.isEmpty else { return [] }
         
         let searchTerms = searchText.lowercased().components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }
         
-        var results: [(section: HelpSection, item: HelpItem)] = []
+        var results: [(section: HelpSection, item: HelpContentItem)] = []
         
         for section in helpContent.sections {
             for item in section.items {

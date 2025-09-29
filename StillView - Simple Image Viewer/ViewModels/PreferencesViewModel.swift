@@ -13,15 +13,17 @@ class PreferencesViewModel: ObservableObject {
     @Published var slideshowInterval: Double = 3.0
     @Published var confirmDelete: Bool = true
     @Published var rememberLastFolder: Bool = true
-    @Published var defaultZoomLevel: ZoomLevel = .fitToWindow
+    @Published var defaultZoomLevel: Preferences.ZoomLevel = .fitToWindow
     @Published var loopSlideshow: Bool = true
+    @Published var enableAIAnalysis: Bool = true
+    @Published var enableImageEnhancements: Bool = false
     
     // Appearance preferences (to be extended)
-    @Published var toolbarStyle: ToolbarStyle = .floating
+    @Published var toolbarStyle: Preferences.ToolbarStyle = .floating
     @Published var enableGlassEffects: Bool = true
-    @Published var animationIntensity: AnimationIntensity = .normal
+    @Published var animationIntensity: Preferences.AnimationIntensity = .normal
     @Published var enableHoverEffects: Bool = true
-    @Published var thumbnailSize: ThumbnailSize = .medium
+    @Published var thumbnailSize: Preferences.ThumbnailSize = .medium
     @Published var showMetadataBadges: Bool = true
     
     // Validation state
@@ -84,6 +86,8 @@ class PreferencesViewModel: ObservableObject {
                 rememberLastFolder = true
                 defaultZoomLevel = .fitToWindow
                 loopSlideshow = true
+                enableAIAnalysis = true
+                enableImageEnhancements = false
                 
                 toolbarStyle = .floating
                 enableGlassEffects = true
@@ -157,6 +161,8 @@ class PreferencesViewModel: ObservableObject {
         showFileName = preferencesService.showFileName
         showImageInfo = preferencesService.showImageInfo
         slideshowInterval = preferencesService.slideshowInterval
+        enableAIAnalysis = preferencesService.enableAIAnalysis
+        enableImageEnhancements = preferencesService.enableImageEnhancements
         
         // Load thumbnail size from existing service
         switch preferencesService.defaultThumbnailGridSize {
@@ -183,6 +189,8 @@ class PreferencesViewModel: ObservableObject {
         showFileName = preferencesService.showFileName
         showImageInfo = preferencesService.showImageInfo
         slideshowInterval = preferencesService.slideshowInterval
+        enableAIAnalysis = preferencesService.enableAIAnalysis
+        enableImageEnhancements = preferencesService.enableImageEnhancements
         
         // Validate slideshow interval
         if slideshowInterval < 1.0 || slideshowInterval > 30.0 {
@@ -213,7 +221,7 @@ class PreferencesViewModel: ObservableObject {
         
         // Default zoom level
         let zoomRawValue = userDefaults.string(forKey: "PreferencesDefaultZoomLevel") ?? "fitToWindow"
-        defaultZoomLevel = ZoomLevel(rawValue: zoomRawValue) ?? .fitToWindow
+        defaultZoomLevel = Preferences.ZoomLevel(rawValue: zoomRawValue) ?? .fitToWindow
         
         // Sync appearance settings from AppearanceService
         toolbarStyle = appearanceService.toolbarStyle
@@ -258,7 +266,7 @@ class PreferencesViewModel: ObservableObject {
         
         // Default zoom level with validation
         let zoomRawValue = userDefaults.string(forKey: "PreferencesDefaultZoomLevel") ?? "fitToWindow"
-        guard let zoomLevel = ZoomLevel(rawValue: zoomRawValue) else {
+        guard let zoomLevel = Preferences.ZoomLevel(rawValue: zoomRawValue) else {
             throw PreferencesError.invalidEnumValue("PreferencesDefaultZoomLevel", zoomRawValue)
         }
         defaultZoomLevel = zoomLevel
@@ -295,6 +303,22 @@ class PreferencesViewModel: ObservableObject {
             .dropFirst()
             .sink { [weak self] newValue in
                 self?.preferencesService.slideshowInterval = newValue
+                self?.preferencesService.savePreferences()
+            }
+            .store(in: &cancellables)
+        
+        $enableAIAnalysis
+            .dropFirst()
+            .sink { [weak self] newValue in
+                self?.preferencesService.enableAIAnalysis = newValue
+                self?.preferencesService.savePreferences()
+            }
+            .store(in: &cancellables)
+
+        $enableImageEnhancements
+            .dropFirst()
+            .sink { [weak self] newValue in
+                self?.preferencesService.enableImageEnhancements = newValue
                 self?.preferencesService.savePreferences()
             }
             .store(in: &cancellables)
@@ -409,6 +433,8 @@ class PreferencesViewModel: ObservableObject {
             "rememberLastFolder": rememberLastFolder,
             "defaultZoomLevel": defaultZoomLevel.rawValue,
             "loopSlideshow": loopSlideshow,
+            "enableAIAnalysis": enableAIAnalysis,
+            "enableImageEnhancements": enableImageEnhancements,
             "toolbarStyle": toolbarStyle.rawValue,
             "enableGlassEffects": enableGlassEffects,
             "animationIntensity": animationIntensity.rawValue,
@@ -428,6 +454,8 @@ class PreferencesViewModel: ObservableObject {
             "rememberLastFolder": rememberLastFolder,
             "defaultZoomLevel": defaultZoomLevel.rawValue,
             "loopSlideshow": loopSlideshow,
+            "enableAIAnalysis": enableAIAnalysis,
+            "enableImageEnhancements": enableImageEnhancements,
             "toolbarStyle": toolbarStyle.rawValue,
             "enableGlassEffects": enableGlassEffects,
             "animationIntensity": animationIntensity.rawValue,
@@ -517,6 +545,14 @@ class PreferencesViewModel: ObservableObject {
                 self?.checkForUnsavedChanges()
             }
             .store(in: &cancellables)
+
+        $enableImageEnhancements
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.checkForUnsavedChanges()
+                self?.updateValidation()
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Undo/Redo Methods
@@ -531,6 +567,7 @@ class PreferencesViewModel: ObservableObject {
             rememberLastFolder: rememberLastFolder,
             defaultZoomLevel: defaultZoomLevel,
             loopSlideshow: loopSlideshow,
+            enableImageEnhancements: enableImageEnhancements,
             toolbarStyle: toolbarStyle,
             enableGlassEffects: enableGlassEffects,
             animationIntensity: animationIntensity,
@@ -549,6 +586,7 @@ class PreferencesViewModel: ObservableObject {
         rememberLastFolder = snapshot.rememberLastFolder
         defaultZoomLevel = snapshot.defaultZoomLevel
         loopSlideshow = snapshot.loopSlideshow
+        enableImageEnhancements = snapshot.enableImageEnhancements
         toolbarStyle = snapshot.toolbarStyle
         enableGlassEffects = snapshot.enableGlassEffects
         animationIntensity = snapshot.animationIntensity
@@ -640,28 +678,31 @@ class PreferencesViewModel: ObservableObject {
             rememberLastFolder = rememberLastFolderInitial
         }
         if let defaultZoomLevelRaw = initialValues["defaultZoomLevel"] as? String,
-           let zoomLevel = ZoomLevel(rawValue: defaultZoomLevelRaw) {
+           let zoomLevel = Preferences.ZoomLevel(rawValue: defaultZoomLevelRaw) {
             defaultZoomLevel = zoomLevel
         }
         if let loopSlideshowInitial = initialValues["loopSlideshow"] as? Bool {
             loopSlideshow = loopSlideshowInitial
         }
+        if let enableEnhancementsInitial = initialValues["enableImageEnhancements"] as? Bool {
+            enableImageEnhancements = enableEnhancementsInitial
+        }
         if let toolbarStyleRaw = initialValues["toolbarStyle"] as? String,
-           let style = ToolbarStyle(rawValue: toolbarStyleRaw) {
+           let style = Preferences.ToolbarStyle(rawValue: toolbarStyleRaw) {
             toolbarStyle = style
         }
         if let enableGlassEffectsInitial = initialValues["enableGlassEffects"] as? Bool {
             enableGlassEffects = enableGlassEffectsInitial
         }
         if let animationIntensityRaw = initialValues["animationIntensity"] as? String,
-           let intensity = AnimationIntensity(rawValue: animationIntensityRaw) {
+           let intensity = Preferences.AnimationIntensity(rawValue: animationIntensityRaw) {
             animationIntensity = intensity
         }
         if let enableHoverEffectsInitial = initialValues["enableHoverEffects"] as? Bool {
             enableHoverEffects = enableHoverEffectsInitial
         }
         if let thumbnailSizeRaw = initialValues["thumbnailSize"] as? String,
-           let size = ThumbnailSize(rawValue: thumbnailSizeRaw) {
+           let size = Preferences.ThumbnailSize(rawValue: thumbnailSizeRaw) {
             thumbnailSize = size
         }
         if let showMetadataBadgesInitial = initialValues["showMetadataBadges"] as? Bool {
@@ -706,13 +747,14 @@ private struct PreferencesSnapshot {
     let slideshowInterval: Double
     let confirmDelete: Bool
     let rememberLastFolder: Bool
-    let defaultZoomLevel: ZoomLevel
+    let defaultZoomLevel: Preferences.ZoomLevel
     let loopSlideshow: Bool
-    let toolbarStyle: ToolbarStyle
+    let enableImageEnhancements: Bool
+    let toolbarStyle: Preferences.ToolbarStyle
     let enableGlassEffects: Bool
-    let animationIntensity: AnimationIntensity
+    let animationIntensity: Preferences.AnimationIntensity
     let enableHoverEffects: Bool
-    let thumbnailSize: ThumbnailSize
+    let thumbnailSize: Preferences.ThumbnailSize
     let showMetadataBadges: Bool
 }
 

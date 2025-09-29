@@ -37,6 +37,15 @@ protocol PreferencesService {
     
     /// Whether to use responsive grid layout that adapts to window size
     var useResponsiveGridLayout: Bool { get set }
+
+    /// Whether AI image analysis is enabled
+    var enableAIAnalysis: Bool { get set }
+    
+    /// Whether automatic image enhancements should be applied on load
+    var enableImageEnhancements: Bool { get set }
+    
+    /// Whether to remember AI Insights panel visibility across sessions
+    var rememberAIInsightsPanelState: Bool { get set }
     
     /// Favorited images data
     // Favorites removed
@@ -98,6 +107,9 @@ class DefaultPreferencesService: PreferencesService {
         static let windowState = "windowState"
         static let defaultThumbnailGridSize = "defaultThumbnailGridSize"
         static let useResponsiveGridLayout = "useResponsiveGridLayout"
+        static let enableAIAnalysis = "enableAIAnalysis"
+        static let enableImageEnhancements = "enableImageEnhancements"
+        static let rememberAIInsightsPanelState = "rememberAIInsightsPanelState"
         // Favorites removed
     }
     
@@ -259,6 +271,42 @@ class DefaultPreferencesService: PreferencesService {
         }
     }
     
+    var enableAIAnalysis: Bool {
+        get {
+            if userDefaults.object(forKey: Keys.enableAIAnalysis) == nil {
+                return true
+            }
+            return userDefaults.bool(forKey: Keys.enableAIAnalysis)
+        }
+        set {
+            userDefaults.set(newValue, forKey: Keys.enableAIAnalysis)
+            NotificationCenter.default.post(name: .aiAnalysisPreferenceDidChange, object: newValue)
+        }
+    }
+    
+    var enableImageEnhancements: Bool {
+        get {
+            if userDefaults.object(forKey: Keys.enableImageEnhancements) == nil {
+                return false
+            }
+            return userDefaults.bool(forKey: Keys.enableImageEnhancements)
+        }
+        set {
+            userDefaults.set(newValue, forKey: Keys.enableImageEnhancements)
+            NotificationCenter.default.post(name: .imageEnhancementsPreferenceDidChange, object: newValue)
+        }
+    }
+    
+    var rememberAIInsightsPanelState: Bool {
+        get {
+            // Default to true if not set - users expect panel state to be remembered
+            return userDefaults.object(forKey: Keys.rememberAIInsightsPanelState) as? Bool ?? true
+        }
+        set {
+            userDefaults.set(newValue, forKey: Keys.rememberAIInsightsPanelState)
+        }
+    }
+    
     // Favorites removed
     
     // MARK: - Methods
@@ -308,3 +356,6 @@ class DefaultPreferencesService: PreferencesService {
     
     // Favorites removed
 }
+
+// MARK: - Notifications
+// Notification names are defined in ErrorHandlingService.swift

@@ -64,26 +64,26 @@ class PreferencesTabViewTests: XCTestCase {
     // MARK: - Accessibility Tests
     
     func testTabAccessibilityLabels() {
-        let generalTab = PreferencesTab.general
+        let generalTab = Preferences.Tab.general
         XCTAssertEqual(generalTab.accessibilityLabel, "General preferences tab")
         
-        let appearanceTab = PreferencesTab.appearance
+        let appearanceTab = Preferences.Tab.appearance
         XCTAssertEqual(appearanceTab.accessibilityLabel, "Appearance preferences tab")
         
-        let shortcutsTab = PreferencesTab.shortcuts
+        let shortcutsTab = Preferences.Tab.shortcuts
         XCTAssertEqual(shortcutsTab.accessibilityLabel, "Keyboard shortcuts preferences tab")
     }
     
     func testTabIcons() {
-        XCTAssertEqual(PreferencesTab.general.icon, "gearshape")
-        XCTAssertEqual(PreferencesTab.appearance.icon, "paintbrush")
-        XCTAssertEqual(PreferencesTab.shortcuts.icon, "keyboard")
+        XCTAssertEqual(Preferences.Tab.general.icon, "gearshape")
+        XCTAssertEqual(Preferences.Tab.appearance.icon, "paintbrush")
+        XCTAssertEqual(Preferences.Tab.shortcuts.icon, "keyboard")
     }
     
     func testTabTitles() {
-        XCTAssertEqual(PreferencesTab.general.title, "General")
-        XCTAssertEqual(PreferencesTab.appearance.title, "Appearance")
-        XCTAssertEqual(PreferencesTab.shortcuts.title, "Shortcuts")
+        XCTAssertEqual(Preferences.Tab.general.title, "General")
+        XCTAssertEqual(Preferences.Tab.appearance.title, "Appearance")
+        XCTAssertEqual(Preferences.Tab.shortcuts.title, "Shortcuts")
     }
 }
 

@@ -229,12 +229,12 @@ class ShortcutsViewModel: ObservableObject {
     
     private func updateCategories() {
         let groupedShortcuts = Dictionary(grouping: shortcuts.values) { $0.category }
-        
-        shortcutCategories = ShortcutCategory.allCases
+
+        shortcutCategories = Shortcuts.Category.allCases
             .sorted { $0.sortOrder < $1.sortOrder }
-            .compactMap { category in
+            .compactMap { category -> ShortcutCategoryGroup? in
                 guard let categoryShortcuts = groupedShortcuts[category] else { return nil }
-                
+
                 let sortedShortcuts = categoryShortcuts.sorted { $0.name < $1.name }
                 return ShortcutCategoryGroup(category: category, shortcuts: sortedShortcuts)
             }

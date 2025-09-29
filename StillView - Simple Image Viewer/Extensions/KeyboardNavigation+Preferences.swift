@@ -20,8 +20,8 @@ extension View {
     /// Add keyboard navigation support for preferences tabs
     @available(macOS 14.0, *)
     func preferencesKeyboardNavigation(
-        selectedTab: Binding<PreferencesTab>,
-        onTabSelected: @escaping (PreferencesTab) -> Void
+        selectedTab: Binding<Preferences.Tab>,
+        onTabSelected: @escaping (Preferences.Tab) -> Void
     ) -> some View {
         self.onReceive(NotificationCenter.default.publisher(for: NSApplication.keyboardNavigationNotification)) { _ in
             // Handle keyboard navigation events
@@ -48,8 +48,8 @@ extension View {
     
     /// Add keyboard navigation support for preferences tabs (fallback for older macOS)
     func preferencesKeyboardNavigationLegacy(
-        selectedTab: Binding<PreferencesTab>,
-        onTabSelected: @escaping (PreferencesTab) -> Void
+        selectedTab: Binding<Preferences.Tab>,
+        onTabSelected: @escaping (Preferences.Tab) -> Void
     ) -> some View {
         self.onReceive(NotificationCenter.default.publisher(for: NSApplication.keyboardNavigationNotification)) { _ in
             // Handle keyboard navigation events
@@ -122,11 +122,11 @@ private enum NavigationDirection {
 }
 
 private func navigateTab(
-    selectedTab: Binding<PreferencesTab>,
+    selectedTab: Binding<Preferences.Tab>,
     direction: NavigationDirection,
-    onTabSelected: @escaping (PreferencesTab) -> Void
+    onTabSelected: @escaping (Preferences.Tab) -> Void
 ) {
-    let tabs = PreferencesTab.allCases
+    let tabs = Preferences.Tab.allCases
     guard let currentIndex = tabs.firstIndex(of: selectedTab.wrappedValue) else { return }
     
     let newIndex: Int
@@ -222,7 +222,7 @@ struct KeyboardAccessibleControl<Content: View>: View {
 
 /// Enhanced tab button with keyboard navigation and visual polish
 struct KeyboardNavigableTabButton: View {
-    let tab: PreferencesTab
+    let tab: Preferences.Tab
     let isSelected: Bool
     let onTap: () -> Void
     

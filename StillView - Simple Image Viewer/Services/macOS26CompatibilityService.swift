@@ -17,9 +17,12 @@ final class MacOS26CompatibilityService: ObservableObject {
     
     /// Available features for current macOS version
     @Published private(set) var availableFeatures: Set<MacOS26Feature> = []
-    
+
     /// Whether advanced features are enabled
     @Published var advancedFeaturesEnabled: Bool = false
+
+    /// Runtime status information for each feature
+    @Published private(set) var featureStatuses: [MacOS26Feature: FeatureOperationalStatus] = [:]
     
     // MARK: - Private Properties
     
@@ -57,8 +60,17 @@ final class MacOS26CompatibilityService: ObservableObject {
             isAvailable: isFeatureAvailable(feature),
             requiredVersion: feature.requiredVersion,
             currentVersion: currentVersion,
-            fallbackAvailable: feature.fallbackAvailable
+            fallbackAvailable: feature.fallbackAvailable,
+            status: featureStatuses[feature] ?? .unknown
         )
+    }
+
+    /// Update runtime status for a feature (e.g. degraded, unavailable)
+    /// - Parameters:
+    ///   - feature: The feature being updated
+    ///   - status: Operational status describing current availability
+    func updateFeatureStatus(_ feature: MacOS26Feature, status: FeatureOperationalStatus) {
+        featureStatuses[feature] = status
     }
     
     // MARK: - Private Methods
@@ -218,6 +230,7 @@ struct FeatureAvailabilityInfo {
     let requiredVersion: MacOSVersion
     let currentVersion: MacOSVersion
     let fallbackAvailable: Bool
+    let status: FeatureOperationalStatus
     
     var canUseFallback: Bool {
         return !isAvailable && fallbackAvailable
@@ -230,6 +243,14 @@ struct FeatureAvailabilityInfo {
             return "Requires macOS \(requiredVersion.displayString) or later"
         }
     }
+}
+
+/// Runtime status for a macOS 26 feature
+enum FeatureOperationalStatus: Equatable {
+    case available
+    case limited(reason: String)
+    case unavailable(reason: String)
+    case unknown
 }
 
 // MARK: - SwiftUI Integration
@@ -276,6 +297,7 @@ extension View {
 // MARK: - Availability Helpers
 
 /// Helper for checking feature availability in code
+@MainActor
 func withFeatureAvailability<T>(
     _ feature: MacOS26Feature,
     available: () -> T,
@@ -289,6 +311,7 @@ func withFeatureAvailability<T>(
 }
 
 /// Helper for async feature availability checks
+@MainActor
 func withFeatureAvailabilityAsync<T>(
     _ feature: MacOS26Feature,
     available: () async -> T,

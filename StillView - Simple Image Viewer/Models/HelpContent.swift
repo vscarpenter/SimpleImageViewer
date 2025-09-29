@@ -35,10 +35,10 @@ struct HelpContent {
 struct HelpSection {
     let title: String
     let icon: String
-    let items: [HelpItem]
+    let items: [HelpContentItem]
 }
 
-struct HelpItem {
+struct HelpContentItem {
     let title: String
     let description: String
     let shortcut: String?
@@ -78,18 +78,18 @@ extension HelpSection {
         title: "Getting Started",
         icon: "play.circle",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Opening Images",
                 description: "Use 'Open Folder...' from the File menu or press ⌘O to select a folder containing images. StillView will automatically scan the folder and display all supported image files.",
                 shortcut: "⌘O",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Basic Navigation",
                 description: "Once images are loaded, use the arrow keys or click the navigation controls to browse through your images. The current image position is shown in the top toolbar.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Quick Start Tip",
                 description: "For the best experience, organize your images in folders and use StillView's keyboard shortcuts for fast, distraction-free browsing. Try the thumbnail views ('T' and 'G') for quick navigation through large collections. All controls are now consolidated in the top toolbar for easy access.",
                 type: .tip
@@ -101,109 +101,109 @@ extension HelpSection {
         title: "Keyboard Shortcuts",
         icon: "keyboard",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Open Folder",
                 description: "Open a folder selection dialog",
                 shortcut: "⌘O",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Next Image",
                 description: "Navigate to the next image in the folder",
                 shortcut: "→ or Space",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Previous Image",
                 description: "Navigate to the previous image in the folder",
                 shortcut: "←",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "First Image",
                 description: "Jump to the first image in the folder",
                 shortcut: "Home",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Last Image",
                 description: "Jump to the last image in the folder",
                 shortcut: "End",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Zoom In",
                 description: "Increase image magnification",
                 shortcut: "+ or =",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Zoom Out",
                 description: "Decrease image magnification",
                 shortcut: "-",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Fit to Window",
                 description: "Scale image to fit within the window",
                 shortcut: "0",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Actual Size",
                 description: "Display image at 100% scale (actual pixels)",
                 shortcut: "1",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Toggle Fullscreen",
                 description: "Enter or exit fullscreen viewing mode",
                 shortcut: "F or Enter",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Exit Fullscreen",
                 description: "Exit fullscreen mode",
                 shortcut: "Escape",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Show Image Info",
                 description: "Toggle image metadata and EXIF information overlay",
                 shortcut: "I",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Toggle Slideshow",
                 description: "Start or stop automatic slideshow mode",
                 shortcut: "S",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Thumbnail Strip",
                 description: "Show/hide horizontal thumbnail strip at bottom",
                 shortcut: "T",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Grid View",
                 description: "Open full-screen thumbnail grid for quick navigation",
                 shortcut: "G",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Delete Image",
                 description: "Move current image to Trash (can be undone from Trash)",
                 shortcut: "Delete or Backspace",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Back to Folder Selection",
                 description: "Return to folder selection screen",
                 shortcut: "Escape or B",
                 type: .shortcut
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Help",
                 description: "Show this help window",
                 shortcut: "⌘?",
@@ -216,37 +216,37 @@ extension HelpSection {
         title: "Consolidated Toolbar",
         icon: "rectangle.3.group",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Streamlined Design",
                 description: "All controls are now organized in a single top toolbar for a cleaner, more intuitive interface. No more bottom toolbar taking up screen space.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Left Section: Navigation & Context",
                 description: "Contains the Back button, image counter (e.g., '4 of 4'), and folder selection button. Everything you need for navigation and context awareness.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Center Section: View Mode Controls",
                 description: "Groups all view-related toggles: Image Info (I), Slideshow (S), Thumbnail Strip (T), and Grid View (G). Easy to find and logically grouped.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Right Section: Image Actions & Zoom",
                 description: "Contains Share, Delete (trash), Zoom controls (-, zoom%, +, fit, 1:1), and filename toggle. All image manipulation tools in one place.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Visual Separators",
                 description: "Subtle dividers between toolbar sections help visually organize the controls while maintaining a clean, unified appearance.",
                 type: .tip
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Hover for Shortcuts",
                 description: "Hover over any toolbar button to see its keyboard shortcut in a tooltip. This helps you learn the shortcuts for faster navigation.",
                 type: .tip
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "macOS Native Design",
                 description: "The consolidated toolbar follows macOS design patterns and works seamlessly with fullscreen mode, auto-hiding when appropriate.",
                 type: .information
@@ -258,27 +258,27 @@ extension HelpSection {
         title: "Interface & Controls",
         icon: "arrow.left.arrow.right",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Browse Images",
                 description: "Use arrow keys, spacebar, or navigation buttons to move between images. StillView automatically loads adjacent images for smooth browsing.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Image Counter",
                 description: "The top toolbar shows your current position (e.g., '5 of 23') in the left section next to the back button.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Consolidated Toolbar",
                 description: "All controls are now organized in a single top toolbar with three sections: Navigation & Context (left), View Mode Controls (center), and Image Actions & Zoom (right).",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Quick Navigation",
                 description: "Use Home and End keys to quickly jump to the first or last image in the folder. Perfect for large image collections.",
                 type: .tip
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Folder Monitoring",
                 description: "StillView automatically detects when images are added or removed from the current folder and updates the view accordingly.",
                 type: .information
@@ -290,34 +290,34 @@ extension HelpSection {
         title: "Thumbnail Navigation",
         icon: "rectangle.grid.3x3",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Thumbnail Strip",
                 description: "Press 'T' or click the strip button in the center toolbar section to show a horizontal thumbnail strip at the bottom. Perfect for quick previews while maintaining focus on the main image.",
                 shortcut: "T",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Grid View",
                 description: "Press 'G' or click the grid button in the center toolbar section to open a full-screen thumbnail grid. Great for browsing large collections and jumping to specific images.",
                 shortcut: "G",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Navigate with Thumbnails",
                 description: "Click any thumbnail to instantly jump to that image. The current image is highlighted with a blue border and scroll position updates automatically.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Thumbnail Performance",
                 description: "Thumbnails are generated in the background and cached for smooth scrolling. The cache manages memory automatically to prevent system slowdowns.",
                 type: .tip
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Grid View Controls",
                 description: "In grid view, use Escape to return to normal view, or click the grid button again in the toolbar. The grid shows image numbers, filenames, and file sizes for easy identification.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Memory Efficient",
                 description: "Thumbnail cache is limited to 25MB and 100 items to ensure smooth performance even with large image collections. Old thumbnails are automatically removed as needed.",
                 type: .tip
@@ -329,27 +329,27 @@ extension HelpSection {
         title: "Zoom & View Controls",
         icon: "magnifyingglass",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Zoom Modes",
                 description: "StillView offers multiple zoom modes: Fit to Window (default), Actual Size (100%), and custom zoom levels from 10% to 500%.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Pan Large Images",
                 description: "When zoomed in beyond window size, click and drag to pan around large images. Use trackpad gestures for natural navigation.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Fullscreen Mode",
                 description: "Press F or Enter for distraction-free fullscreen viewing. Press Escape to exit. Perfect for presentations or detailed image review.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Automatic Fitting",
                 description: "When loading new images, StillView automatically fits them to the window size for optimal viewing. You can then zoom as needed.",
                 type: .tip
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "High DPI Support",
                 description: "StillView automatically handles Retina displays and high-DPI images, ensuring crisp rendering at all zoom levels.",
                 type: .information
@@ -361,63 +361,63 @@ extension HelpSection {
         title: "Preferences & Customization",
         icon: "gearshape",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Opening Preferences",
                 description: "Access preferences by pressing ⌘, (Command-Comma) or selecting 'Preferences...' from the StillView menu. The preferences window organizes settings into three main tabs.",
                 shortcut: "⌘,",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "General Settings",
                 description: "Configure image display options (file names, info overlay), slideshow behavior (duration, looping), file management (deletion confirmation, folder memory), and thumbnail preferences (size, metadata badges).",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Appearance Customization",
                 description: "Personalize the interface with toolbar style options (floating vs. attached), animation intensity levels (minimal, normal, enhanced), glassmorphism effects, and hover feedback controls. Changes are previewed in real-time.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Keyboard Shortcuts",
                 description: "Customize all keyboard shortcuts to match your workflow. Click any shortcut to record a new key combination. The system automatically detects conflicts with existing shortcuts and system shortcuts.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Live Preview",
                 description: "The Appearance tab includes a live preview panel showing how your settings affect the toolbar, thumbnails, and notifications. Switch between preview modes to see different interface elements.",
                 type: .tip
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Shortcut Management",
                 description: "Search for specific shortcuts using the search field. Reset individual shortcuts or all shortcuts to defaults. Export and import shortcut configurations to share between devices.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Validation & Feedback",
                 description: "Preferences include real-time validation with helpful error messages and warnings. Performance-impacting settings show warnings to help you make informed choices.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Accessibility Integration",
                 description: "All preference controls support full keyboard navigation and VoiceOver. Animation settings respect system accessibility preferences like Reduce Motion.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Immediate Application",
                 description: "Most preference changes take effect immediately without requiring an app restart. Settings are automatically saved and restored when you reopen the app.",
                 type: .tip
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Backup & Restore",
                 description: "Preferences are automatically backed up before major changes. If settings become corrupted, the app will restore sensible defaults and notify you of the reset.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Performance Optimization",
                 description: "Enhanced animations and glass effects may impact performance on older Macs. The preferences system warns you about performance-heavy combinations and suggests alternatives.",
                 type: .warning
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Shortcut Conflicts",
                 description: "When recording new shortcuts, the system checks for conflicts with existing app shortcuts and system shortcuts. Conflicting shortcuts are highlighted with suggestions for alternatives.",
                 type: .warning
@@ -429,54 +429,54 @@ extension HelpSection {
         title: "Image Management",
         icon: "star",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Image Information",
                 description: "Press 'I' or click the info button to display image metadata including dimensions, file size, format, creation date, and camera EXIF data when available.",
                 shortcut: "I",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Slideshow Mode",
                 description: "Press 'S' or click the play button to start an automatic slideshow. Images advance every 3 seconds by default. Press 'S' again or spacebar to pause/resume.",
                 shortcut: "S",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Slideshow Controls",
                 description: "During slideshow mode, spacebar pauses/resumes, and arrow keys allow manual navigation. The slideshow automatically loops back to the first image when reaching the end.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Toolbar Organization",
                 description: "The consolidated top toolbar groups related controls together: navigation on the left, view modes in the center, and image actions (share, delete, zoom) on the right. Hover over buttons for keyboard shortcut hints.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Delete Images Safely",
                 description: "Click the trash button or press Delete/Backspace to move images to Trash. A confirmation dialog ensures you don't accidentally delete images. Files can be recovered from the Trash.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "EXIF Data Support",
                 description: "View detailed camera information including aperture, shutter speed, ISO, focal length, and GPS coordinates when available in the image metadata.",
                 type: .tip
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Share Images",
                 description: "Use the share button in the top-right toolbar section to quickly share the current image via email, Messages, AirDrop, or other installed sharing services.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Delete Images",
                 description: "Click the trash button (between share and zoom controls) or press Delete/Backspace to move images to Trash. A confirmation dialog prevents accidental deletions.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Safe File Management",
                 description: "Deleted images are moved to the Trash, not permanently deleted. You can recover them from the Trash if needed. The app requires explicit folder access permissions for delete operations.",
                 type: .tip
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Auto-Navigation After Delete",
                 description: "When you delete an image, StillView automatically advances to the next image in the folder. If you delete the last image, it will return to folder selection.",
                 type: .information
@@ -488,27 +488,27 @@ extension HelpSection {
         title: "Supported Formats",
         icon: "photo",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Primary Formats",
                 description: "JPEG, PNG, GIF (including animated), HEIF/HEIC (iPhone photos), WebP",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Extended Formats",
                 description: "TIFF, BMP, SVG, PDF (first page only)",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Modern iPhone Photos",
                 description: "Full support for HEIF/HEIC format used by modern iPhones, including metadata and color profiles.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Large Image Support",
                 description: "StillView can handle very large images (100MB+) with intelligent memory management to prevent system slowdowns.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Metadata Preservation",
                 description: "Image metadata, EXIF data, and color profiles are preserved and respected for accurate color reproduction.",
                 type: .tip
@@ -520,37 +520,37 @@ extension HelpSection {
         title: "Troubleshooting",
         icon: "wrench.and.screwdriver",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Image Won't Load",
                 description: "Ensure the file isn't corrupted and is in a supported format. StillView will automatically skip corrupted files and show the next valid image.",
                 type: .warning
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Memory Warnings",
                 description: "If you see memory warnings, try closing other applications or restart StillView. Very large images (>100MB) may require more available system memory.",
                 type: .warning
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Folder Access Issues",
                 description: "StillView uses security-scoped bookmarks to remember folder access. If you can't access a previously selected folder, try selecting it again.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Delete Permission Issues",
                 description: "If you see 'Permission denied' when trying to delete images, the app needs write access to the folder. Simply re-select the folder using the folder button in the top toolbar to restore delete permissions.",
                 type: .warning
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Performance Tips",
                 description: "For best performance with large image collections, ensure your Mac has sufficient RAM and consider organizing images into smaller folders (100-500 images per folder). Thumbnail views work best with collections under 1000 images.",
                 type: .tip
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Thumbnail Loading",
                 description: "Thumbnails generate automatically in the background. Large images may take a moment to appear in thumbnail views. The thumbnail cache persists between sessions for faster subsequent loading.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "App Sandbox Security",
                 description: "StillView runs in a secure sandbox and only accesses folders you explicitly select. No data is collected or transmitted.",
                 type: .information
@@ -562,27 +562,27 @@ extension HelpSection {
         title: "About StillView",
         icon: "info.circle",
         items: [
-            HelpItem(
+            HelpContentItem(
                 title: "Privacy First",
                 description: "StillView works completely offline and never collects or transmits any data. Your images and viewing habits remain completely private.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Universal Binary",
                 description: "Optimized for both Intel and Apple Silicon Macs, ensuring excellent performance on all modern Mac computers.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Accessibility",
                 description: "Full VoiceOver support, keyboard navigation, and compatibility with macOS accessibility features.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Open Source",
                 description: "StillView is open source software. Visit the GitHub repository for source code, issues, and contributions.",
                 type: .information
             ),
-            HelpItem(
+            HelpContentItem(
                 title: "Support",
                 description: "For support, bug reports, or feature requests, visit the GitHub Issues page or contact the developer through the repository.",
                 type: .information

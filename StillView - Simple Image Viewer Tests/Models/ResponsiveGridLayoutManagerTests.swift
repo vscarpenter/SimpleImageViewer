@@ -292,6 +292,7 @@ private class MockPreferencesService: PreferencesService {
     var windowState: WindowState?
     var defaultThumbnailGridSize: ThumbnailGridSize = .medium
     var useResponsiveGridLayout: Bool = true
+    var enableAIAnalysis: Bool = true
     
     var savePreferencesCalled = false
     
@@ -322,6 +323,8 @@ private class MockPreferencesService: PreferencesService {
     func loadWindowState() -> WindowState? {
         return windowState
     }
+    
+    func saveFavorites() { }
 }
 
 // MARK: - ThumbnailGridSize Extension Tests

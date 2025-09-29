@@ -121,6 +121,12 @@ struct ToolbarOverflowMenu: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.systemAccent)
             }
+        case "aiInsights":
+            if #available(macOS 26.0, *), viewModel.showAIInsights {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.systemAccent)
+            }
         case "slideshow":
             if viewModel.isSlideshow {
                 Image(systemName: "checkmark")
@@ -176,6 +182,12 @@ struct ToolbarOverflowMenu: View {
         switch item.id {
         case "info":
             return viewModel.showImageInfo ? "info.circle.fill" : "info.circle"
+        case "aiInsights":
+            if #available(macOS 26.0, *) {
+                return viewModel.showAIInsights ? "brain.head.profile.fill" : "brain.head.profile"
+            } else {
+                return "brain.head.profile"
+            }
         case "slideshow":
             return viewModel.isSlideshow ? "pause.circle.fill" : "play.circle"
         case "thumbnails":
@@ -193,6 +205,12 @@ struct ToolbarOverflowMenu: View {
         switch item.id {
         case "info":
             return viewModel.showImageInfo ? .systemAccent : .appSecondaryText
+        case "aiInsights":
+            if #available(macOS 26.0, *) {
+                return viewModel.showAIInsights ? .systemAccent : .appSecondaryText
+            } else {
+                return .appSecondaryText
+            }
         case "slideshow":
             return viewModel.isSlideshow ? .systemAccent : .appSecondaryText
         case "thumbnails":
@@ -226,6 +244,10 @@ struct ToolbarOverflowMenu: View {
             break
         case "info":
             viewModel.toggleImageInfo()
+        case "aiInsights":
+            if #available(macOS 26.0, *) {
+                viewModel.toggleAIInsights()
+            }
         case "slideshow":
             viewModel.toggleSlideshow()
         case "thumbnails":

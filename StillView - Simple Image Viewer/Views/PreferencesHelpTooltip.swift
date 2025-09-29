@@ -273,6 +273,24 @@ extension PreferencesHelpTooltip {
             type: .tip
         )
     }
+
+    /// Help tooltip for AI analysis preference
+    static func aiAnalysis() -> PreferencesHelpTooltip {
+        PreferencesHelpTooltip(
+            title: "On-Device AI",
+            content: "Image analysis runs locally to surface tags, text, and objects. Disable this if you prefer to browse without automatic insights.",
+            type: .information
+        )
+    }
+
+    /// Help tooltip for automatic image enhancements preference
+    static func imageEnhancements() -> PreferencesHelpTooltip {
+        PreferencesHelpTooltip(
+            title: "Automatic Enhancements",
+            content: "Applies sharpening, color tuning, and noise reduction when images load. Turn this off to keep photos untouched or if loading feels slow.",
+            type: .tip
+        )
+    }
 }
 
 // MARK: - View Extensions
@@ -314,6 +332,8 @@ enum PreferencesHelpType {
     case shortcutConflicts
     case metadataBadges
     case deleteConfirmation
+    case aiAnalysis
+    case imageEnhancements
     
     var tooltip: PreferencesHelpTooltip {
         switch self {
@@ -337,6 +357,10 @@ enum PreferencesHelpType {
             return .metadataBadges()
         case .deleteConfirmation:
             return .deleteConfirmation()
+        case .aiAnalysis:
+            return .aiAnalysis()
+        case .imageEnhancements:
+            return .imageEnhancements()
         }
     }
 }

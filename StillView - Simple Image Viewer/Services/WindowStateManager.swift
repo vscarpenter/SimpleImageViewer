@@ -72,7 +72,7 @@ class WindowStateManager: ObservableObject {
         setupViewModelObservers(for: viewModel)
         
         // Apply saved UI state if available
-        currentWindowState.applyUIState(to: viewModel)
+        applyUIStateWithPreferenceCheck(to: viewModel)
     }
     
     /// Update the current folder and image state
@@ -290,6 +290,17 @@ class WindowStateManager: ObservableObject {
             }
         }
         .store(in: &cancellables)
+        
+        // Observe AI Insights panel visibility changes
+        viewModel.$showAIInsights
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    self?.scheduleSave()
+                }
+            }
+            .store(in: &cancellables)
     }
     
     private func handleWindowFrameChange(_ window: NSWindow) {
@@ -328,6 +339,25 @@ class WindowStateManager: ObservableObject {
         
         // Update folder state
         currentWindowState.updateFolderState(folderURL: currentFolderURL, imageIndex: currentImageIndex)
+    }
+    
+    /// Apply UI state with preference checking for AI Insights
+    /// - Parameter viewModel: The view model to apply state to
+    private func applyUIStateWithPreferenceCheck(to viewModel: ImageViewerViewModel) {
+        // Apply basic UI state
+        currentWindowState.applyUIState(to: viewModel)
+        
+        // Additional check for AI Insights panel state restoration
+        if preferencesService.rememberAIInsightsPanelState {
+            // The applyUIState method already handles AI Insights restoration with proper checks
+            Logger.info("AI Insights panel state restoration enabled - state will be restored if conditions are met")
+        } else {
+            // User doesn't want panel state remembered, ensure it starts hidden
+            if viewModel.isAIInsightsAvailable {
+                viewModel.restoreAIInsightsState(false)
+                Logger.info("AI Insights panel state restoration disabled - panel will start hidden")
+            }
+        }
     }
 }
 

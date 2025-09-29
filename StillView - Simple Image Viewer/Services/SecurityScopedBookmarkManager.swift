@@ -43,9 +43,9 @@ class SecurityScopedBookmarkManager: ObservableObject {
         }
         
         do {
-            // Create security-scoped bookmark
+            // Create security-scoped bookmark (full access provides best compatibility across macOS versions)
             let bookmarkData = try folderURL.bookmarkData(
-                options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                options: [.withSecurityScope],
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
             )

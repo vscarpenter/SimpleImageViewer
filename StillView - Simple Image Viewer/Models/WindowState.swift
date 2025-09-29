@@ -55,6 +55,9 @@ struct WindowState: Codable {
     /// The slideshow interval
     var slideshowInterval: Double
     
+    /// Whether AI Insights panel was visible (session-based persistence)
+    var showAIInsights: Bool
+    
     // MARK: - Metadata
     
     /// Timestamp when the state was last saved
@@ -79,6 +82,7 @@ struct WindowState: Codable {
         self.viewMode = "normal"
         self.wasInSlideshow = false
         self.slideshowInterval = 3.0
+        self.showAIInsights = false
         self.lastSaved = Date()
         self.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
     }
@@ -126,6 +130,7 @@ struct WindowState: Codable {
             self.viewMode = viewModel.viewMode.rawValue
             self.wasInSlideshow = viewModel.isSlideshow
             self.slideshowInterval = viewModel.slideshowInterval
+            self.showAIInsights = viewModel.showAIInsights
         }
         
         self.lastSaved = Date()
@@ -197,6 +202,7 @@ struct WindowState: Codable {
         self.viewMode = viewModel.viewMode.rawValue
         self.wasInSlideshow = viewModel.isSlideshow
         self.slideshowInterval = viewModel.slideshowInterval
+        self.showAIInsights = viewModel.showAIInsights
         self.lastSaved = Date()
     }
     
@@ -272,6 +278,19 @@ struct WindowState: Codable {
         }
         
         viewModel.slideshowInterval = slideshowInterval
+        
+        // Restore AI Insights panel visibility if conditions are met
+        let preferencesService = DefaultPreferencesService()
+        if viewModel.isAIAnalysisEnabled && 
+           viewModel.isAIInsightsAvailable && 
+           preferencesService.rememberAIInsightsPanelState {
+            viewModel.restoreAIInsightsState(showAIInsights)
+            Logger.info("Restored AI Insights panel state: \(showAIInsights)")
+        } else {
+            // Ensure panel starts hidden if conditions aren't met
+            viewModel.restoreAIInsightsState(false)
+            Logger.info("AI Insights panel state not restored - starting hidden")
+        }
         
         // Note: We don't automatically restore slideshow state as it should be user-initiated
     }

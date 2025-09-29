@@ -142,6 +142,8 @@ final class SmartImageOrganizationService: ObservableObject {
     }
     
     /// Find similar images
+    /// Migration Note: Uses canonical SimilarImageResult type from SmartSearchService
+    /// This ensures consistency across all services that work with similar image results
     func findSimilarImages(to referenceImage: ImageFile, in collection: [ImageFile]) async throws -> [SimilarImageResult] {
         guard compatibilityService.isFeatureAvailable(.aiImageAnalysis) else {
             return []
@@ -335,7 +337,7 @@ final class SmartImageOrganizationService: ObservableObject {
         case "Events":
             return .systemIndigo
         default:
-            return .systemGray2
+            return .systemGray
         }
     }
     
@@ -419,7 +421,8 @@ final class SmartImageOrganizationService: ObservableObject {
         for imageFile in images {
             if processedImages.contains(imageFile.id.uuidString) { continue }
             
-            let similarImages = try await findSimilarImages(to: imageFile, in: images)
+                // Migration Note: Uses canonical SimilarImageResult type for consistency
+            let similarImages: [SimilarImageResult] = try await findSimilarImages(to: imageFile, in: images)
             let similarImageFiles = similarImages.map { $0.imageFile }
             
             if similarImageFiles.count >= 3 {
@@ -451,7 +454,7 @@ final class SmartImageOrganizationService: ObservableObject {
             return "\(components.year ?? 0)-\(components.month ?? 0)"
         }
         
-        for (monthKey, monthImages) in groupedImages {
+        for (_, monthImages) in groupedImages {
             if monthImages.count >= 5 {
                 let formatter = DateFormatter()
                 formatter.dateFormat = "MMMM yyyy"
@@ -495,7 +498,7 @@ struct SmartCategory: Identifiable, Hashable {
     let name: String
     let description: String
     var images: [ImageFile]
-    let confidence: Double
+    var confidence: Double
     let keywords: [String]
     let color: NSColor
     let icon: String
@@ -564,3 +567,4 @@ enum OrganizationError: LocalizedError {
         }
     }
 }
+

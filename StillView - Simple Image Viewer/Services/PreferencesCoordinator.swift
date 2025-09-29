@@ -8,7 +8,7 @@ class PreferencesCoordinator: ObservableObject {
     // MARK: - Published Properties
     
     /// Currently selected preferences tab
-    @Published var selectedTab: PreferencesTab = .general
+    @Published var selectedTab: Preferences.Tab = .general
     
     /// Whether the preferences window is currently open
     @Published var isWindowOpen: Bool = false
@@ -53,7 +53,7 @@ class PreferencesCoordinator: ObservableObject {
     
     /// Select a specific preferences tab
     /// - Parameter tab: The tab to select
-    func selectTab(_ tab: PreferencesTab) {
+    func selectTab(_ tab: Preferences.Tab) {
         selectedTab = tab
         saveLastSelectedTab()
     }
@@ -74,8 +74,8 @@ class PreferencesCoordinator: ObservableObject {
     /// Load the last selected tab from preferences
     private func loadLastSelectedTab() {
         // Use UserDefaults directly for this simple preference
-        let tabRawValue = UserDefaults.standard.string(forKey: "PreferencesLastSelectedTab") ?? PreferencesTab.general.rawValue
-        selectedTab = PreferencesTab(rawValue: tabRawValue) ?? .general
+        let tabRawValue = UserDefaults.standard.string(forKey: "PreferencesLastSelectedTab") ?? Preferences.Tab.general.rawValue
+        selectedTab = Preferences.Tab(rawValue: tabRawValue) ?? .general
     }
     
     /// Save the currently selected tab to preferences
@@ -115,10 +115,10 @@ class PreferencesWindowController: NSWindowController {
     }
     
     deinit {
+        // Capture coordinator reference before deinit completes
+        let coordinatorRef = coordinator
         Task { @MainActor in
-            // Use weak reference to avoid retain cycle
-            weak var weakCoordinator = coordinator
-            weakCoordinator?.windowControllerDidClose()
+            coordinatorRef?.windowControllerDidClose()
         }
     }
     

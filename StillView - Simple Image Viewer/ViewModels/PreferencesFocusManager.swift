@@ -9,7 +9,9 @@ class PreferencesFocusManager: ObservableObject {
     
     @Published var focusedField: PreferencesField?
     @Published var focusedControl: String?
-    @Published var focusedTab: PreferencesTab?
+    /// Currently focused preferences tab
+    /// Migration Note: Uses canonical Preferences.Tab type (migrated from PreferencesTab alias)
+    @Published var focusedTab: Preferences.Tab?
     @Published var isNavigatingWithKeyboard = false
     
     // MARK: - Private Properties
@@ -37,7 +39,8 @@ class PreferencesFocusManager: ObservableObject {
     }
     
     /// Set focus to a specific tab
-    func setFocus(to tab: PreferencesTab) {
+    /// Migration Note: Uses canonical Preferences.Tab type for consistency across the app
+    func setFocus(to tab: Preferences.Tab) {
         focusedTab = tab
         isNavigatingWithKeyboard = true
     }

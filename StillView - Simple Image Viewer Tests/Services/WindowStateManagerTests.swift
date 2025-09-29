@@ -265,6 +265,9 @@ class MockPreferencesService: PreferencesService {
     var lastSelectedFolder: URL?
     var folderBookmarks: [Data] = []
     var windowState: WindowState?
+    var defaultThumbnailGridSize: ThumbnailGridSize = .medium
+    var useResponsiveGridLayout: Bool = true
+    var enableAIAnalysis: Bool = true
     
     func addRecentFolder(_ url: URL) {
         recentFolders.insert(url, at: 0)
@@ -297,4 +300,6 @@ class MockPreferencesService: PreferencesService {
     func loadWindowState() -> WindowState? {
         return windowState
     }
+    
+    func saveFavorites() { }
 }

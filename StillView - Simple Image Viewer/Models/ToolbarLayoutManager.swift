@@ -69,6 +69,7 @@ struct ToolbarSection {
         position: .center,
         items: [
             ToolbarItem(id: "info", title: "Image Info", icon: "info.circle", priority: 6, isEssential: false),
+            ToolbarItem(id: "aiInsights", title: "AI Insights", icon: "brain.head.profile", priority: 5, isEssential: false),
             ToolbarItem(id: "slideshow", title: "Slideshow", icon: "play.circle", priority: 4, isEssential: false),
             ToolbarItem(id: "thumbnails", title: "Thumbnail Strip", icon: "rectangle.grid.1x2", priority: 7, isEssential: false),
             ToolbarItem(id: "grid", title: "Grid View", icon: "square.grid.3x3", priority: 7, isEssential: false)
@@ -168,25 +169,31 @@ class ToolbarLayoutManager: ObservableObject {
     // MARK: - Private Properties
     private let configuration: ToolbarConfiguration
     private var cancellables = Set<AnyCancellable>()
+    private weak var imageViewerViewModel: ImageViewerViewModel?
     
     // MARK: - Initialization
-    init(configuration: ToolbarConfiguration = .default) {
+    init(configuration: ToolbarConfiguration = .default, imageViewerViewModel: ImageViewerViewModel? = nil) {
         self.configuration = configuration
-        calculateInitialLayout()
+        self.imageViewerViewModel = imageViewerViewModel
+        // Initial layout calculation will be done when first accessed
     }
     
     // MARK: - Public Methods
     
     /// Update layout based on available width
     /// - Parameter width: Available toolbar width
+    @MainActor
     func updateLayout(for width: CGFloat) {
         let newLayout = configuration.responsiveBreakpoints.layoutMode(for: width)
         
-        guard newLayout != currentLayout else { return }
+        // Always calculate on first call or when layout changes
+        let shouldCalculate = visibleItems.isEmpty || newLayout != currentLayout
         
-        withAnimation(configuration.animationSettings.layoutTransition) {
-            currentLayout = newLayout
-            calculateVisibleItems(for: newLayout)
+        if shouldCalculate {
+            withAnimation(configuration.animationSettings.layoutTransition) {
+                currentLayout = newLayout
+                calculateVisibleItems(for: newLayout)
+            }
         }
     }
     
@@ -202,6 +209,12 @@ class ToolbarLayoutManager: ObservableObject {
         withAnimation(configuration.animationSettings.overflowTransition) {
             isOverflowMenuPresented = false
         }
+    }
+    
+    /// Update layout when AI Insights availability changes
+    @MainActor
+    func updateAIInsightsAvailability() {
+        calculateVisibleItems(for: currentLayout)
     }
     
     /// Check if a specific item is visible in current layout
@@ -220,10 +233,9 @@ class ToolbarLayoutManager: ObservableObject {
     
     // MARK: - Private Methods
     
-    private func calculateInitialLayout() {
-        calculateVisibleItems(for: currentLayout)
-    }
+
     
+    @MainActor
     private func calculateVisibleItems(for layout: ToolbarLayout) {
         var newVisibleItems: [String: [ToolbarItem]] = [:]
         var newOverflowItems: [ToolbarItem] = []
@@ -239,6 +251,7 @@ class ToolbarLayoutManager: ObservableObject {
         showOverflowButton = !overflowItems.isEmpty
     }
     
+    @MainActor
     private func calculateSectionItems(_ section: ToolbarSection, for layout: ToolbarLayout) -> ([ToolbarItem], [ToolbarItem]) {
         var visibleItems: [ToolbarItem] = []
         var overflowItems: [ToolbarItem] = []
@@ -246,14 +259,28 @@ class ToolbarLayoutManager: ObservableObject {
         let sortedItems = section.items.sorted { $0.priority > $1.priority }
         
         for item in sortedItems {
-            if shouldItemBeVisible(item, in: section, for: layout) {
+            // Check if item should be included based on system availability
+            if shouldItemBeIncluded(item) && shouldItemBeVisible(item, in: section, for: layout) {
                 visibleItems.append(item)
-            } else {
+            } else if shouldItemBeIncluded(item) {
                 overflowItems.append(item)
             }
+            // If item shouldn't be included at all (e.g., AI Insights on unsupported systems), skip it entirely
         }
         
         return (visibleItems, overflowItems)
+    }
+    
+    @MainActor
+    private func shouldItemBeIncluded(_ item: ToolbarItem) -> Bool {
+        switch item.id {
+        case "aiInsights":
+            // AI Insights requires system compatibility check and user preference
+            // The ViewModel handles the complete availability logic including macOS version check
+            return imageViewerViewModel?.isAIInsightsAvailable ?? false
+        default:
+            return true
+        }
     }
     
     private func shouldItemBeVisible(_ item: ToolbarItem, in section: ToolbarSection, for layout: ToolbarLayout) -> Bool {

@@ -520,6 +520,21 @@ class ImageViewerViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentFileName, "test_image_0")
     }
     
+    func testAIAnalysisPreferenceUpdatesViaNotification() {
+        mockPreferencesService.enableAIAnalysis = false
+        let viewModel = ImageViewerViewModel(
+            imageLoaderService: mockImageLoaderService,
+            preferencesService: mockPreferencesService,
+            errorHandlingService: mockErrorHandlingService
+        )
+        XCTAssertFalse(viewModel.isAIAnalysisEnabled)
+        
+        mockPreferencesService.enableAIAnalysis = true
+        NotificationCenter.default.post(name: .aiAnalysisPreferenceDidChange, object: true)
+        
+        XCTAssertTrue(viewModel.isAIAnalysisEnabled)
+    }
+    
     // Removed feature tests
     
     // MARK: - Helper Methods
@@ -602,6 +617,7 @@ class MockPreferencesService: PreferencesService {
     var windowState: WindowState?
     var defaultThumbnailGridSize: ThumbnailGridSize = .medium
     var useResponsiveGridLayout: Bool = true
+    var enableAIAnalysis: Bool = true
     // Favorites removed
     
     var savePreferencesCalled = false

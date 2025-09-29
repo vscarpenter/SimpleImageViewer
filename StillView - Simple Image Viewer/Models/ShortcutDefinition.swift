@@ -16,7 +16,7 @@ struct ShortcutDefinition: Identifiable, Codable, Equatable {
     let description: String
     
     /// Category this shortcut belongs to
-    let category: ShortcutCategory
+    let category: Shortcuts.Category
     
     /// Default keyboard shortcut
     let defaultShortcut: KeyboardShortcut
@@ -48,7 +48,7 @@ struct ShortcutDefinition: Identifiable, Codable, Equatable {
         id: String,
         name: String,
         description: String,
-        category: ShortcutCategory,
+        category: Shortcuts.Category,
         defaultShortcut: KeyboardShortcut,
         currentShortcut: KeyboardShortcut? = nil,
         isCustomizable: Bool = true,
@@ -78,59 +78,63 @@ struct ShortcutDefinition: Identifiable, Codable, Equatable {
     }
 }
 
-/// Categories for organizing keyboard shortcuts
-enum ShortcutCategory: String, CaseIterable, Identifiable, Codable {
-    case navigation = "navigation"
-    case view = "view"
-    case file = "file"
-    case edit = "edit"
-    case window = "window"
-    case help = "help"
-    
-    var id: String { rawValue }
-    
-    var displayName: String {
-        switch self {
-        case .navigation:
-            return "Navigation"
-        case .view:
-            return "View"
-        case .file:
-            return "File"
-        case .edit:
-            return "Edit"
-        case .window:
-            return "Window"
-        case .help:
-            return "Help"
+enum Shortcuts {}
+
+extension Shortcuts {
+    /// Categories for organizing keyboard shortcuts
+    enum Category: String, CaseIterable, Identifiable, Codable {
+        case navigation = "navigation"
+        case view = "view"
+        case file = "file"
+        case edit = "edit"
+        case window = "window"
+        case help = "help"
+        
+        var id: String { rawValue }
+        
+        var displayName: String {
+            switch self {
+            case .navigation:
+                return "Navigation"
+            case .view:
+                return "View"
+            case .file:
+                return "File"
+            case .edit:
+                return "Edit"
+            case .window:
+                return "Window"
+            case .help:
+                return "Help"
+            }
         }
-    }
-    
-    var icon: String {
-        switch self {
-        case .navigation:
-            return "arrow.left.arrow.right"
-        case .view:
-            return "eye"
-        case .file:
-            return "doc"
-        case .edit:
-            return "pencil"
-        case .window:
-            return "macwindow"
-        case .help:
-            return "questionmark.circle"
+        
+        var icon: String {
+            switch self {
+            case .navigation:
+                return "arrow.left.arrow.right"
+            case .view:
+                return "eye"
+            case .file:
+                return "doc"
+            case .edit:
+                return "pencil"
+            case .window:
+                return "macwindow"
+            case .help:
+                return "questionmark.circle"
+            }
         }
-    }
-    
-    var sortOrder: Int {
-        switch self {
-        case .navigation: return 0
-        case .view: return 1
-        case .file: return 2
-        case .edit: return 3
-        case .window: return 4
-        case .help: return 5
+        
+        var sortOrder: Int {
+            switch self {
+            case .navigation: return 0
+            case .view: return 1
+            case .file: return 2
+            case .edit: return 3
+            case .window: return 4
+            case .help: return 5
+            }
         }
     }
 }
@@ -301,7 +305,7 @@ struct ModifierFlags: OptionSet, Codable, Hashable {
 
 /// Category of shortcuts with associated shortcuts
 struct ShortcutCategoryGroup: Identifiable {
-    let category: ShortcutCategory
+    let category: Shortcuts.Category
     let shortcuts: [ShortcutDefinition]
     
     var id: String { category.id }

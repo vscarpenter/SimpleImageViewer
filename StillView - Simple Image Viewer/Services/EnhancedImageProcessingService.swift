@@ -36,7 +36,11 @@ final class EnhancedImageProcessingService: ObservableObject {
     
     private init() {
         self.metalDevice = MTLCreateSystemDefaultDevice()
-        self.ciContext = CIContext(metalDevice: metalDevice)
+        if let metalDevice = metalDevice {
+            self.ciContext = CIContext(mtlDevice: metalDevice)
+        } else {
+            self.ciContext = CIContext()
+        }
         setupFeatureDetection()
     }
     
@@ -101,19 +105,15 @@ final class EnhancedImageProcessingService: ObservableObject {
         size: CGSize,
         quality: ThumbnailQuality = .high
     ) async throws -> NSImage {
-        return try await withFeatureAvailabilityAsync(
-            .enhancedImageProcessing,
-            available: {
-                try await generateAdvancedThumbnail(from: image, size: size, quality: quality)
-            },
-            unavailable: {
-                try await generateStandardThumbnail(from: image, size: size, quality: quality)
-            }
-        )
+        if compatibilityService.isFeatureAvailable(.enhancedImageProcessing) {
+            return try await generateAdvancedThumbnail(from: image, size: size, quality: quality)
+        } else {
+            return try await generateStandardThumbnail(from: image, size: size, quality: quality)
+        }
     }
     
     /// AI-powered image analysis
-    func analyzeImage(_ image: NSImage) async throws -> ImageAnalysisResult {
+    func analyzeImage(_ image: NSImage) async throws -> ProcessingAnalysisResult {
         guard compatibilityService.isFeatureAvailable(.aiImageAnalysis) else {
             throw ProcessingError.featureNotAvailable
         }
@@ -194,11 +194,13 @@ final class EnhancedImageProcessingService: ObservableObject {
         
         let ciImage = CIImage(cgImage: cgImage)
         
-        // Apply noise reduction filter
-        let noiseReductionFilter = CIFilter.noiseReduction()
-        noiseReductionFilter.inputImage = ciImage
-        noiseReductionFilter.noiseLevel = 0.02
-        noiseReductionFilter.sharpness = 0.4
+        // Apply noise reduction filter (using available filter)
+        guard let noiseReductionFilter = CIFilter(name: "CINoiseReduction") else {
+            throw ProcessingError.processingFailed
+        }
+        noiseReductionFilter.setValue(ciImage, forKey: kCIInputImageKey)
+        noiseReductionFilter.setValue(0.02, forKey: "inputNoiseLevel")
+        noiseReductionFilter.setValue(0.4, forKey: "inputSharpness")
         
         guard let outputImage = noiseReductionFilter.outputImage else {
             throw ProcessingError.processingFailed
@@ -218,11 +220,13 @@ final class EnhancedImageProcessingService: ObservableObject {
         let ciImage = CIImage(cgImage: cgImage)
         
         // Apply color enhancement
-        let colorControlsFilter = CIFilter.colorControls()
-        colorControlsFilter.inputImage = ciImage
-        colorControlsFilter.brightness = 0.1
-        colorControlsFilter.contrast = 1.1
-        colorControlsFilter.saturation = 1.2
+        guard let colorControlsFilter = CIFilter(name: "CIColorControls") else {
+            throw ProcessingError.processingFailed
+        }
+        colorControlsFilter.setValue(ciImage, forKey: kCIInputImageKey)
+        colorControlsFilter.setValue(0.1, forKey: kCIInputBrightnessKey)
+        colorControlsFilter.setValue(1.1, forKey: kCIInputContrastKey)
+        colorControlsFilter.setValue(1.2, forKey: kCIInputSaturationKey)
         
         guard let outputImage = colorControlsFilter.outputImage else {
             throw ProcessingError.processingFailed
@@ -244,7 +248,7 @@ final class EnhancedImageProcessingService: ObservableObject {
     }
     
     private func applyHardwareAcceleration(to processedImage: ProcessedImage) async throws -> ProcessedImage {
-        guard let metalDevice = metalDevice else {
+        guard metalDevice != nil else {
             throw ProcessingError.hardwareNotAvailable
         }
         
@@ -277,10 +281,12 @@ final class EnhancedImageProcessingService: ObservableObject {
             height: ciImage.extent.height * scale
         )
         
-        let scaleFilter = CIFilter.lanczosScaleTransform()
-        scaleFilter.inputImage = ciImage
-        scaleFilter.scale = Float(scale)
-        scaleFilter.aspectRatio = Float(ciImage.extent.width / ciImage.extent.height)
+        guard let scaleFilter = CIFilter(name: "CILanczosScaleTransform") else {
+            throw ProcessingError.processingFailed
+        }
+        scaleFilter.setValue(ciImage, forKey: kCIInputImageKey)
+        scaleFilter.setValue(scale, forKey: kCIInputScaleKey)
+        scaleFilter.setValue(ciImage.extent.width / ciImage.extent.height, forKey: kCIInputAspectRatioKey)
         
         guard let outputImage = scaleFilter.outputImage else {
             throw ProcessingError.processingFailed
@@ -305,7 +311,7 @@ final class EnhancedImageProcessingService: ObservableObject {
         return thumbnail
     }
     
-    private func performAIAnalysis(_ image: NSImage) async throws -> ImageAnalysisResult {
+    private func performAIAnalysis(_ image: NSImage) async throws -> ProcessingAnalysisResult {
         guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             throw ProcessingError.invalidImage
         }
@@ -316,17 +322,21 @@ final class EnhancedImageProcessingService: ObservableObject {
         try handler.perform([request])
         
         let classifications = request.results?.map { observation in
-            ClassificationResult(
+            ProcessingClassificationResult(
                 identifier: observation.identifier,
                 confidence: observation.confidence
             )
         } ?? []
         
-        return ImageAnalysisResult(
+        let qualityScore = calculateQualityScore(image)
+        let dominantColors = extractDominantColors(from: image)
+        let suggestions = generateSuggestedEnhancements(classifications)
+        
+        return ProcessingAnalysisResult(
             classifications: classifications,
-            dominantColors: extractDominantColors(from: image),
-            qualityScore: calculateQualityScore(image),
-            suggestedEnhancements: generateSuggestedEnhancements(classifications)
+            dominantColors: dominantColors,
+            qualityScore: qualityScore,
+            suggestedEnhancements: suggestions
         )
     }
     
@@ -349,9 +359,34 @@ final class EnhancedImageProcessingService: ObservableObject {
         return 0.8
     }
     
-    private func generateSuggestedEnhancements(_ classifications: [ClassificationResult]) -> [EnhancementSuggestion] {
+    private func generateSuggestedEnhancements(_ classifications: [ProcessingClassificationResult]) -> [ProcessingEnhancementSuggestion] {
         // Generate enhancement suggestions based on image content
-        return []
+        var suggestions = classifications.map { classification -> ProcessingEnhancementSuggestion in
+            if classification.identifier.contains("portrait") {
+                return ProcessingEnhancementSuggestion(
+                    type: .brightness,
+                    description: "Portrait detected - adjust brightness for better skin tones",
+                    confidence: min(Double(classification.confidence), 1.0)
+                )
+            }
+            return ProcessingEnhancementSuggestion(
+                type: .sharpness,
+                description: "Apply gentle sharpening to enhance detail",
+                confidence: 0.4
+            )
+        }
+
+        if suggestions.isEmpty {
+            suggestions.append(
+                ProcessingEnhancementSuggestion(
+                    type: .contrast,
+                    description: "Balance contrast to improve overall clarity",
+                    confidence: 0.5
+                )
+            )
+        }
+
+        return suggestions
     }
 }
 
@@ -388,37 +423,37 @@ enum ProcessingFeature: String, CaseIterable {
 struct ProcessedImage {
     let originalImage: NSImage
     var currentImage: NSImage
-    var analysisResult: ImageAnalysisResult?
+    var analysisResult: ProcessingAnalysisResult?
     
-    init(originalImage: NSImage, currentImage: NSImage? = nil, analysisResult: ImageAnalysisResult? = nil) {
+    init(originalImage: NSImage, currentImage: NSImage? = nil, analysisResult: ProcessingAnalysisResult? = nil) {
         self.originalImage = originalImage
         self.currentImage = currentImage ?? originalImage
         self.analysisResult = analysisResult
     }
 }
 
-/// Image analysis result
-struct ImageAnalysisResult {
-    let classifications: [ClassificationResult]
+/// Image analysis result produced during enhanced processing
+struct ProcessingAnalysisResult {
+    let classifications: [ProcessingClassificationResult]
     let dominantColors: [NSColor]
     let qualityScore: Double
-    let suggestedEnhancements: [EnhancementSuggestion]
+    let suggestedEnhancements: [ProcessingEnhancementSuggestion]
 }
 
 /// Classification result
-struct ClassificationResult {
+struct ProcessingClassificationResult {
     let identifier: String
     let confidence: Float
 }
 
 /// Enhancement suggestion
-struct EnhancementSuggestion {
-    let type: EnhancementType
+struct ProcessingEnhancementSuggestion {
+    let type: ProcessingEnhancementType
     let description: String
     let confidence: Double
 }
 
-enum EnhancementType {
+enum ProcessingEnhancementType {
     case brightness
     case contrast
     case saturation

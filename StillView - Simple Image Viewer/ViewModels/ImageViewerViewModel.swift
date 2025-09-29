@@ -51,6 +51,22 @@ class ImageViewerViewModel: ObservableObject {
     @Published var isSlideshow: Bool = false
     @Published var slideshowInterval: Double = 3.0
     @Published var viewMode: ViewMode = .normal
+
+    // AI analysis state
+    @Published private(set) var currentAnalysis: ImageAnalysisResult?
+    @Published private(set) var analysisTags: [String] = []
+    @Published private(set) var analysisObjects: [DetectedObject] = []
+    @Published private(set) var analysisScenes: [SceneClassification] = []
+    @Published private(set) var analysisText: [RecognizedText] = []
+    @Published private(set) var analysisError: Error?
+    @Published private(set) var isAnalyzingAI: Bool = false
+    @Published private(set) var aiAnalysisProgress: Double = 0.0
+    @Published private(set) var isAIAnalysisEnabled: Bool = true
+    @Published private(set) var isEnhancedProcessingEnabled: Bool = false
+    
+    // AI Insights UI state
+    @Published private(set) var showAIInsights: Bool = false
+    @Published private(set) var isAIInsightsAvailable: Bool = false
     
     // MARK: - Computed Properties
     var hasNext: Bool {
@@ -99,10 +115,14 @@ class ImageViewerViewModel: ObservableObject {
     private let compatibilityService = MacOS26CompatibilityService.shared
     private let enhancedImageProcessing = EnhancedImageProcessingService.shared
     private let enhancedSecurity = EnhancedSecurityService.shared
+    private let aiAnalysisService = AIImageAnalysisService.shared
     
     // Zoom levels for quick access
     private let zoomLevels: [Double] = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 5.0]
     private let fitToWindowZoom: Double = -1.0 // Special value for fit-to-window
+
+    // AI analysis task management
+    private var analysisTask: Task<Void, Never>?
     
     // MARK: - Initialization
     init(imageLoaderService: ImageLoaderService = DefaultImageLoaderService(),
@@ -111,6 +131,8 @@ class ImageViewerViewModel: ObservableObject {
         self.imageLoaderService = imageLoaderService
         self.preferencesService = preferencesService
         self.errorHandlingService = errorHandlingService
+        self.isAIAnalysisEnabled = preferencesService.enableAIAnalysis
+        self.isEnhancedProcessingEnabled = preferencesService.enableImageEnhancements
         
         // Setup thumbnail cache
         thumbnailCache.countLimit = 100
@@ -121,11 +143,74 @@ class ImageViewerViewModel: ObservableObject {
         self.showImageInfo = preferencesService.showImageInfo
         self.slideshowInterval = preferencesService.slideshowInterval
         
+        // Initialize AI Insights availability and sync with preferences
+        updateAIInsightsAvailability()
+        syncAIInsightsWithPreferences()
+        
+        // Initialize AI Insights state based on preferences and system availability
+        initializeAIInsightsState()
+        
         // Set up preferences binding
         setupPreferencesBinding()
         
         // Set up memory warning handling
         setupMemoryWarningHandling()
+        
+        // Observe AI analysis service state
+        aiAnalysisService.$isAnalyzing
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.isAnalyzingAI = $0
+            }
+            .store(in: &cancellables)
+
+        aiAnalysisService.$analysisProgress
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.aiAnalysisProgress = $0
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to AI analysis preference changes with error handling
+        NotificationCenter.default.publisher(for: .aiAnalysisPreferenceDidChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                self?.handleAIAnalysisPreferenceChange(notification)
+            }
+            .store(in: &cancellables)
+        
+        NotificationCenter.default.publisher(for: .imageEnhancementsPreferenceDidChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                self?.handleImageEnhancementsPreferenceChange(notification)
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to notification system failures
+        NotificationCenter.default.publisher(for: .notificationSystemFailure)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                if let error = notification.object as? Error {
+                    self?.handleNotificationSystemFailure(error)
+                }
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to app activation to re-check system compatibility
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateAIInsightsAvailability()
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to AI Insights initialization completion
+        NotificationCenter.default.publisher(for: .aiInsightsInitializationComplete)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.handleAIInsightsInitializationComplete()
+            }
+            .store(in: &cancellables)
         
         // Favorites removed
     }
@@ -139,6 +224,9 @@ class ImageViewerViewModel: ObservableObject {
         self.imageFiles = folderContent.imageFiles
         self.totalImages = folderContent.totalImages
         self.currentIndex = folderContent.currentIndex
+        
+        // Initialize AI Insights state for new folder session
+        initializeAIInsightsForNewSession()
         
         // Favorites removed
         
@@ -296,6 +384,132 @@ class ImageViewerViewModel: ObservableObject {
         loadingProgress = 0.0
         expectedImageSize = nil
     }
+
+    /// Retry AI analysis for the current image if available
+    func retryAIAnalysis() {
+        guard let image = currentImage else { return }
+        scheduleAIAnalysisIfNeeded(image: image, file: currentImageFile)
+    }
+    
+    // MARK: - AI Insights UI Methods
+    
+    /// Toggle the visibility of the AI Insights panel
+    func toggleAIInsights() {
+        guard isAIInsightsAvailable else { return }
+        showAIInsights.toggle()
+    }
+    
+    /// Restore AI Insights panel visibility state from saved session
+    /// - Parameter shouldShow: Whether to show the AI Insights panel
+    func restoreAIInsightsState(_ shouldShow: Bool) {
+        guard isAIInsightsAvailable else { return }
+        showAIInsights = shouldShow
+    }
+    
+    /// Update AI Insights availability based on system compatibility and preferences
+    func updateAIInsightsAvailability() {
+        do {
+            // Check system compatibility first - AI Insights requires macOS 26+
+            let systemSupportsAI: Bool
+            if #available(macOS 26.0, *) {
+                systemSupportsAI = compatibilityService.isFeatureAvailable(.aiImageAnalysis)
+            } else {
+                systemSupportsAI = false
+            }
+            
+            let userEnabledAI = preferencesService.enableAIAnalysis
+            isAIInsightsAvailable = systemSupportsAI && userEnabledAI
+            
+            // Reset showAIInsights if AI Insights becomes unavailable
+            if !isAIInsightsAvailable {
+                showAIInsights = false
+            }
+            
+            Logger.info("AI Insights availability updated - System: \(systemSupportsAI), User: \(userEnabledAI), Available: \(isAIInsightsAvailable)", context: "AIInsights")
+            
+        } catch let error as AIAnalysisError {
+            Logger.error("AI-specific error updating availability: \(error.localizedDescription)", context: "AIInsights")
+            
+            // Set to safe default state
+            isAIInsightsAvailable = false
+            showAIInsights = false
+            
+            // Handle AI-specific errors appropriately
+            switch error {
+            case .systemResourcesUnavailable, .featureNotAvailable:
+                // These are expected in some scenarios, don't show intrusive errors
+                Logger.info("AI Insights unavailable due to system limitations", context: "AIInsights")
+            case .preferenceSyncFailed:
+                // Handle preference sync failure with fallback
+                errorHandlingService.handlePreferenceSyncFailure(error) { [weak self] in
+                    Task { @MainActor in
+                        self?.fallbackPreferenceSync()
+                    }
+                }
+            default:
+                // For other AI errors, show appropriate user feedback
+                errorHandlingService.handleAIAnalysisError(error) { [weak self] in
+                    self?.updateAIInsightsAvailability()
+                }
+            }
+        } catch {
+            Logger.error("Failed to update AI Insights availability: \(error.localizedDescription)", context: "AIInsights")
+            
+            // Set to safe default state
+            isAIInsightsAvailable = false
+            showAIInsights = false
+            
+            // Handle generic errors
+            errorHandlingService.showNotification(
+                "AI analysis system temporarily unavailable",
+                type: .warning
+            )
+        }
+    }
+    
+    /// Handle notification system failures
+    private func handleNotificationSystemFailure(_ error: Error) {
+        Logger.error("Notification system failure detected: \(error.localizedDescription)", context: "AIInsights")
+        errorHandlingService.handleNotificationSystemFailure(error)
+        
+        // Implement fallback mechanism for critical AI Insights notifications
+        setupFallbackNotificationSystem()
+    }
+    
+    /// Setup fallback notification system for AI Insights
+    private func setupFallbackNotificationSystem() {
+        Logger.info("Setting up fallback notification system for AI Insights", context: "AIInsights")
+        
+        // Use a timer-based polling mechanism as fallback with periodic checks
+        var pollCount = 0
+        let maxPolls = 12 // Poll for 1 minute (5 second intervals)
+        
+        let fallbackTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+            
+            pollCount += 1
+            
+            // Attempt to sync preferences
+            self.fallbackPreferenceSync()
+            
+            // Stop polling after max attempts or if notification system recovers
+            if pollCount >= maxPolls {
+                timer.invalidate()
+                Logger.info("Fallback notification system polling completed", context: "AIInsights")
+            }
+        }
+        
+        // Store timer reference to prevent deallocation
+        RunLoop.main.add(fallbackTimer, forMode: .common)
+        
+        // Also attempt immediate recovery
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.fallbackPreferenceSync()
+        }
+    }
     
     // MARK: - Private Methods
     
@@ -354,18 +568,377 @@ class ImageViewerViewModel: ObservableObject {
             }
         }
     }
+
+    @MainActor
+    private func resetAnalysisState(clearError: Bool = true) {
+        currentAnalysis = nil
+        analysisTags = []
+        analysisObjects = []
+        analysisScenes = []
+        analysisText = []
+        aiAnalysisProgress = 0.0
+        if clearError {
+            analysisError = nil
+        }
+    }
+
+    /// Handle AI analysis preference change notification
+    private func handleAIAnalysisPreferenceChange(_ notification: Notification) {
+        do {
+            // Extract the new preference value from the notification
+            let newValue: Bool
+            
+            // Safely extract the preference value with fallback
+            if let notificationValue = notification.object as? Bool {
+                newValue = notificationValue
+            } else {
+                // Fallback to reading directly from preferences service
+                newValue = preferencesService.enableAIAnalysis
+                Logger.warning("Preference notification missing value, using fallback", context: "AIInsights")
+            }
+            
+            // Update the local state
+            updateAIAnalysisEnabled(newValue)
+            
+            // If AI analysis is disabled, ensure panel state persistence is also reset
+            if !newValue {
+                Logger.info("AI analysis disabled - AI Insights panel state will be reset", context: "AIInsights")
+            }
+            
+        } catch let error as AIAnalysisError {
+            // Handle AI-specific preference synchronization failure
+            Logger.error("AI-specific preference sync error: \(error.localizedDescription)", context: "AIInsights")
+            
+            switch error {
+            case .preferenceSyncFailed:
+                errorHandlingService.handlePreferenceSyncFailure(error) { [weak self] in
+                    Task { @MainActor in
+                        self?.fallbackPreferenceSync()
+                    }
+                }
+            case .notificationSystemFailed:
+                // Setup fallback notification system
+                setupFallbackNotificationSystem()
+            default:
+                // For other AI errors, attempt fallback sync
+                fallbackPreferenceSync()
+            }
+        } catch {
+            // Handle generic preference synchronization failure
+            Logger.error("Failed to handle AI analysis preference change: \(error.localizedDescription)", context: "AIInsights")
+            errorHandlingService.handlePreferenceSyncFailure(error) { [weak self] in
+                Task { @MainActor in
+                    self?.fallbackPreferenceSync()
+                }
+            }
+        }
+    }
     
+    /// Handle automatic image enhancement preference change
+    private func handleImageEnhancementsPreferenceChange(_ notification: Notification) {
+        let newValue: Bool
+
+        if let notificationValue = notification.object as? Bool {
+            newValue = notificationValue
+        } else {
+            newValue = preferencesService.enableImageEnhancements
+            Logger.warning("Enhancement preference notification missing value, using fallback", context: "ImageEnhancements")
+        }
+
+        guard isEnhancedProcessingEnabled != newValue else { return }
+
+        isEnhancedProcessingEnabled = newValue
+
+        guard let imageFile = currentImageFile else { return }
+        loadCurrentImage()
+    }
+    
+    /// Update the AI analysis enabled state and synchronize UI
+    private func updateAIAnalysisEnabled(_ enabled: Bool) {
+        guard isAIAnalysisEnabled != enabled else { return }
+        
+        isAIAnalysisEnabled = enabled
+        
+        // Update AI Insights availability based on new preference
+        updateAIInsightsAvailability()
+        
+        if !enabled {
+            // Reset showAIInsights state when AI analysis is disabled
+            showAIInsights = false
+            
+            // Cancel any ongoing AI analysis
+            analysisTask?.cancel()
+            
+            // Clear AI analysis state
+            Task { @MainActor [weak self] in
+                self?.resetAnalysisState()
+            }
+        } else {
+            // When AI analysis is re-enabled, trigger analysis for current image if available
+            if let currentImage = currentImage {
+                scheduleAIAnalysisIfNeeded(image: currentImage, file: currentImageFile)
+            }
+        }
+    }
+    
+    /// Synchronize AI Insights state with current preferences
+    private func syncAIInsightsWithPreferences() {
+        do {
+            let enabled = preferencesService.enableAIAnalysis
+            updateAIAnalysisEnabled(enabled)
+            Logger.info("AI Insights preferences synchronized successfully", context: "AIInsights")
+        } catch let error as AIAnalysisError {
+            Logger.error("AI-specific preference sync error: \(error.localizedDescription)", context: "AIInsights")
+            
+            switch error {
+            case .preferenceSyncFailed:
+                errorHandlingService.handlePreferenceSyncFailure(error) { [weak self] in
+                    Task { @MainActor in
+                        self?.fallbackPreferenceSync()
+                    }
+                }
+            case .systemResourcesUnavailable:
+                // Set to safe default state
+                isAIAnalysisEnabled = false
+                updateAIInsightsAvailability()
+                Logger.warning("AI system resources unavailable, disabling AI analysis", context: "AIInsights")
+            default:
+                // For other AI errors, attempt fallback
+                fallbackPreferenceSync()
+            }
+        } catch {
+            Logger.error("Failed to sync AI Insights with preferences: \(error.localizedDescription)", context: "AIInsights")
+            errorHandlingService.handlePreferenceSyncFailure(error) { [weak self] in
+                Task { @MainActor in
+                    self?.fallbackPreferenceSync()
+                }
+            }
+        }
+    }
+    
+    /// Fallback mechanism for preference synchronization failures
+    private func fallbackPreferenceSync() {
+        Logger.info("Attempting fallback preference synchronization", context: "AIInsights")
+        
+        // Use a simple polling mechanism as fallback with exponential backoff
+        var retryCount = 0
+        let maxRetries = 3
+        
+        func attemptSync() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(1 << retryCount)) { [weak self] in
+                guard let self = self else { return }
+                
+                do {
+                    // Re-read preferences directly with error handling
+                    let currentEnabled = self.preferencesService.enableAIAnalysis
+                    
+                    // Update state if different
+                    if self.isAIAnalysisEnabled != currentEnabled {
+                        self.updateAIAnalysisEnabled(currentEnabled)
+                        Logger.info("Fallback preference sync successful after \(retryCount + 1) attempts", context: "AIInsights")
+                        return
+                    }
+                    
+                    let currentEnhancements = self.preferencesService.enableImageEnhancements
+                    if self.isEnhancedProcessingEnabled != currentEnhancements {
+                        self.isEnhancedProcessingEnabled = currentEnhancements
+                        if let imageFile = self.currentImageFile {
+                            self.loadCurrentImage()
+                        }
+                        Logger.info("Fallback enhancement sync completed", context: "ImageEnhancements")
+                        return
+                    }
+
+                    Logger.info("Fallback preference sync completed - no changes needed", context: "AIInsights")
+                    
+                } catch let error as AIAnalysisError {
+                    Logger.error("Fallback preference sync failed (attempt \(retryCount + 1)): \(error.localizedDescription)", context: "AIInsights")
+                    
+                    retryCount += 1
+                    if retryCount < maxRetries {
+                        // Retry with exponential backoff
+                        attemptSync()
+                    } else {
+                        // Final fallback - set to safe default state
+                        Logger.error("All fallback attempts failed, setting safe defaults", context: "AIInsights")
+                        self.isAIAnalysisEnabled = false
+                        self.updateAIInsightsAvailability()
+                        
+                        // Notify user of persistent issue
+                        self.errorHandlingService.showNotification(
+                            "AI preferences sync failed - restart app if issues persist",
+                            type: .warning
+                        )
+                    }
+                } catch {
+                    Logger.error("Fallback preference sync failed (attempt \(retryCount + 1)): \(error.localizedDescription)", context: "AIInsights")
+                    
+                    retryCount += 1
+                    if retryCount < maxRetries {
+                        // Retry with exponential backoff
+                        attemptSync()
+                    } else {
+                        // Final fallback - set to safe default state
+                        Logger.error("All fallback attempts failed, setting safe defaults", context: "AIInsights")
+                        self.isAIAnalysisEnabled = false
+                        self.updateAIInsightsAvailability()
+                        
+                        // Notify user of persistent issue
+                        self.errorHandlingService.showNotification(
+                            "AI preferences sync failed - restart app if issues persist",
+                            type: .warning
+                        )
+                    }
+                }
+            }
+        }
+        
+        attemptSync()
+    }
+    
+    /// Initialize AI Insights state on app launch based on preferences and system availability
+    private func initializeAIInsightsState() {
+        // Ensure AI Insights availability is up to date
+        updateAIInsightsAvailability()
+        
+        // Initialize showAIInsights to false by default
+        // This will be restored from saved state later if applicable
+        showAIInsights = false
+        
+        Logger.info("AI Insights initialized - Available: \(isAIInsightsAvailable), Analysis Enabled: \(isAIAnalysisEnabled)")
+    }
+    
+    /// Handle AI Insights initialization completion from app launch
+    private func handleAIInsightsInitializationComplete() {
+        // Re-check availability after full app initialization
+        updateAIInsightsAvailability()
+        
+        // Ensure preferences are properly synchronized
+        syncAIInsightsWithPreferences()
+        
+        Logger.info("AI Insights initialization complete - Final state: Available: \(isAIInsightsAvailable), Analysis Enabled: \(isAIAnalysisEnabled)")
+    }
+    
+    /// Initialize AI Insights state for a new folder session
+    private func initializeAIInsightsForNewSession() {
+        // Update availability for the new session
+        updateAIInsightsAvailability()
+        
+        // Reset panel visibility to false for new sessions unless restored from saved state
+        // The WindowStateManager will restore the proper state if needed
+        if !preferencesService.rememberAIInsightsPanelState {
+            showAIInsights = false
+            Logger.info("AI Insights panel reset for new session (persistence disabled)")
+        } else {
+            Logger.info("AI Insights panel state will be restored from saved session if available")
+        }
+    }
+    
+    /// Reset AI Insights state when ending a session
+    private func resetAIInsightsForSessionEnd() {
+        showAIInsights = false
+        
+        // Cancel any ongoing AI analysis
+        analysisTask?.cancel()
+        
+        // Clear AI analysis state
+        Task { @MainActor [weak self] in
+            self?.resetAnalysisState()
+        }
+        
+        Logger.info("AI Insights state reset for session end")
+    }
+
+    private func shouldRunAIAnalysis(for file: ImageFile?) -> Bool {
+        syncAIInsightsWithPreferences()
+        guard isAIAnalysisEnabled else { return false }
+        guard compatibilityService.isFeatureAvailable(.aiImageAnalysis) else { return false }
+        guard file != nil else { return false }
+        return true
+    }
+
+    private func scheduleAIAnalysisIfNeeded(image: NSImage, file: ImageFile?) {
+        guard shouldRunAIAnalysis(for: file) else {
+            analysisTask?.cancel()
+            Task { @MainActor [weak self] in
+                await self?.resetAnalysisState()
+            }
+            return
+        }
+
+        analysisTask?.cancel()
+        let url = file?.url
+        analysisTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let result = try await self.aiAnalysisService.analyzeImage(image, url: url)
+                try Task.checkCancellation()
+                await MainActor.run {
+                    self.updateAnalysisState(with: result)
+                }
+            } catch is CancellationError {
+                // Swallow cancellations triggered by task management
+            } catch {
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    self.handleAnalysisFailure(error)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func updateAnalysisState(with result: ImageAnalysisResult) {
+        currentAnalysis = result
+        analysisTags = tags(from: result)
+        analysisObjects = result.objects
+        analysisScenes = result.scenes
+        analysisText = result.text
+        analysisError = nil
+    }
+
+    @MainActor
+    private func handleAnalysisFailure(_ error: Error) {
+        analysisError = error
+        currentAnalysis = nil
+        analysisTags = []
+        analysisObjects = []
+        analysisScenes = []
+        analysisText = []
+        
+        // Handle AI-specific errors with appropriate user feedback
+        Logger.error("AI analysis failed: \(error.localizedDescription)", context: "AIAnalysis")
+        errorHandlingService.handleAIAnalysisError(error) { [weak self] in
+            self?.retryAIAnalysis()
+        }
+    }
+
+    private func tags(from analysis: ImageAnalysisResult) -> [String] {
+        var tagSet = Set<String>()
+        tagSet.formUnion(analysis.classifications.map { $0.identifier })
+        tagSet.formUnion(analysis.objects.map { $0.identifier })
+        tagSet.formUnion(analysis.scenes.map { $0.identifier })
+        let textTags = analysis.text
+            .map { $0.text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        tagSet.formUnion(textTags)
+        return Array(tagSet).sorted()
+    }
+
     private func loadCurrentImage() {
+        analysisTask?.cancel()
         guard let imageFile = currentImageFile else {
             currentImage = nil
             expectedImageSize = nil
+            resetAnalysisState()
             return
         }
         
         // Clear any previous error and state
         errorMessage = nil
         expectedImageSize = nil
-        
+        resetAnalysisState()
+
         // Set loading state
         isLoading = true
         loadingProgress = 0.0
@@ -382,8 +955,8 @@ class ImageViewerViewModel: ObservableObject {
     
     /// Load image with macOS 26 enhancements
     private func loadImageWithEnhancements(_ imageFile: ImageFile) {
-        // Use enhanced image processing if available
-        if compatibilityService.isFeatureAvailable(.enhancedImageProcessing) {
+        // Use enhanced image processing only when available and enabled by the user
+        if compatibilityService.isFeatureAvailable(.enhancedImageProcessing) && isEnhancedProcessingEnabled {
             loadImageWithEnhancedProcessing(imageFile)
         } else {
             loadImageStandard(imageFile)
@@ -424,12 +997,14 @@ class ImageViewerViewModel: ObservableObject {
                     }
                 },
                 receiveValue: { [weak self] image in
-                    self?.currentImage = image
-                    self?.isLoading = false
-                    self?.loadingProgress = 1.0
+                    guard let self else { return }
+                    self.currentImage = image
+                    self.isLoading = false
+                    self.loadingProgress = 1.0
                     
                     // Reset zoom to fit when loading new image
-                    self?.zoomToFit()
+                    self.zoomToFit()
+                    self.scheduleAIAnalysisIfNeeded(image: image, file: imageFile)
                 }
             )
             .store(in: &cancellables)
@@ -451,6 +1026,17 @@ class ImageViewerViewModel: ObservableObject {
                     with: features
                 )
                 
+                if !self.isEnhancedProcessingEnabled {
+                    await MainActor.run {
+                        self.currentImage = image
+                        self.isLoading = false
+                        self.loadingProgress = 1.0
+                        self.zoomToFit()
+                        self.scheduleAIAnalysisIfNeeded(image: image, file: imageFile)
+                    }
+                    return
+                }
+
                 await MainActor.run {
                     self.currentImage = processedImage.currentImage
                     self.isLoading = false
@@ -458,6 +1044,7 @@ class ImageViewerViewModel: ObservableObject {
                     
                     // Reset zoom to fit when loading new image
                     self.zoomToFit()
+                    self.scheduleAIAnalysisIfNeeded(image: processedImage.currentImage, file: imageFile)
                 }
             } catch {
                 await MainActor.run {
@@ -466,6 +1053,7 @@ class ImageViewerViewModel: ObservableObject {
                     self.isLoading = false
                     self.loadingProgress = 1.0
                     self.zoomToFit()
+                    self.scheduleAIAnalysisIfNeeded(image: image, file: imageFile)
                 }
             }
         }
@@ -607,6 +1195,9 @@ class ImageViewerViewModel: ObservableObject {
         isFullscreen = false
         showImageInfo = false
         viewMode = .normal
+        
+        // Reset AI Insights state
+        resetAIInsightsForSessionEnd()
         
         // Clear thumbnail cache
         thumbnailCache.removeAllObjects()
@@ -897,6 +1488,10 @@ class ImageViewerViewModel: ObservableObject {
     /// Check if deletion is available for the current image
     var canDeleteCurrentImage: Bool {
         return currentImageFile != nil
+    }
+    
+    deinit {
+        analysisTask?.cancel()
     }
     
     // Favorites removed

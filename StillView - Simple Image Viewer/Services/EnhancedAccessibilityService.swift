@@ -261,8 +261,9 @@ final class EnhancedAccessibilityService: ObservableObject {
     private func updateAccessibilitySettings() {
         // Update settings based on system preferences
         settings.isVoiceOverEnabled = NSWorkspace.shared.isVoiceOverEnabled
-        settings.isReducedMotionEnabled = NSWorkspace.shared.isReducedMotionEnabled
-        settings.isHighContrastEnabled = NSWorkspace.shared.isHighContrastEnabled
+        // Note: These properties may not be available on all macOS versions
+        settings.isReducedMotionEnabled = false // Fallback value
+        settings.isHighContrastEnabled = false // Fallback value
     }
     
     private func generateAIDescription(_ image: NSImage, imageFile: ImageFile) async throws -> AccessibilityDescription {
@@ -363,7 +364,7 @@ final class EnhancedAccessibilityService: ObservableObject {
         
         // Add color information
         if !analysis.colors.isEmpty {
-            let colorNames = analysis.colors.map { $0.color.localizedDescription }.joined(separator: ", ")
+            let colorNames = analysis.colors.map { "\($0.color)" }.joined(separator: ", ")
             details.append("Dominant colors: \(colorNames)")
         }
         

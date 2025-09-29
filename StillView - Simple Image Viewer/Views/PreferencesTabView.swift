@@ -124,15 +124,15 @@ struct TabSelector: View {
     
     // MARK: - Properties
     
-    @Binding var selectedTab: PreferencesTab
-    let onTabSelected: (PreferencesTab) -> Void
+    @Binding var selectedTab: Preferences.Tab
+    let onTabSelected: (Preferences.Tab) -> Void
     @StateObject private var focusManager = PreferencesFocusManager()
     
     // MARK: - Body
     
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(PreferencesTab.allCases) { tab in
+            ForEach(Preferences.Tab.allCases) { tab in
                 KeyboardNavigableTabButton(
                     tab: tab,
                     isSelected: selectedTab == tab,
@@ -162,7 +162,7 @@ struct TabButton: View {
     
     // MARK: - Properties
     
-    let tab: PreferencesTab
+    let tab: Preferences.Tab
     let isSelected: Bool
     let onTap: () -> Void
     
@@ -286,8 +286,8 @@ struct TabContent: View {
     
     // MARK: - Properties
     
-    let selectedTab: PreferencesTab
-    @State private var previousTab: PreferencesTab?
+    let selectedTab: Preferences.Tab
+    @State private var previousTab: Preferences.Tab?
     
     // MARK: - Body
     
@@ -317,7 +317,7 @@ struct TabContent: View {
     
     // MARK: - Private Methods
     
-    private func transitionForTab(_ tab: PreferencesTab) -> AnyTransition {
+    private func transitionForTab(_ tab: Preferences.Tab) -> AnyTransition {
         guard let previous = previousTab else {
             return .asymmetric(
                 insertion: .scale(scale: 0.95).combined(with: .opacity),
@@ -379,7 +379,7 @@ struct GeneralPreferencesView: View {
                     validation: viewModel.getValidationResult(for: "defaultZoomLevel")
                 ) {
                     Picker("", selection: $viewModel.defaultZoomLevel) {
-                        ForEach(ZoomLevel.allCases) { level in
+                        ForEach(Preferences.ZoomLevel.allCases) { level in
                             Text(level.displayName).tag(level)
                         }
                     }
@@ -438,6 +438,26 @@ struct GeneralPreferencesView: View {
                 }
             }
             
+            PreferencesSection("Intelligence") {
+                PreferencesControl(
+                    "Enable AI analysis",
+                    description: "Analyze images on-device to surface tags, objects, and smart search suggestions"
+                ) {
+                    Toggle("", isOn: $viewModel.enableAIAnalysis)
+                        .labelsHidden()
+                }
+                .preferencesHelp(.aiAnalysis)
+                
+                PreferencesControl(
+                    "Enhance images automatically",
+                    description: "Apply noise reduction, smart cropping, and color tuning when images load"
+                ) {
+                    Toggle("", isOn: $viewModel.enableImageEnhancements)
+                        .labelsHidden()
+                }
+                .preferencesHelp(.imageEnhancements)
+            }
+            
             PreferencesSection("Thumbnails") {
                 ValidatedPreferencesControl(
                     "Default thumbnail size",
@@ -445,7 +465,7 @@ struct GeneralPreferencesView: View {
                     validation: viewModel.getValidationResult(for: "thumbnailSize")
                 ) {
                     Picker("", selection: $viewModel.thumbnailSize) {
-                        ForEach(ThumbnailSize.allCases) { size in
+                        ForEach(Preferences.ThumbnailSize.allCases) { size in
                             Text(size.displayName).tag(size)
                         }
                     }
@@ -494,7 +514,7 @@ struct AppearancePreferencesView: View {
                         description: "Choose between floating or attached toolbar"
                     ) {
                         Picker("", selection: $viewModel.toolbarStyle) {
-                            ForEach(ToolbarStyle.allCases) { style in
+                            ForEach(Preferences.ToolbarStyle.allCases) { style in
                                 Text(style.displayName).tag(style)
                             }
                         }
@@ -520,7 +540,7 @@ struct AppearancePreferencesView: View {
                         validation: viewModel.getValidationResult(for: "animationIntensity")
                     ) {
                         Picker("", selection: $viewModel.animationIntensity) {
-                            ForEach(AnimationIntensity.allCases) { intensity in
+                            ForEach(Preferences.AnimationIntensity.allCases) { intensity in
                                 Text(intensity.displayName).tag(intensity)
                             }
                         }
@@ -547,7 +567,7 @@ struct AppearancePreferencesView: View {
                         validation: viewModel.getValidationResult(for: "thumbnailSize")
                     ) {
                         Picker("", selection: $viewModel.thumbnailSize) {
-                            ForEach(ThumbnailSize.allCases) { size in
+                            ForEach(Preferences.ThumbnailSize.allCases) { size in
                                 Text(size.displayName).tag(size)
                             }
                         }

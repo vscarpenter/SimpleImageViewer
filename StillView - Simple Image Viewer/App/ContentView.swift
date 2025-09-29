@@ -7,6 +7,7 @@ struct ContentView: View {
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
     @State private var showImageViewer = false
     // Favorites removed
+    @State private var showAIConsentDialog = false
     
     // MARK: - Body
     var body: some View {
@@ -21,8 +22,12 @@ struct ContentView: View {
             .overlay {
                 permissionRequestOverlay
             }
+            .overlay {
+                aiConsentOverlay
+            }
             .onAppear {
                 setupApplication()
+                evaluateAIConsent()
             }
             .onReceive(NotificationCenter.default.publisher(for: .folderSelected)) { notification in
                 handleFolderSelection(notification)
@@ -54,69 +59,79 @@ struct ContentView: View {
     
     @ViewBuilder
     private func imageViewerInterface(geometry: GeometryProxy) -> some View {
-        ZStack {
-            // Use enhanced image display view when available
-            if #available(macOS 15.0, *) {
-                EnhancedImageDisplayView(viewModel: imageViewerViewModel)
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-            } else {
-                ImageDisplayView(viewModel: imageViewerViewModel)
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-            }
-            
-            NavigationControlsView(viewModel: imageViewerViewModel, onExit: {
-                showImageViewer = false
-            })
-            .frame(width: geometry.size.width, height: geometry.size.height)
-            
-            // Thumbnail Strip (when in thumbnail strip mode)
-            if imageViewerViewModel.viewMode == .thumbnailStrip {
-                VStack {
-                    Spacer()
-                    ThumbnailStripView(viewModel: imageViewerViewModel)
+        HStack(spacing: 0) {
+            // Main image viewer area
+            ZStack {
+                // Calculate available width for image viewer
+                let availableWidth = imageViewerViewModel.isAIInsightsAvailable && imageViewerViewModel.showAIInsights
+                    ? geometry.size.width - 360 // 320 panel width + 40 padding
+                    : geometry.size.width
+                
+                // Use enhanced image display view when available
+                if #available(macOS 15.0, *) {
+                    EnhancedImageDisplayView(viewModel: imageViewerViewModel)
+                        .frame(width: availableWidth, height: geometry.size.height)
+                } else {
+                    ImageDisplayView(viewModel: imageViewerViewModel)
+                        .frame(width: availableWidth, height: geometry.size.height)
                 }
-                .allowsHitTesting(true)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.viewMode)
-            }
-            
-            // Grid Overlay (when in grid mode)
-            if imageViewerViewModel.viewMode == .grid {
-                Color.black.opacity(0.8)
-                    .ignoresSafeArea()
-                    .overlay(
-                        ThumbnailGridView(viewModel: imageViewerViewModel)
-                    )
+                
+                NavigationControlsView(viewModel: imageViewerViewModel, onExit: {
+                    showImageViewer = false
+                })
+                .frame(width: availableWidth, height: geometry.size.height)
+                
+                // Thumbnail Strip (when in thumbnail strip mode)
+                if imageViewerViewModel.viewMode == .thumbnailStrip {
+                    VStack {
+                        Spacer()
+                        ThumbnailStripView(viewModel: imageViewerViewModel)
+                    }
                     .allowsHitTesting(true)
-                    .transition(.opacity)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                     .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.viewMode)
-            }
-            
-            // Image Info Overlay
-            if imageViewerViewModel.showImageInfo,
-               let currentImageFile = imageViewerViewModel.currentImageFile {
-                VStack {
-                    HStack {
-                        ImageInfoOverlayView(
-                            imageFile: currentImageFile,
-                            currentImage: imageViewerViewModel.currentImage
+                }
+                
+                // Grid Overlay (when in grid mode)
+                if imageViewerViewModel.viewMode == .grid {
+                    Color.black.opacity(0.8)
+                        .ignoresSafeArea()
+                        .overlay(
+                            ThumbnailGridView(viewModel: imageViewerViewModel)
                         )
+                        .allowsHitTesting(true)
+                        .transition(.opacity)
+                        .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.viewMode)
+                }
+                
+                // Image Info Overlay
+                if imageViewerViewModel.showImageInfo,
+                   let currentImageFile = imageViewerViewModel.currentImageFile {
+                    VStack {
+                        HStack {
+                            ImageInfoOverlayView(
+                                imageFile: currentImageFile,
+                                currentImage: imageViewerViewModel.currentImage
+                            )
+                            Spacer()
+                        }
                         Spacer()
                     }
-                    Spacer()
+                    .padding(.top, 20)
+                    .padding(.leading, 20)
+                    .allowsHitTesting(false)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.showImageInfo)
                 }
-                .padding(.top, 20)
-                .padding(.leading, 20)
-                .allowsHitTesting(false)
-                .transition(.move(edge: .leading).combined(with: .opacity))
-                .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.showImageInfo)
             }
+            .animation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0), 
+                      value: imageViewerViewModel.showAIInsights)
             
-            // AI Insights Overlay (macOS 26+)
-            if #available(macOS 26.0, *) {
-                aiInsightsOverlay(geometry: geometry)
+            // AI Insights Panel (when available and toggled on)
+            if imageViewerViewModel.isAIInsightsAvailable,
+               imageViewerViewModel.showAIInsights {
+                aiInsightsPanel(geometry: geometry)
             }
-            
         }
     }
     
@@ -252,24 +267,46 @@ struct ContentView: View {
             }
         }
     }
+
+    @ViewBuilder
+    private var aiConsentOverlay: some View {
+        if showAIConsentDialog {
+            ZStack {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+
+                AIConsentDialog(
+                    onAllow: {
+                        AIConsentManager.shared.recordConsent(allowAnalysis: true)
+                        showAIConsentDialog = false
+                        imageViewerViewModel.retryAIAnalysis()
+                    },
+                    onDecline: {
+                        AIConsentManager.shared.recordConsent(allowAnalysis: false)
+                        showAIConsentDialog = false
+                    }
+                )
+            }
+        }
+    }
     
     @ViewBuilder
-    private func aiInsightsOverlay(geometry: GeometryProxy) -> some View {
-        VStack {
-            HStack {
-                Spacer()
-                AIInsightsView(viewModel: imageViewerViewModel)
-                    .frame(width: 400, height: 600)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    .shadow(radius: 10)
-            }
-            Spacer()
-        }
-        .padding(.top, 20)
-        .padding(.trailing, 20)
-        .allowsHitTesting(true)
-        .transition(.move(edge: .trailing).combined(with: .opacity))
-        .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.showImageInfo)
+    private func aiInsightsPanel(geometry: GeometryProxy) -> some View {
+        // AI Insights inspector panel
+        AIInsightsInspectorView(viewModel: imageViewerViewModel)
+            .frame(width: 320, height: geometry.size.height - 40)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.15), radius: 12, x: -2, y: 0)
+            .padding(.top, 20)
+            .padding(.trailing, 20)
+            .padding(.bottom, 20)
+            .transition(.asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .move(edge: .trailing).combined(with: .opacity)
+            ))
+            .allowsHitTesting(true)
+            .accessibilityLabel("AI Insights Inspector")
+            .accessibilityHint("Inspector panel showing AI-powered analysis of the current image")
     }
     
     // MARK: - Private Methods
@@ -284,6 +321,19 @@ struct ContentView: View {
         
         // Restore other preferences
         imageViewerViewModel.showFileName = preferencesService.showFileName
+        
+        // Initialize AI Insights state based on preferences
+        initializeAIInsightsOnLaunch()
+    }
+    
+    /// Initialize AI Insights state on app launch based on preferences and saved state
+    private func initializeAIInsightsOnLaunch() {
+        // Ensure AI Insights availability is properly set
+        imageViewerViewModel.updateAIInsightsAvailability()
+        
+        // The actual panel visibility will be restored later when window state is applied
+        // This ensures proper initialization order
+        Logger.info("AI Insights initialization completed on app launch")
     }
     
     private func setupWindowStateManager() {
@@ -293,6 +343,11 @@ struct ContentView: View {
                 appDelegate.windowStateManager.setImageViewerViewModel(imageViewerViewModel)
             }
         }
+    }
+    
+    private func evaluateAIConsent() {
+        guard AIConsentManager.shared.shouldShowConsent() else { return }
+        showAIConsentDialog = true
     }
     
     private func handleFolderSelection(_ notification: Notification) {
@@ -804,6 +859,123 @@ struct GridThumbnailItemView: View {
         thumbnail.unlockFocus()
         
         return thumbnail
+    }
+}
+
+// MARK: - AI Consent Dialog
+/// Simple, clear consent dialog for AI features - follows CLAUDE.md simplicity guidelines
+private struct AIConsentDialog: View {
+    @State private var showingDetails = false
+    let onAllow: () -> Void
+    let onDecline: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            // Icon and title
+            VStack(spacing: 12) {
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 48))
+                    .foregroundColor(.blue)
+
+                Text("AI-Powered Image Analysis")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+            }
+
+            // Clear, simple explanation
+            VStack(alignment: .leading, spacing: 12) {
+                Text("StillView can analyze your images to provide:")
+                    .fontWeight(.medium)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    FeatureRow(icon: "person.2", text: "Detect people and faces")
+                    FeatureRow(icon: "pawprint", text: "Identify animals and objects")
+                    FeatureRow(icon: "textformat", text: "Extract readable text")
+                    FeatureRow(icon: "paintpalette", text: "Analyze colors and quality")
+                }
+            }
+            .padding(.horizontal, 8)
+
+            // Privacy assurance
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.shield")
+                        .foregroundColor(.green)
+                    Text("All analysis happens locally on your device")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "wifi.slash")
+                        .foregroundColor(.green)
+                    Text("No data sent to external servers")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 8)
+
+            // Action buttons
+            HStack(spacing: 16) {
+                Button("Not Now") {
+                    onDecline()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Enable AI Features") {
+                    onAllow()
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
+
+            // Details toggle
+            Button(showingDetails ? "Hide Details" : "Learn More") {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showingDetails.toggle()
+                }
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+
+            if showingDetails {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Technical Details:")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+
+                    Text("• Uses Apple's Vision framework for on-device analysis")
+                    Text("• Processes images locally using Core ML models")
+                    Text("• You can change this setting anytime in Preferences")
+                    Text("• Disabling won't affect other app features")
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.top, 8)
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            }
+        }
+        .padding(32)
+        .frame(maxWidth: 500)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+    }
+}
+
+/// Simple feature row component
+private struct FeatureRow: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundColor(.blue)
+                .frame(width: 16)
+            Text(text)
+                .font(.subheadline)
+        }
     }
 }
 

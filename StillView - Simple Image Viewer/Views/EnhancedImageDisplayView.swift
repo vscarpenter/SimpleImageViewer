@@ -220,18 +220,59 @@ struct EnhancedImageDisplayView: View {
     
     @ViewBuilder
     private var aiAnalysisOverlay: some View {
-        VStack(alignment: .trailing, spacing: 8) {
-            HStack {
+        VStack(alignment: .trailing, spacing: 12) {
+            HStack(spacing: 6) {
                 Image(systemName: "brain.head.profile")
                     .foregroundColor(.accentColor)
-                Text("AI Enhanced")
+                Text("AI Insights")
                     .font(.caption)
                     .foregroundColor(.accentColor)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(.regularMaterial, in: Capsule())
+
+            if viewModel.isAnalyzingAI {
+                VStack(alignment: .trailing, spacing: 6) {
+                    ProgressView(value: viewModel.aiAnalysisProgress)
+                        .frame(width: 160)
+                    Text("Analyzing…")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            } else if let error = viewModel.analysisError {
+                Text(error.localizedDescription)
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+                    .multilineTextAlignment(.trailing)
+            } else if !viewModel.isAIAnalysisEnabled {
+                Text("AI analysis disabled")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            } else if let analysis = viewModel.currentAnalysis {
+                VStack(alignment: .trailing, spacing: 4) {
+                    if let primary = analysis.classifications.first {
+                        Text(primary.identifier)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                    }
+                    
+                    if !viewModel.analysisTags.isEmpty {
+                        Text(viewModel.analysisTags.prefix(3).joined(separator: ", "))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } else {
+                Text("AI ready")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
     
     @ViewBuilder
@@ -319,8 +360,8 @@ struct EnhancedImageDisplayView: View {
         
         Task {
             do {
-                let analysis = try await enhancedProcessing.analyzeImage(image)
-                // Handle analysis result
+                _ = try await enhancedProcessing.analyzeImage(image)
+                // Analysis completed - result handled by the service
             } catch {
                 // Handle error
             }
@@ -328,10 +369,8 @@ struct EnhancedImageDisplayView: View {
     }
     
     private func resetEnhancements() {
-        // Reset to original image
-        if let imageFile = viewModel.currentImageFile {
-            viewModel.loadCurrentImage()
-        }
+        // Reset to original image by navigating to current index (triggers reload)
+        viewModel.navigateToIndex(viewModel.currentIndex)
     }
     
     private func preloadAdjacentImages() {
