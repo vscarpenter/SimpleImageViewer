@@ -448,7 +448,7 @@ struct ThumbnailStripView: View {
             )
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
-            .onChange(of: viewModel.currentIndex) { newIndex in
+            .onChange(of: viewModel.currentIndex) { _, newIndex in
                 withAnimation(.easeInOut(duration: 0.3)) {
                     proxy.scrollTo(newIndex, anchor: .center)
                 }
@@ -497,7 +497,7 @@ struct ThumbnailItemView: View {
                     } else if isLoading {
                         ProgressView()
                             .scaleEffect(0.8)
-                            .progressViewStyle(CircularProgressViewStyle())
+                            .progressViewStyle(.circular)
                     } else {
                         // Fallback icon
                         Image(systemName: "photo")
@@ -544,7 +544,7 @@ struct ThumbnailItemView: View {
         .onAppear {
             loadThumbnail()
         }
-        .onChange(of: imageFile.url) { _ in
+        .onChange(of: imageFile.url) { _, _ in
             loadThumbnail()
         }
     }
@@ -654,7 +654,7 @@ struct ThumbnailGridView: View {
                         Color(colorScheme == .dark ? NSColor.windowBackgroundColor : NSColor.controlBackgroundColor)
                             .opacity(0.95)
                     )
-                    .onChange(of: viewModel.currentIndex) { newIndex in
+                    .onChange(of: viewModel.currentIndex) { _, newIndex in
                         withAnimation(.easeInOut(duration: 0.5)) {
                             proxy.scrollTo(newIndex, anchor: .center)
                         }
@@ -725,7 +725,7 @@ struct GridThumbnailItemView: View {
                             VStack {
                                 ProgressView()
                                     .scaleEffect(1.2)
-                                    .progressViewStyle(CircularProgressViewStyle())
+                                    .progressViewStyle(.circular)
                                 Text("Loading...")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -817,7 +817,7 @@ struct GridThumbnailItemView: View {
         .onAppear {
             loadThumbnail()
         }
-        .onChange(of: imageFile.url) { _ in
+        .onChange(of: imageFile.url) { _, _ in
             loadThumbnail()
         }
     }
@@ -984,3 +984,4 @@ private struct FeatureRow: View {
     ContentView()
         .frame(width: 1000, height: 700)
 }
+

@@ -310,7 +310,7 @@ struct TabContent: View {
             .transition(transitionForTab(selectedTab))
         }
         .animation(AnimationPresets.adaptiveTransition(), value: selectedTab)
-        .onChange(of: selectedTab) { newValue in
+        .onChange(of: selectedTab) { _, _ in
             previousTab = selectedTab
         }
     }

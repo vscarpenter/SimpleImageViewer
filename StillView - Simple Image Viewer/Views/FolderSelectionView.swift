@@ -90,7 +90,7 @@ struct FolderSelectionView: View {
                 }
             }
         }
-        .onChange(of: viewModel.currentError) { error in
+        .onChange(of: viewModel.currentError) { _, error in
             showingErrorAlert = error != nil
         }
         .accessibilityElement(children: .contain)

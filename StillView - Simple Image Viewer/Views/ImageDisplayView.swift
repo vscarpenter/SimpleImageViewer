@@ -259,10 +259,10 @@ struct ZoomIndicatorView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Zoom indicator")
         .accessibilityValue("Current zoom level: \(zoomText)")
-        .onChange(of: zoomLevel) { _ in
+        .onChange(of: zoomLevel) { _, _ in
             updateIndicator()
         }
-        .onChange(of: isFitToWindow) { _ in
+        .onChange(of: isFitToWindow) { _, _ in
             updateIndicator()
         }
         .onAppear {
@@ -418,11 +418,11 @@ struct ImageDisplayView: View {
             .onAppear {
                 containerSize = geometry.size
             }
-            .onChange(of: geometry.size) { newSize in
+            .onChange(of: geometry.size) { _, newSize in
                 containerSize = newSize
                 resetZoomAndPan()
             }
-            .onChange(of: viewModel.currentImage) { _ in
+            .onChange(of: viewModel.currentImage) { _, _ in
                 // Reset zoom and pan when image changes for smooth transitions
                 withAnimation(.easeInOut(duration: transitionDuration)) {
                     resetZoomAndPan()
@@ -436,7 +436,7 @@ struct ImageDisplayView: View {
                     }
                 }
             }
-            .onChange(of: viewModel.zoomLevel) { newZoomLevel in
+            .onChange(of: viewModel.zoomLevel) { _, newZoomLevel in
                 updateMagnificationFromZoomLevel(newZoomLevel)
                 showZoomIndicator = true
                 
@@ -465,7 +465,8 @@ struct ImageDisplayView: View {
                         .accessibilityHidden(true)
                     
                     ProgressView(value: viewModel.loadingProgress)
-                        .progressViewStyle(LinearProgressViewStyle(tint: Color.systemAccent))
+                        .progressViewStyle(.linear)
+                        .tint(Color.systemAccent)
                         .frame(width: 200)
                         .accessibilityLabel("Loading progress")
                         .accessibilityValue("\(Int(viewModel.loadingProgress * 100)) percent complete")
@@ -478,7 +479,8 @@ struct ImageDisplayView: View {
             } else {
                 VStack(spacing: 12) {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: Color.systemAccent))
+                        .progressViewStyle(.circular)
+                        .tint(Color.systemAccent)
                         .scaleEffect(1.2)
                         .accessibilityLabel("Loading image")
                     
@@ -706,7 +708,7 @@ struct ImageDisplayView: View {
             .onAppear {
                 imageSize = displaySize
             }
-            .onChange(of: displaySize) { newSize in
+            .onChange(of: displaySize) { _, newSize in
                 imageSize = newSize
             }
             .animation(.easeInOut(duration: transitionDuration), value: displaySize)
@@ -914,3 +916,4 @@ struct ImageDisplayView: View {
     ImageDisplayView(viewModel: ImageViewerViewModel())
         .frame(width: 800, height: 600)
 }
+

@@ -49,7 +49,7 @@ struct NavigationControlsView: View {
                 availableWidth = geometry.size.width
                 layoutManager.updateLayout(for: availableWidth)
             }
-            .onChange(of: geometry.size.width) { newWidth in
+            .onChange(of: geometry.size.width) { _, newWidth in
                 availableWidth = newWidth
                 layoutManager.updateLayout(for: newWidth)
             }
@@ -65,7 +65,7 @@ struct NavigationControlsView: View {
                 toggleControlsVisibility()
             }
         }
-        .onChange(of: viewModel.isFullscreen) { isFullscreen in
+        .onChange(of: viewModel.isFullscreen) { _, isFullscreen in
             if isFullscreen {
                 startAutoHideTimer()
             } else {
@@ -73,12 +73,12 @@ struct NavigationControlsView: View {
                 stopAutoHideTimer()
             }
         }
-        .onChange(of: viewModel.currentIndex) { _ in
+        .onChange(of: viewModel.currentIndex) { _, _ in
             if viewModel.isFullscreen {
                 showControlsTemporarily()
             }
         }
-        .onChange(of: viewModel.isAIInsightsAvailable) { _ in
+        .onChange(of: viewModel.isAIInsightsAvailable) { _, _ in
             layoutManager.updateAIInsightsAvailability()
         }
     }
@@ -755,3 +755,4 @@ struct NavigationControlsView: View {
     }
     .frame(width: 800, height: 600)
 }
+

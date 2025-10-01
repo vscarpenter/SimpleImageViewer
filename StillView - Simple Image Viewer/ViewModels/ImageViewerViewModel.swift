@@ -868,12 +868,15 @@ class ImageViewerViewModel: ObservableObject {
 
         analysisTask?.cancel()
         let url = file?.url
+        let expectedURL = url
         analysisTask = Task { [weak self] in
             guard let self else { return }
             do {
                 let result = try await self.aiAnalysisService.analyzeImage(image, url: url)
                 try Task.checkCancellation()
                 await MainActor.run {
+                    // Guard that the analysis result still corresponds to the currently displayed image
+                    guard self.currentImageFile?.url == expectedURL else { return }
                     self.updateAnalysisState(with: result)
                 }
             } catch is CancellationError {
@@ -881,6 +884,8 @@ class ImageViewerViewModel: ObservableObject {
             } catch {
                 guard !Task.isCancelled else { return }
                 await MainActor.run {
+                    // Only surface the error if it still corresponds to the current image
+                    guard self.currentImageFile?.url == expectedURL else { return }
                     self.handleAnalysisFailure(error)
                 }
             }
@@ -1536,3 +1541,4 @@ private extension Array {
         return indices.contains(index) ? self[index] : nil
     }
 }
+
