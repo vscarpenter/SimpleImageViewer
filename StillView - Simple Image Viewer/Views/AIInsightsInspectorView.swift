@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import Foundation
 
-/// Compact AI insights inspector that presents a short narrative summary
+/// Compact AI insights inspector that presents enhanced analysis in a compact format
 struct AIInsightsInspectorView: View {
     @ObservedObject var viewModel: ImageViewerViewModel
     @StateObject private var compatibilityService = MacOS26CompatibilityService.shared
@@ -52,7 +52,7 @@ struct AIInsightsInspectorView: View {
             analysisErrorView(error)
         } else if let analysis = viewModel.currentAnalysis {
             ScrollView {
-                AIInsightSummaryContent(analysis: analysis, isCompact: true)
+                EnhancedAIInsightContent(analysis: analysis, isCompact: true)
                     .padding()
             }
         } else if viewModel.isAnalyzingAI {
