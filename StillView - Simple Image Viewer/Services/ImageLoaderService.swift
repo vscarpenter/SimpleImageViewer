@@ -196,11 +196,12 @@ final class DefaultImageLoaderService: ImageLoaderService {
             kCGImageSourceShouldCache: false, // Don't cache at ImageIO level to save memory
             kCGImageSourceShouldAllowFloat: false // Use integer values to save memory
         ]
-        
-        // For very large images, add memory-saving options
-        if fileSize > 50_000_000 { // Files > 50MB
+
+        // For extremely large images (> 200MB), add memory-saving options
+        // Increased threshold to avoid unnecessary downsampling
+        if fileSize > 200_000_000 { // Files > 200MB
             options[kCGImageSourceCreateThumbnailFromImageIfAbsent] = true
-            options[kCGImageSourceThumbnailMaxPixelSize] = 4096 // Limit to 4K resolution
+            options[kCGImageSourceThumbnailMaxPixelSize] = 8192 // Limit to 8K resolution (increased from 4K)
         }
         
         guard let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, options as CFDictionary) else {

@@ -22,9 +22,9 @@ final class ImageCache: NSObject {
         
         super.init()
         
-        // Configure NSCache
+        // Configure NSCache with more generous memory limits for modern high-res images
         cache.countLimit = maxCacheSize
-        cache.totalCostLimit = 150_000_000 // 150MB limit
+        cache.totalCostLimit = 1_500_000_000 // 1.5GB limit (increased from 500MB)
         cache.delegate = self
         
         memoryPressureSource.setEventHandler { [weak self] in

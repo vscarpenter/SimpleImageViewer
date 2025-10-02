@@ -10,8 +10,8 @@ final class ImageMemoryManager {
     private var isUnderMemoryPressure: Bool = false
     
     /// Initialize the memory manager
-    /// - Parameter maxMemoryUsage: Maximum memory usage in bytes (default: 1GB)
-    init(maxMemoryUsage: Int = 1_000_000_000) {
+    /// - Parameter maxMemoryUsage: Maximum memory usage in bytes (default: 4GB)
+    init(maxMemoryUsage: Int = 4_000_000_000) {
         self.maxMemoryUsage = maxMemoryUsage
         
         // Set up memory pressure monitoring
