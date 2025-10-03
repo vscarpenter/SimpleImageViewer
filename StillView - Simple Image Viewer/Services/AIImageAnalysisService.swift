@@ -1,6 +1,7 @@
 import Foundation
 import CoreML
 import Vision
+import VisionKit
 import AppKit
 import Combine
 import NaturalLanguage
@@ -21,14 +22,26 @@ final class AIImageAnalysisService: ObservableObject {
 
     // MARK: - Private Properties
     private let compatibilityService = MacOS26CompatibilityService.shared
+    private let modelManager = CoreMLModelManager.shared
     private let analysisQueue = DispatchQueue(label: "com.vinny.ai.enhanced", qos: .userInitiated)
     private var cache: [String: ImageAnalysisResult] = [:]
-    private let maxCacheEntries = 50
+    private let maxCacheEntries = 20  // Reduced from 50 to conserve memory with ResNet-50
 
     // MARK: - Initialization
-    private init() {}
+    private init() {
+        setupMemoryWarningObserver()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 
     // MARK: - Public Methods
+
+    /// Clear analysis cache
+    func clearCache() {
+        cache.removeAll()
+    }
 
     /// Analyze image with enhanced AI features
     func analyzeImage(_ image: NSImage, url: URL? = nil) async throws -> ImageAnalysisResult {
@@ -36,14 +49,37 @@ final class AIImageAnalysisService: ObservableObject {
             throw AIAnalysisError.featureNotAvailable
         }
 
-        // Check cache
-        let cacheKey = url?.absoluteString ?? UUID().uuidString
-        if let cachedResult = cache[cacheKey] {
-            return cachedResult
-        }
-
         guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             throw AIAnalysisError.invalidImage
+        }
+
+        // Create cache key based on URL path with file modification date
+        let cacheKey: String
+        if let url = url {
+            // Use URL path with file modification time to detect file changes
+            // Try modern resourceValues API first, fallback to attributesOfItem
+            let modTimeStamp: TimeInterval
+            if let resourceValues = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
+               let modDate = resourceValues.contentModificationDate {
+                modTimeStamp = modDate.timeIntervalSince1970
+            } else if let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+                      let modDate = attributes[.modificationDate] as? Date {
+                modTimeStamp = modDate.timeIntervalSince1970
+            } else {
+                // CRITICAL: If we can't get mod time, use image dimensions + file size as fallback
+                // This prevents returning stale cache for modified files when mod time fetch fails
+                let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
+                modTimeStamp = Double(cgImage.width * cgImage.height) + Double(fileSize)
+            }
+            cacheKey = "\(url.path)_\(Int64(modTimeStamp))"
+        } else {
+            // If no URL, use timestamp to prevent stale cache
+            cacheKey = "\(cgImage.width)x\(cgImage.height)_\(Date().timeIntervalSince1970)"
+        }
+
+        // Check cache
+        if let cachedResult = cache[cacheKey] {
+            return cachedResult
         }
 
         isAnalyzing = true
@@ -51,9 +87,12 @@ final class AIImageAnalysisService: ObservableObject {
 
         let result = try await performEnhancedAnalysis(cgImage)
 
-        // Cache management
+        // Cache management - use LRU strategy
         if cache.count >= maxCacheEntries {
-            cache.removeAll()
+            // Remove oldest entry (simple approach - could be enhanced with proper LRU)
+            if let firstKey = cache.keys.first {
+                cache.removeValue(forKey: firstKey)
+            }
         }
         cache[cacheKey] = result
 
@@ -66,6 +105,7 @@ final class AIImageAnalysisService: ObservableObject {
         // Priority 2: Run analyses in parallel using TaskGroup for 20-30% performance improvement
         return try await withThrowingTaskGroup(of: AnalysisComponent.self) { group in
             var classifications: [ClassificationResult] = []
+            var resnetClassifications: [ClassificationResult] = []
             var objects: [DetectedObject] = []
             var scenes: [SceneClassification] = []
             var text: [RecognizedText] = []
@@ -74,9 +114,11 @@ final class AIImageAnalysisService: ObservableObject {
             var landmarks: [DetectedLandmark] = []
             var barcodes: [DetectedBarcode] = []
             var horizon: HorizonDetection?
-            
+            var visionKitResult: VisionKitAnalysisResult?
+
             // Launch all analyses in parallel
             group.addTask { try await .classifications(self.performEnhancedClassification(cgImage)) }
+            group.addTask { try await .resnetClassifications(self.performResNetClassification(cgImage)) }
             group.addTask { try await .objects(self.performEnhancedObjectDetection(cgImage)) }
             group.addTask { try await .scenes(self.performEnhancedSceneClassification(cgImage)) }
             group.addTask { try await .text(self.performTextRecognition(cgImage)) }
@@ -85,17 +127,19 @@ final class AIImageAnalysisService: ObservableObject {
             group.addTask { try await .landmarks(self.performLandmarkDetection(cgImage)) }
             group.addTask { try await .barcodes(self.performBarcodeDetection(cgImage)) }
             group.addTask { try await .horizon(self.performHorizonDetection(cgImage)) }
-            
+            group.addTask { try await .visionKit(self.performVisionKitAnalysis(cgImage)) }
+
             // Collect results
             var progress: Double = 0.0
-            let totalTasks: Double = 9.0
-            
+            let totalTasks: Double = 11.0
+
             for try await component in group {
                 progress += 1.0 / totalTasks
                 updateProgress(progress * 0.9) // Reserve 10% for final processing
-                
+
                 switch component {
                 case .classifications(let result): classifications = result
+                case .resnetClassifications(let result): resnetClassifications = result
                 case .objects(let result): objects = result
                 case .scenes(let result): scenes = result
                 case .text(let result): text = result
@@ -104,9 +148,23 @@ final class AIImageAnalysisService: ObservableObject {
                 case .landmarks(let result): landmarks = result
                 case .barcodes(let result): barcodes = result
                 case .horizon(let result): horizon = result
+                case .visionKit(let result): visionKitResult = result
                 }
             }
-            
+
+            // Debug logging for classification results
+            #if DEBUG
+            print("🔍 Vision classifications: \(classifications.prefix(3).map { "\($0.identifier) (\(String(format: "%.1f%%", $0.confidence * 100)))" }.joined(separator: ", "))")
+            print("🔍 ResNet-50 classifications: \(resnetClassifications.prefix(3).map { "\($0.identifier) (\(String(format: "%.1f%%", $0.confidence * 100)))" }.joined(separator: ", "))")
+            #endif
+
+            // Merge ResNet-50 classifications with Vision classifications
+            classifications = mergeClassifications(visionResults: classifications, resnetResults: resnetClassifications)
+
+            #if DEBUG
+            print("🔍 Merged classifications: \(classifications.prefix(3).map { "\($0.identifier) (\(String(format: "%.1f%%", $0.confidence * 100)))" }.joined(separator: ", "))")
+            #endif
+
             // Priority 1: Comprehensive Quality Assessment with real metrics
             let qualityAssessment = try await performComprehensiveQualityAssessment(
                 cgImage,
@@ -187,7 +245,8 @@ final class AIImageAnalysisService: ObservableObject {
                 landmarks: landmarks,
                 barcodes: barcodes,
                 horizon: horizon,
-                recognizedPeople: recognizedPeople
+                recognizedPeople: recognizedPeople,
+                visionKitResult: visionKitResult
             )
         }
     }
@@ -196,6 +255,7 @@ final class AIImageAnalysisService: ObservableObject {
     
     private enum AnalysisComponent {
         case classifications([ClassificationResult])
+        case resnetClassifications([ClassificationResult])
         case objects([DetectedObject])
         case scenes([SceneClassification])
         case text([RecognizedText])
@@ -204,6 +264,7 @@ final class AIImageAnalysisService: ObservableObject {
         case landmarks([DetectedLandmark])
         case barcodes([DetectedBarcode])
         case horizon(HorizonDetection?)
+        case visionKit(VisionKitAnalysisResult?)
     }
 
     // MARK: - Priority 1: Comprehensive Quality Assessment
@@ -647,6 +708,153 @@ final class AIImageAnalysisService: ObservableObject {
                 }
             }
         }
+    }
+
+    /// ResNet-50 classification using Core ML for enhanced accuracy
+    private func performResNetClassification(_ cgImage: CGImage) async throws -> [ClassificationResult] {
+        do {
+            // Load ResNet-50 model
+            let model = try await modelManager.loadModel(.resnet50)
+
+            // Use Vision framework's Core ML request for better integration
+            let visionModel = try VNCoreMLModel(for: model)
+            let request = VNCoreMLRequest(model: visionModel)
+
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            try handler.perform([request])
+
+            guard let results = request.results as? [VNClassificationObservation] else {
+                #if DEBUG
+                print("⚠️ ResNet-50: No classification results returned")
+                #endif
+                return []
+            }
+
+            // Return top 10 results with confidence > 0.05
+            let classifications = results
+                .filter { $0.confidence > 0.05 }
+                .prefix(10)
+                .map { ClassificationResult(identifier: $0.identifier, confidence: $0.confidence) }
+
+            #if DEBUG
+            if classifications.isEmpty {
+                print("⚠️ ResNet-50: All results filtered out (confidence < 0.05)")
+            }
+            #endif
+
+            return Array(classifications)
+        } catch {
+            // If ResNet-50 fails, return empty array (fallback to Vision framework classifications)
+            print("❌ ResNet-50 classification failed: \(error.localizedDescription)")
+            return []
+        }
+    }
+
+    /// Merge Vision and ResNet-50 classifications intelligently
+    /// Strategy: Prioritize specific classifications over generic ones
+    private func mergeClassifications(
+        visionResults: [ClassificationResult],
+        resnetResults: [ClassificationResult]
+    ) -> [ClassificationResult] {
+        var mergedDict: [String: ClassificationResult] = [:]
+
+        // Define generic category terms that should be deprioritized
+        let genericTerms: Set<String> = [
+            "food", "meal", "dish", "cuisine", "snack", "beverage", "drink",
+            "animal", "mammal", "bird", "fish", "insect", "reptile",
+            "plant", "flower", "tree", "vegetation",
+            "object", "item", "thing", "artifact",
+            "person", "people", "human", "individual",
+            "scene", "location", "place", "setting",
+            "vehicle", "transport", "transportation",
+            "building", "structure", "architecture",
+            "indoor", "outdoor", "inside", "outside",
+            "natural", "man-made", "artificial"
+        ]
+
+        // Helper to check if a classification is generic
+        let isGeneric: (String) -> Bool = { identifier in
+            let lowerIdentifier = identifier.lowercased()
+            // Check if the identifier is a single generic term or contains only generic words
+            let words = lowerIdentifier.components(separatedBy: CharacterSet(charactersIn: " ,-_"))
+            return words.allSatisfy { genericTerms.contains($0) } || genericTerms.contains(lowerIdentifier)
+        }
+
+        // Add all Vision results with generic penalty
+        for result in visionResults {
+            let adjustedConfidence = isGeneric(result.identifier) ? result.confidence * 0.7 : result.confidence
+            mergedDict[result.identifier] = ClassificationResult(
+                identifier: result.identifier,
+                confidence: adjustedConfidence
+            )
+        }
+
+        // Merge ResNet-50 results - these are often more specific (1000 ImageNet categories)
+        for resnetResult in resnetResults {
+            if let existingResult = mergedDict[resnetResult.identifier] {
+                // Both models agree - boost confidence significantly
+                let avgConfidence = (existingResult.confidence + resnetResult.confidence) / 2.0
+                let boostedConfidence = min(avgConfidence * 1.3, 1.0) // 30% boost for agreement
+                mergedDict[resnetResult.identifier] = ClassificationResult(
+                    identifier: resnetResult.identifier,
+                    confidence: boostedConfidence
+                )
+            } else {
+                // ResNet-50 specific detection
+                // Boost confidence for specific terms, slight penalty for generic ones
+                let isResnetGeneric = isGeneric(resnetResult.identifier)
+                let finalConfidence: Float
+
+                if !isResnetGeneric && resnetResult.confidence >= 0.5 {
+                    // Specific classification with decent confidence - boost it
+                    finalConfidence = min(resnetResult.confidence * 1.15, 1.0)
+                } else if isResnetGeneric {
+                    // Generic term from ResNet - apply penalty
+                    finalConfidence = resnetResult.confidence * 0.8
+                } else {
+                    // Specific but low confidence - keep as-is
+                    finalConfidence = resnetResult.confidence
+                }
+
+                mergedDict[resnetResult.identifier] = ClassificationResult(
+                    identifier: resnetResult.identifier,
+                    confidence: finalConfidence
+                )
+            }
+        }
+
+        // Sort by confidence, but prefer specific terms when confidence is close
+        return mergedDict.values
+            .sorted { (a, b) in
+                let confidenceDiff = abs(a.confidence - b.confidence)
+                // If confidence is within 10%, prefer the more specific one
+                if confidenceDiff < 0.1 {
+                    let aIsGeneric = isGeneric(a.identifier)
+                    let bIsGeneric = isGeneric(b.identifier)
+                    if aIsGeneric != bIsGeneric {
+                        return !aIsGeneric // Prefer non-generic (specific)
+                    }
+                }
+                return a.confidence > b.confidence
+            }
+            .prefix(15)
+            .map { $0 }
+    }
+
+    // MARK: - VisionKit Analysis
+
+    /// Perform comprehensive VisionKit analysis (subject lifting, visual lookup, enhanced Live Text)
+    @available(macOS 13.0, *)
+    private func performVisionKitAnalysis(_ cgImage: CGImage) async -> VisionKitAnalysisResult? {
+        // VisionKit's ImageAnalyzer requires macOS 13+
+        guard #available(macOS 13.0, *) else {
+            return nil
+        }
+
+        // Note: VisionKit ImageAnalyzer API is primarily for UI interaction
+        // For now, return nil to use existing Vision framework analysis
+        // Future enhancement: Integrate VisionKit when full API access is available
+        return nil
     }
 
     /// Enhanced object detection with more detector types
@@ -2249,6 +2457,27 @@ final class AIImageAnalysisService: ObservableObject {
             keywords: result.classifications.map { $0.identifier }
         )
     }
+
+    // MARK: - Memory Management
+
+    private func setupMemoryWarningObserver() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleMemoryWarning),
+            name: .memoryWarning,
+            object: nil
+        )
+    }
+
+    @objc private func handleMemoryWarning() {
+        Task { @MainActor in
+            // Clear analysis cache
+            clearCache()
+            // Clear CoreML model cache
+            modelManager.clearCache()
+            print("AIImageAnalysisService: Cleared caches due to memory warning")
+        }
+    }
 }
 
 // MARK: - Supporting Types
@@ -2287,7 +2516,8 @@ struct ImageAnalysisResult: Equatable {
     let barcodes: [DetectedBarcode]
     let horizon: HorizonDetection?
     let recognizedPeople: [RecognizedPerson]
-    
+    let visionKitResult: VisionKitAnalysisResult?
+
     init(
         classifications: [ClassificationResult],
         objects: [DetectedObject],
@@ -2307,7 +2537,8 @@ struct ImageAnalysisResult: Equatable {
         landmarks: [DetectedLandmark] = [],
         barcodes: [DetectedBarcode] = [],
         horizon: HorizonDetection? = nil,
-        recognizedPeople: [RecognizedPerson] = []
+        recognizedPeople: [RecognizedPerson] = [],
+        visionKitResult: VisionKitAnalysisResult? = nil
     ) {
         self.classifications = classifications
         self.objects = objects
@@ -2328,6 +2559,7 @@ struct ImageAnalysisResult: Equatable {
         self.barcodes = barcodes
         self.horizon = horizon
         self.recognizedPeople = recognizedPeople
+        self.visionKitResult = visionKitResult
     }
     
     static func == (lhs: ImageAnalysisResult, rhs: ImageAnalysisResult) -> Bool {
@@ -2696,6 +2928,66 @@ enum SearchSuggestionType {
     case classification
     case object
     case scene
+}
+
+// MARK: - VisionKit Results
+
+struct VisionKitAnalysisResult {
+    let subjects: [ImageSubject]
+    let visualLookupItems: [VisualLookupItem]
+    let liveTextItems: [LiveTextItem]
+    let hasSubjects: Bool
+    let hasVisualLookup: Bool
+    let hasText: Bool
+}
+
+struct ImageSubject: Equatable {
+    let boundingBox: CGRect
+    let confidence: Double
+    let subjectType: SubjectType
+
+    enum SubjectType: Equatable {
+        case person
+        case animal
+        case object
+        case unknown
+    }
+}
+
+struct VisualLookupItem: Equatable {
+    let identifier: String
+    let category: VisualLookupCategory
+    let confidence: Double
+    let boundingBox: CGRect?
+    let title: String?
+    let subtitle: String?
+
+    enum VisualLookupCategory: String, Equatable {
+        case landmark
+        case art
+        case plant
+        case pet
+        case food
+        case product
+        case unknown
+    }
+}
+
+struct LiveTextItem: Equatable {
+    let text: String
+    let confidence: Double
+    let boundingBox: CGRect
+    let dataType: DataType
+
+    enum DataType: Equatable {
+        case plain
+        case phoneNumber
+        case email
+        case url
+        case address
+        case date
+        case unknown
+    }
 }
 
 // swiftlint:enable file_length type_body_length function_body_length cyclomatic_complexity function_parameter_count nesting

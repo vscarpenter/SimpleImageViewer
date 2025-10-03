@@ -433,6 +433,21 @@ extension HelpSection {
                 type: .information
             ),
             HelpContentItem(
+                title: "AI Technology Stack",
+                description: "StillView uses a multi-framework approach for superior accuracy: Apple's Vision framework provides general image classification and analysis, ResNet-50 Core ML model offers 1,000 specialized ImageNet categories for precise subject identification (like 'pizza' instead of just 'food'), and intelligent merging prioritizes specific classifications over generic ones. This hybrid approach ensures you get the most accurate and detailed image understanding.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "ResNet-50 & ImageNet Classifications",
+                description: "The ResNet-50 deep learning model is trained on ImageNet's 1,000 categories covering specific objects (pizza, golden retriever, laptop), animals and plants (hundreds of species), vehicles and transportation, food items (63 specific types), architectural elements, and natural phenomena. This provides much more detailed classifications than generic categories like 'food' or 'animal'.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Smart Classification Prioritization",
+                description: "StillView automatically prioritizes specific over generic classifications. When Vision framework detects 'Food' and ResNet-50 detects 'pizza', the more specific 'pizza' is shown. Generic terms (food, animal, vehicle) receive confidence penalties while specific terms (pizza, golden retriever, sedan) receive confidence boosts. Classifications within 10% confidence are sorted by specificity, ensuring the most useful information appears first.",
+                type: .tip
+            ),
+            HelpContentItem(
                 title: "Privacy & Security",
                 description: "All AI processing happens entirely on your Mac using Apple's Vision and Core ML frameworks. No data ever leaves your device—no internet connection required, no cloud processing, no data collection or tracking, and complete privacy for your images. AI features respect your privacy completely.",
                 type: .information

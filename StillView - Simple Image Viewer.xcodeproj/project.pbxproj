@@ -91,6 +91,8 @@
 		FBA5E0BE2E45ABD5009F3D00 /* Typography+Scale.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA5E0B92E45ABD5009F3D00 /* Typography+Scale.swift */; };
 		FBA5E0BF2E45ABD5009F3D00 /* Spacing+System.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA5E0B82E45ABD5009F3D00 /* Spacing+System.swift */; };
 		FBAA466B2E4E1B0D00666749 /* SecurityScopedBookmarkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAA466A2E4E1B0D00666749 /* SecurityScopedBookmarkManager.swift */; };
+		FBBD0FEF2E8EF2DD00CF1D11 /* CoreMLModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBD0FE82E8EF2DD00CF1D11 /* CoreMLModelManager.swift */; };
+		FBBD0FF42E8EF2F300CF1D11 /* Resnet50.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = FBBD0FF32E8EF2F300CF1D11 /* Resnet50.mlmodel */; };
 		FBC4F84D2E35215F00AE62AA /* ErrorHandlingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */; };
 		FBC4F84F2E35216900AE62AA /* KeyboardHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC4F84E2E35216900AE62AA /* KeyboardHandler.swift */; };
 		FBF3C88D2E5FDC1600F10DC8 /* PreferencesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3C88A2E5FDC1600F10DC8 /* PreferencesSection.swift */; };
@@ -200,6 +202,8 @@
 		FBA5E0B82E45ABD5009F3D00 /* Spacing+System.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spacing+System.swift"; sourceTree = "<group>"; };
 		FBA5E0B92E45ABD5009F3D00 /* Typography+Scale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Typography+Scale.swift"; sourceTree = "<group>"; };
 		FBAA466A2E4E1B0D00666749 /* SecurityScopedBookmarkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedBookmarkManager.swift; sourceTree = "<group>"; };
+		FBBD0FE82E8EF2DD00CF1D11 /* CoreMLModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreMLModelManager.swift; sourceTree = "<group>"; };
+		FBBD0FF32E8EF2F300CF1D11 /* Resnet50.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = Resnet50.mlmodel; sourceTree = "<group>"; };
 		FBC4F84C2E35215F00AE62AA /* ErrorHandlingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorHandlingService.swift; sourceTree = "<group>"; };
 		FBC4F84E2E35216900AE62AA /* KeyboardHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHandler.swift; sourceTree = "<group>"; };
 		FBF3C8882E5FDC1600F10DC8 /* KeyboardShortcutsHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutsHelpView.swift; sourceTree = "<group>"; };
@@ -285,6 +289,7 @@
 		A100000A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				FBBD0FE82E8EF2DD00CF1D11 /* CoreMLModelManager.swift */,
 				FB49A3752E80D52B00F77575 /* AIImageAnalysisService.swift */,
 				FB49A3762E80D52B00F77575 /* macOS26CompatibilityService.swift */,
 				FB49A3792E80D53500F77575 /* AIConsentManager.swift */,
@@ -405,6 +410,7 @@
 		A100001D /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				FBBD0FF32E8EF2F300CF1D11 /* Resnet50.mlmodel */,
 				FB231AAF2E45B29000763700 /* whats-new.json */,
 				A1000004 /* Assets.xcassets */,
 				A100008D /* logo-horizontal.svg */,
@@ -599,6 +605,7 @@
 				FBF3C8972E5FDC2400F10DC8 /* PreferencesBackupService.swift in Sources */,
 				FBF3C8982E5FDC2400F10DC8 /* PreferencesCoordinator.swift in Sources */,
 				FBF3C8992E5FDC2400F10DC8 /* ShortcutManager.swift in Sources */,
+				FBBD0FEF2E8EF2DD00CF1D11 /* CoreMLModelManager.swift in Sources */,
 				FBF3C89A2E5FDC2400F10DC8 /* AppearanceService.swift in Sources */,
 				FBF3C89B2E5FDC2400F10DC8 /* PreferencesValidator.swift in Sources */,
 				FB140FBC2E435BB300A36AB6 /* PreviewGeneratorService.swift in Sources */,
@@ -630,6 +637,7 @@
 				FBF3C8902E5FDC1600F10DC8 /* ValidationFeedbackView.swift in Sources */,
 				FBF3C8912E5FDC1600F10DC8 /* PreferencesTabView.swift in Sources */,
 				FBA5E0BF2E45ABD5009F3D00 /* Spacing+System.swift in Sources */,
+				FBBD0FF42E8EF2F300CF1D11 /* Resnet50.mlmodel in Sources */,
 				FB748BEA2E41617A00E6D948 /* ToolbarButtonStyles.swift in Sources */,
 				A1000097 /* FolderSelectionViewModel.swift in Sources */,
 				A100009F /* ErrorDialogView.swift in Sources */,
@@ -791,7 +799,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -812,7 +820,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 2.5.2;
+				MARKETING_VERSION = 2.5.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -829,7 +837,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -850,7 +858,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 2.5.2;
+				MARKETING_VERSION = 2.5.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
