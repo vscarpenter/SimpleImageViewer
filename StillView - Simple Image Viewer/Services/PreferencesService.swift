@@ -47,6 +47,9 @@ protocol PreferencesService {
     /// Whether to remember AI Insights panel visibility across sessions
     var rememberAIInsightsPanelState: Bool { get set }
     
+    /// AI caption preferences
+    var aiCaptionPreferences: AICaptionPreferences { get set }
+    
     /// Favorited images data
     // Favorites removed
     
@@ -83,6 +86,36 @@ protocol PreferencesService {
     // Favorites removed
 }
 
+// MARK: - AI Caption Preferences
+
+/// Preferences for AI-generated caption customization
+struct AICaptionPreferences: Codable, Equatable {
+    /// Caption style (brief, detailed, or technical)
+    var captionStyle: CaptionStyle
+    
+    /// Preferred language for captions
+    var preferredLanguage: String
+    
+    /// Whether to enable enhanced Vision requests (animals, food, body pose)
+    var enableEnhancedVision: Bool
+    
+    /// Whether to enable semantic enhancement (time of day, weather, mood)
+    var enableSemanticEnhancement: Bool
+    
+    /// Default initializer with sensible defaults
+    init(
+        captionStyle: CaptionStyle = .detailed,
+        preferredLanguage: String = "en",
+        enableEnhancedVision: Bool = true,
+        enableSemanticEnhancement: Bool = true
+    ) {
+        self.captionStyle = captionStyle
+        self.preferredLanguage = preferredLanguage
+        self.enableEnhancedVision = enableEnhancedVision
+        self.enableSemanticEnhancement = enableSemanticEnhancement
+    }
+}
+
 /// Default implementation using UserDefaults
 class DefaultPreferencesService: PreferencesService {
     static let shared = DefaultPreferencesService()
@@ -110,6 +143,7 @@ class DefaultPreferencesService: PreferencesService {
         static let enableAIAnalysis = "enableAIAnalysis"
         static let enableImageEnhancements = "enableImageEnhancements"
         static let rememberAIInsightsPanelState = "rememberAIInsightsPanelState"
+        static let aiCaptionPreferences = "aiCaptionPreferences"
         // Favorites removed
     }
     
@@ -274,7 +308,7 @@ class DefaultPreferencesService: PreferencesService {
     var enableAIAnalysis: Bool {
         get {
             if userDefaults.object(forKey: Keys.enableAIAnalysis) == nil {
-                return true
+                return false  // Changed: AI Analysis now OFF by default (opt-in)
             }
             return userDefaults.bool(forKey: Keys.enableAIAnalysis)
         }
@@ -304,6 +338,38 @@ class DefaultPreferencesService: PreferencesService {
         }
         set {
             userDefaults.set(newValue, forKey: Keys.rememberAIInsightsPanelState)
+        }
+    }
+    
+    var aiCaptionPreferences: AICaptionPreferences {
+        get {
+            guard let data = userDefaults.data(forKey: Keys.aiCaptionPreferences) else {
+                // Return default preferences if not set
+                return AICaptionPreferences()
+            }
+            
+            do {
+                let decoder = JSONDecoder()
+                return try decoder.decode(AICaptionPreferences.self, from: data)
+            } catch {
+                Logger.error("Failed to decode AI caption preferences: \(error)")
+                return AICaptionPreferences()
+            }
+        }
+        set {
+            do {
+                let encoder = JSONEncoder()
+                let data = try encoder.encode(newValue)
+                userDefaults.set(data, forKey: Keys.aiCaptionPreferences)
+                
+                // Post notification for preference changes
+                NotificationCenter.default.post(
+                    name: .aiCaptionPreferencesDidChange,
+                    object: newValue
+                )
+            } catch {
+                Logger.error("Failed to encode AI caption preferences: \(error)")
+            }
         }
     }
     
@@ -358,4 +424,9 @@ class DefaultPreferencesService: PreferencesService {
 }
 
 // MARK: - Notifications
-// Notification names are defined in ErrorHandlingService.swift
+
+extension Notification.Name {
+    static let aiAnalysisPreferenceDidChange = Notification.Name("aiAnalysisPreferenceDidChange")
+    static let imageEnhancementsPreferenceDidChange = Notification.Name("imageEnhancementsPreferenceDidChange")
+    static let aiCaptionPreferencesDidChange = Notification.Name("aiCaptionPreferencesDidChange")
+}

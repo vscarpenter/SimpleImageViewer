@@ -67,6 +67,9 @@ class ImageViewerViewModel: ObservableObject {
     // AI Insights UI state
     @Published private(set) var showAIInsights: Bool = false
     @Published private(set) var isAIInsightsAvailable: Bool = false
+    @Published private(set) var aiInsights: [AIInsight] = []
+
+    private let aiBrain = AIBrain.shared
     
     // MARK: - Computed Properties
     var hasNext: Bool {
@@ -406,65 +409,28 @@ class ImageViewerViewModel: ObservableObject {
         showAIInsights = shouldShow
     }
     
+    /// Check if AI Insights is supported by the system (independent of user preference)
+    var isAIInsightsSupported: Bool {
+        if #available(macOS 26.0, *) {
+            return compatibilityService.isFeatureAvailable(.aiImageAnalysis)
+        }
+        return false
+    }
+    
     /// Update AI Insights availability based on system compatibility and preferences
     func updateAIInsightsAvailability() {
-        do {
-            // Check system compatibility first - AI Insights requires macOS 26+
-            let systemSupportsAI: Bool
-            if #available(macOS 26.0, *) {
-                systemSupportsAI = compatibilityService.isFeatureAvailable(.aiImageAnalysis)
-            } else {
-                systemSupportsAI = false
-            }
-            
-            let userEnabledAI = preferencesService.enableAIAnalysis
-            isAIInsightsAvailable = systemSupportsAI && userEnabledAI
-            
-            // Reset showAIInsights if AI Insights becomes unavailable
-            if !isAIInsightsAvailable {
-                showAIInsights = false
-            }
-            
-            Logger.info("AI Insights availability updated - System: \(systemSupportsAI), User: \(userEnabledAI), Available: \(isAIInsightsAvailable)", context: "AIInsights")
-            
-        } catch let error as AIAnalysisError {
-            Logger.error("AI-specific error updating availability: \(error.localizedDescription)", context: "AIInsights")
-            
-            // Set to safe default state
-            isAIInsightsAvailable = false
+        // Check system compatibility first - AI Insights requires macOS 26+
+        let systemSupportsAI = isAIInsightsSupported
+        
+        let userEnabledAI = preferencesService.enableAIAnalysis
+        isAIInsightsAvailable = systemSupportsAI && userEnabledAI
+        
+        // Reset showAIInsights if AI Insights becomes unavailable
+        if !isAIInsightsAvailable {
             showAIInsights = false
-            
-            // Handle AI-specific errors appropriately
-            switch error {
-            case .systemResourcesUnavailable, .featureNotAvailable:
-                // These are expected in some scenarios, don't show intrusive errors
-                Logger.info("AI Insights unavailable due to system limitations", context: "AIInsights")
-            case .preferenceSyncFailed:
-                // Handle preference sync failure with fallback
-                errorHandlingService.handlePreferenceSyncFailure(error) { [weak self] in
-                    Task { @MainActor in
-                        self?.fallbackPreferenceSync()
-                    }
-                }
-            default:
-                // For other AI errors, show appropriate user feedback
-                errorHandlingService.handleAIAnalysisError(error) { [weak self] in
-                    self?.updateAIInsightsAvailability()
-                }
-            }
-        } catch {
-            Logger.error("Failed to update AI Insights availability: \(error.localizedDescription)", context: "AIInsights")
-            
-            // Set to safe default state
-            isAIInsightsAvailable = false
-            showAIInsights = false
-            
-            // Handle generic errors
-            errorHandlingService.showNotification(
-                "AI analysis system temporarily unavailable",
-                type: .warning
-            )
         }
+        
+        Logger.info("AI Insights availability updated - System: \(systemSupportsAI), User: \(userEnabledAI), Available: \(isAIInsightsAvailable)", context: "AIInsights")
     }
     
     /// Handle notification system failures
@@ -900,6 +866,9 @@ class ImageViewerViewModel: ObservableObject {
         analysisScenes = result.scenes
         analysisText = result.text
         analysisError = nil
+        
+        // Generate insights using the AIBrain
+        aiInsights = aiBrain.generateInsights(for: result)
     }
 
     @MainActor

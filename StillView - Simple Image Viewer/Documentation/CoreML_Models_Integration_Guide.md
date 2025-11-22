@@ -285,3 +285,4 @@ func trackModelError(_ modelType: CoreMLModelType, error: Error) {
 - **Console Logs**: Monitor model loading and processing
 
 This guide provides a complete framework for integrating Core ML models into your StillView project. The implementation is designed to be modular, performant, and user-friendly while maintaining backward compatibility.
+

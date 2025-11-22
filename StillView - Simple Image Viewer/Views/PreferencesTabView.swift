@@ -347,6 +347,19 @@ struct GeneralPreferencesView: View {
     
     @StateObject private var viewModel = PreferencesViewModel()
     
+    // MARK: - Computed Properties
+    
+    private var captionStyleTooltip: String {
+        switch viewModel.captionStyle {
+        case .brief:
+            return "Brief: Single sentence, 10-15 words with essential information only"
+        case .detailed:
+            return "Detailed: 2-3 sentences, 30-50 words with spatial relationships and context"
+        case .technical:
+            return "Technical: 3-4 sentences with quality metrics and composition analysis, 50-80 words"
+        }
+    }
+    
     // MARK: - Body
     
     var body: some View {
@@ -448,6 +461,20 @@ struct GeneralPreferencesView: View {
                 }
                 .preferencesHelp(.aiAnalysis)
                 
+                if viewModel.enableAIAnalysis {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .font(.system(size: 12))
+                        Text("Beta Feature: Functionality is experimental and results may be inconsistent.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.leading, 20)
+                    .padding(.bottom, 8)
+                    .transition(.opacity)
+                }
+                
                 PreferencesControl(
                     "Enhance images automatically",
                     description: "Apply noise reduction, smart cropping, and color tuning when images load"
@@ -458,6 +485,70 @@ struct GeneralPreferencesView: View {
                 .preferencesHelp(.imageEnhancements)
             }
             
+            PreferencesSection("AI Captions") {
+                PreferencesControl(
+                    "Caption style",
+                    description: "Choose the verbosity and detail level for AI-generated captions"
+                ) {
+                    Picker("", selection: $viewModel.captionStyle) {
+                        ForEach(CaptionStyle.allCases, id: \.self) { style in
+                            Text(style.displayName).tag(style)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 140)
+                    .help(captionStyleTooltip)
+                }
+                
+                PreferencesControl(
+                    "Preferred language",
+                    description: "Language for AI-generated captions"
+                ) {
+                    Picker("", selection: $viewModel.captionLanguage) {
+                        Text("English").tag("en")
+                        Text("Spanish").tag("es")
+                        Text("French").tag("fr")
+                        Text("German").tag("de")
+                        Text("Italian").tag("it")
+                        Text("Portuguese").tag("pt")
+                        Text("Japanese").tag("ja")
+                        Text("Chinese (Simplified)").tag("zh-Hans")
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 180)
+                    .help("Select the language for generated captions. Some languages may fall back to English for technical terms.")
+                }
+                
+                PreferencesControl(
+                    "Enhanced Vision analysis",
+                    description: "Use advanced Vision requests for animal breeds, food items, and body pose detection"
+                ) {
+                    Toggle("", isOn: $viewModel.enableEnhancedVision)
+                        .labelsHidden()
+                }
+                .help("Enables more specific object recognition (e.g., 'Golden Retriever' instead of 'dog'). May increase processing time slightly.")
+                
+                PreferencesControl(
+                    "Semantic enhancement",
+                    description: "Include contextual details like time of day, weather, and mood in captions"
+                ) {
+                    Toggle("", isOn: $viewModel.enableSemanticEnhancement)
+                        .labelsHidden()
+                }
+                .help("Adds natural language context to captions, such as 'captured during golden hour' or 'with a serene atmosphere'.")
+
+                PreferencesControl(
+                    "Cache management",
+                    description: "Clear cached AI analysis results to force fresh analysis"
+                ) {
+                    Button("Clear AI Cache") {
+                        viewModel.clearAICache()
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .help("Clears all cached AI analysis results. Useful when you've made changes to images or want to force re-analysis with updated algorithms.")
+            }
+
             PreferencesSection("Thumbnails") {
                 ValidatedPreferencesControl(
                     "Default thumbnail size",
