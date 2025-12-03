@@ -16,8 +16,17 @@ enum AIAnalysisConstants {
     static let specificityLevels: [String: Int] = [
         // Level 5: Very specific objects
         "beer glass": 5, "wine glass": 5, "champagne glass": 5, "cocktail glass": 5,
-        "coffee cup": 5, "tea cup": 5, "mug": 5, "espresso": 5,
+        "coffee cup": 5, "tea cup": 5, "mug": 5, "espresso": 5, "cappuccino": 5, "latte": 5,
+
+        // Level 5: Specific foods
         "pizza": 5, "burger": 5, "hamburger": 5, "sandwich": 5, "salad": 5, "pasta": 5, "sushi": 5,
+        "steak": 5, "chicken": 5, "lobster": 5, "shrimp": 5, "crab": 5,
+        "taco": 5, "burrito": 5, "nachos": 5, "quesadilla": 5,
+        "ramen": 5, "pho": 5, "noodles": 5, "rice": 5, "curry": 5,
+        "cake": 5, "pie": 5, "cookie": 5, "ice cream": 5, "chocolate": 5, "donut": 5,
+        "bread": 5, "bagel": 5, "croissant": 5, "baguette": 5, "pretzel": 5,
+        "fruit": 4, "apple": 5, "banana": 5, "orange": 5, "strawberry": 5, "grape": 5,
+        "vegetable": 4, "broccoli": 5, "carrot": 5, "tomato": 5, "potato": 5,
         "laptop": 5, "smartphone": 5, "tablet": 5, "camera": 5, "iphone": 5,
         "bicycle": 5, "motorcycle": 5, "sports car": 5, "sedan": 5, "suv": 5, "taxi": 5, "limousine": 5,
         "dog": 5, "cat": 5, "bird": 5, "horse": 5, "elephant": 5, "lion": 5, "tiger": 5,
@@ -119,13 +128,76 @@ enum AIAnalysisConstants {
     /// Saturation threshold for "monochromatic" mood (0.0-1.0)
     static let monochromaticSaturationThreshold: CGFloat = 0.1
 
+    // MARK: - Confidence Thresholds
+
+    /// Minimum confidence for including a classification in results
+    static let minimumClassificationConfidence: Float = 0.1
+
+    /// Confidence threshold for low-signal detection in captions/narratives
+    static let lowSignalConfidenceThreshold: Double = 0.20
+
+    /// Confidence threshold for including subjects in captions
+    static let captionSubjectConfidence: Double = 0.5
+
+    /// Confidence threshold for high-specificity subjects in captions
+    static let highSpecificityConfidenceThreshold: Double = 0.25
+
+    /// Confidence threshold for medium-specificity subjects in captions
+    static let mediumSpecificityConfidenceThreshold: Double = 0.35
+
+    /// Confidence threshold for location context in captions
+    static let locationContextConfidence: Float = 0.6
+
+    /// Minimum confidence for background classification to be kept
+    static let backgroundKeepConfidence: Float = 0.75
+
+    // MARK: - Boost Factors
+
+    /// Boost factor for person classifications when person detected
+    static let personClassificationBoost: Float = 1.3
+
+    /// Boost factor for vehicle classifications when vehicle detected
+    static let vehicleClassificationBoost: Float = 1.3
+
+    /// Boost factor for vehicles in subject detection
+    static let vehicleSubjectBoost: Double = 2.5
+
+    /// Boost factor for small vehicles with person present
+    static let vehicleWithPersonSmallBoost: Double = 1.5
+
+    /// Minimum vehicle area ratio to be considered primary subject (0.0-1.0)
+    static let vehiclePrimaryAreaThreshold: Double = 0.15
+
+    /// Boost for saliency overlap with detected objects
+    static let saliencyOverlapBoostMax: Double = 0.3
+
+    // MARK: - Limits
+
+    /// Maximum number of primary subjects to detect
+    static let maxPrimarySubjects = 3
+
+    /// Maximum number of smart tags per image
+    static let maxSmartTags = 12
+
+    /// Maximum number of classifications to consider
+    static let maxClassifications = 10
+
+    /// Maximum number of faces to detect
+    static let maxFaceDetections = 15
+
+    /// Minimum image dimension for enhanced Vision analysis
+    static let minEnhancedVisionDimension = 500
+
+    /// Minimum megapixels for wallpaper use case suggestion
+    static let wallpaperMinMegapixels: Double = 8.0
+
     // MARK: - Cache Settings
 
     /// Maximum number of cached analysis results
     static let maxCacheEntries = 20
 
     /// Current cache version - increment to invalidate cache
-    static let cacheVersion = "v7"  // Incremented for vehicle boost (3.5x) + background filtering fixes
+    static let cacheVersion = "v9"  // Incremented for phases 2-6 improvements
 
     // MARK: - Helper Functions
 

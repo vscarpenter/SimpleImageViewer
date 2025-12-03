@@ -3,7 +3,50 @@ import AppKit
 
 /// Generates intelligent, contextual narratives for images
 /// Adapts narrative style based on image purpose (portrait, landscape, document, etc.)
+/// Uses template variations for natural language diversity
 final class NarrativeGenerator {
+
+    // MARK: - Template Variations
+
+    /// Portrait narrative templates with placeholders: {name}, {subject}, {lighting}, {composition}
+    private let portraitTemplates = [
+        "Portrait of {name}{composition}. {lighting}.",
+        "A {lighting_adj} portrait capturing {name}{composition}.",
+        "{name} photographed{composition}. {lighting}.",
+        "Portrait featuring {name} with {lighting_adj} illumination{composition}."
+    ]
+
+    /// Group photo templates with placeholders: {count}, {names}, {lighting}
+    private let groupTemplates = [
+        "Group photograph with {count} people{names}. {lighting}.",
+        "A gathering of {count} individuals{names}, captured with {lighting_adj} lighting.",
+        "{count} people photographed together{names}. {lighting}.",
+        "Group portrait featuring {count} subjects{names}. {lighting}."
+    ]
+
+    /// Landscape templates with placeholders: {scene}, {landmark}, {colors}, {time}
+    private let landscapeTemplates = [
+        "Landscape photograph of {scene}. {colors} natural scenery{time}.",
+        "A {colors_adj} view of {scene}{time}, captured with attention to composition.",
+        "{scene} stretches across the frame{time}. {colors}.",
+        "Natural landscape featuring {scene}. {colors}{time}."
+    ]
+
+    /// Food templates with placeholders: {item}, {colors}, {presentation}
+    private let foodTemplates = [
+        "Food photography showcasing {item}. {presentation} with {colors_adj} tones.",
+        "A {colors_adj} presentation of {item}. {presentation}.",
+        "{item} photographed with {presentation}. {colors}.",
+        "Culinary image featuring {item}. {colors} {presentation}."
+    ]
+
+    /// General templates with placeholders: {subject}, {colors}, {composition}
+    private let generalTemplates = [
+        "Image showing {subject}. {composition} with {colors_adj} elements.",
+        "A {colors_adj} photograph of {subject}. {composition}.",
+        "{subject} captured with {composition}. {colors}.",
+        "Visual composition featuring {subject}. {colors}."
+    ]
 
     // MARK: - Public Interface
 
@@ -26,7 +69,9 @@ final class NarrativeGenerator {
         let confidences: [Double] = [classificationMax, objectsMax, scenesMax, textMax]
         let topConfidence = confidences.max() ?? 0.0
         
-        if topConfidence < 0.12 {
+        // Raised threshold from 0.12 to 0.20 for better quality narratives
+        // Low-signal images now produce observation-based descriptions
+        if topConfidence < 0.20 {
             var parts: [String] = []
             if let obj = objects.first {
                 parts.append(obj.identifier.replacingOccurrences(of: "_", with: " ").lowercased())
@@ -187,26 +232,35 @@ final class NarrativeGenerator {
         recognizedPeople: [RecognizedPerson],
         classifications: [ClassificationResult]
     ) -> String {
-        var narrative: String
-
+        // Determine subject name
+        let name: String
         if let person = recognizedPeople.first {
-            narrative = "Portrait of \(person.name)"
+            name = person.name
         } else if objects.contains(where: { $0.identifier == "person" || $0.identifier == "face" }) {
-            narrative = "Portrait photograph with person"
+            name = "a person"
         } else {
-            let subject = getFirstNonBackgroundClassification(classifications)
-            narrative = "Portrait photograph featuring \(subject)"
+            name = getFirstNonBackgroundClassification(classifications)
         }
 
-        // Add composition note
+        // Build composition description
+        var composition = ""
         if let balance = saliency?.visualBalance, balance.score > 0.7 {
-            narrative += " with balanced framing"
+            composition = " with balanced framing"
+        } else if let balance = saliency?.visualBalance, balance.score > 0.5 {
+            composition = " with centered composition"
         }
 
-        // Add lighting note
-        narrative += ". " + describeLighting(colors: colors)
+        // Get lighting descriptions
+        let lighting = describeLighting(colors: colors)
+        let lightingAdj = describeLightingAdjective(colors: colors)
 
-        return narrative + "."
+        // Select random template and fill placeholders
+        let template = portraitTemplates.randomElement() ?? portraitTemplates[0]
+        return template
+            .replacingOccurrences(of: "{name}", with: name)
+            .replacingOccurrences(of: "{composition}", with: composition)
+            .replacingOccurrences(of: "{lighting}", with: lighting)
+            .replacingOccurrences(of: "{lighting_adj}", with: lightingAdj)
     }
 
     private func generateGroupPhotoNarrative(
@@ -216,16 +270,23 @@ final class NarrativeGenerator {
         saliency: SaliencyAnalysis?
     ) -> String {
         let resolvedCount = detectedPeopleCount > 0 ? detectedPeopleCount : max(recognizedPeople.count, 2)
-        var narrative = "Group photograph with \(resolvedCount) \(resolvedCount == 1 ? "person" : "people")"
 
+        // Build names string if available
+        var names = ""
         if !recognizedPeople.isEmpty {
-            let names = recognizedPeople.map { $0.name }.joined(separator: ", ")
-            narrative += " including \(names)"
+            let nameList = recognizedPeople.map { $0.name }.joined(separator: ", ")
+            names = " including \(nameList)"
         }
 
-        narrative += ". " + describeLighting(colors: colors) + "."
+        let lighting = describeLighting(colors: colors)
+        let lightingAdj = describeLightingAdjective(colors: colors)
 
-        return narrative
+        let template = groupTemplates.randomElement() ?? groupTemplates[0]
+        return template
+            .replacingOccurrences(of: "{count}", with: String(resolvedCount))
+            .replacingOccurrences(of: "{names}", with: names)
+            .replacingOccurrences(of: "{lighting}", with: lighting)
+            .replacingOccurrences(of: "{lighting_adj}", with: lightingAdj)
     }
 
     private func generateLandscapeNarrative(
@@ -233,12 +294,28 @@ final class NarrativeGenerator {
         colors: [DominantColor],
         landmarks: [DetectedLandmark]
     ) -> String {
+        // Determine scene description
+        let scene: String
         if let landmark = landmarks.first {
-            return "Landscape photograph featuring \(landmark.name). Natural scenery with excellent composition."
+            scene = landmark.name
+        } else {
+            scene = scenes.first?.identifier.replacingOccurrences(of: "_", with: " ") ?? "outdoor scene"
         }
 
-        let sceneType = scenes.first?.identifier.replacingOccurrences(of: "_", with: " ") ?? "outdoor scene"
-        return "Landscape photograph of \(sceneType). Natural scenery captured with attention to composition."
+        // Determine time of day from colors
+        let timeOfDay = inferTimeOfDay(from: colors)
+
+        // Color descriptions
+        let colorsDesc = describeColorMood(colors: colors)
+        let colorsAdj = describeColorAdjective(colors: colors)
+
+        let template = landscapeTemplates.randomElement() ?? landscapeTemplates[0]
+        return template
+            .replacingOccurrences(of: "{scene}", with: scene)
+            .replacingOccurrences(of: "{landmark}", with: landmarks.first?.name ?? "")
+            .replacingOccurrences(of: "{colors}", with: colorsDesc)
+            .replacingOccurrences(of: "{colors_adj}", with: colorsAdj)
+            .replacingOccurrences(of: "{time}", with: timeOfDay)
     }
 
     private func generateArchitectureNarrative(
@@ -247,7 +324,15 @@ final class NarrativeGenerator {
         colors: [DominantColor]
     ) -> String {
         let buildingType = objects.first(where: { $0.identifier.lowercased().contains("building") })?.identifier.replacingOccurrences(of: "_", with: " ") ?? "architectural structure"
-        return "Architectural photography of \(buildingType). Structural details captured with clear perspective."
+        let colorsAdj = describeColorAdjective(colors: colors)
+
+        let templates = [
+            "Architectural photography of \(buildingType). Structural details captured with clear perspective.",
+            "A \(colorsAdj) view of \(buildingType), showcasing architectural elements.",
+            "\(buildingType.capitalized) photographed with attention to geometric detail.",
+            "Architecture photograph featuring \(buildingType). Clean lines and \(colorsAdj) tones."
+        ]
+        return templates.randomElement() ?? templates[0]
     }
 
     private func generateWildlifeNarrative(
@@ -255,8 +340,22 @@ final class NarrativeGenerator {
         scenes: [SceneClassification],
         colors: [DominantColor]
     ) -> String {
-        let animal = objects.first(where: { $0.identifier.lowercased().contains("animal") || $0.identifier.lowercased().contains("bird") })?.identifier.replacingOccurrences(of: "_", with: " ") ?? "wildlife"
-        return "Wildlife photography featuring \(animal). Natural habitat captured with attention to detail."
+        let animal = objects.first(where: {
+            $0.identifier.lowercased().contains("animal") ||
+            $0.identifier.lowercased().contains("bird") ||
+            $0.identifier.lowercased().contains("dog") ||
+            $0.identifier.lowercased().contains("cat")
+        })?.identifier.replacingOccurrences(of: "_", with: " ") ?? "wildlife"
+
+        let habitat = scenes.first?.identifier.replacingOccurrences(of: "_", with: " ") ?? "natural setting"
+
+        let templates = [
+            "Wildlife photography featuring \(animal). Natural habitat captured with attention to detail.",
+            "\(animal.capitalized) in its \(habitat), photographed with patience and skill.",
+            "A candid capture of \(animal) in the wild. Natural behavior documented.",
+            "Wildlife portrait of \(animal). \(habitat.capitalized) setting with natural lighting."
+        ]
+        return templates.randomElement() ?? templates[0]
     }
 
     private func generateFoodNarrative(
@@ -264,17 +363,45 @@ final class NarrativeGenerator {
         colors: [DominantColor]
     ) -> String {
         let foodItem = classifications.first?.identifier.replacingOccurrences(of: "_", with: " ") ?? "food"
-        return "Food photography showcasing \(foodItem). Appetizing presentation with natural colors."
+        let colorsAdj = describeColorAdjective(colors: colors)
+        let presentation = describeFoodPresentation(colors: colors)
+
+        let template = foodTemplates.randomElement() ?? foodTemplates[0]
+        return template
+            .replacingOccurrences(of: "{item}", with: foodItem)
+            .replacingOccurrences(of: "{colors}", with: describeColorMood(colors: colors))
+            .replacingOccurrences(of: "{colors_adj}", with: colorsAdj)
+            .replacingOccurrences(of: "{presentation}", with: presentation)
     }
 
     private func generateDocumentNarrative(text: [RecognizedText]) -> String {
         let wordCount = text.count
-        return "Document or screenshot containing \(wordCount) text element(s). Clear, readable content."
+        let totalChars = text.reduce(0) { $0 + $1.text.count }
+
+        let templates = [
+            "Document containing \(wordCount) text region(s). Clear, readable content.",
+            "Text-based image with \(wordCount) detected text areas. Legible formatting.",
+            "Screenshot or document with approximately \(totalChars) characters of text.",
+            "Readable document featuring \(wordCount) text element(s). Well-structured content."
+        ]
+        return templates.randomElement() ?? templates[0]
     }
 
     private func generateProductNarrative(objects: [DetectedObject], saliency: SaliencyAnalysis?) -> String {
         let product = objects.first?.identifier.replacingOccurrences(of: "_", with: " ") ?? "product"
-        return "Product photography featuring \(product). Professional composition with clear focus."
+
+        var focusNote = ""
+        if let balance = saliency?.visualBalance, balance.score > 0.7 {
+            focusNote = " with strong focal point"
+        }
+
+        let templates = [
+            "Product photography featuring \(product)\(focusNote). Professional composition.",
+            "Commercial photograph of \(product)\(focusNote). Clean, marketable presentation.",
+            "\(product.capitalized) showcased\(focusNote). Studio-quality lighting.",
+            "E-commerce style image of \(product)\(focusNote). Clear product visibility."
+        ]
+        return templates.randomElement() ?? templates[0]
     }
 
     private func generateGeneralNarrative(
@@ -283,7 +410,16 @@ final class NarrativeGenerator {
         colors: [DominantColor]
     ) -> String {
         let subject = getMainSubject(classifications: classifications, objects: objects)
-        return "Image showing \(subject). Clear visual composition with balanced elements."
+        let colorsAdj = describeColorAdjective(colors: colors)
+        let colorsDesc = describeColorMood(colors: colors)
+        let composition = "Clear visual composition"
+
+        let template = generalTemplates.randomElement() ?? generalTemplates[0]
+        return template
+            .replacingOccurrences(of: "{subject}", with: subject)
+            .replacingOccurrences(of: "{colors}", with: colorsDesc)
+            .replacingOccurrences(of: "{colors_adj}", with: colorsAdj)
+            .replacingOccurrences(of: "{composition}", with: composition)
     }
 
     // MARK: - Helper Methods
@@ -342,6 +478,155 @@ final class NarrativeGenerator {
             return "Low-key lighting with dramatic shadows"
         } else {
             return "Natural, balanced lighting"
+        }
+    }
+
+    /// Returns a single adjective describing the lighting
+    private func describeLightingAdjective(colors: [DominantColor]) -> String {
+        guard let dominantColor = colors.first else {
+            return "natural"
+        }
+
+        let rgb = dominantColor.color.usingColorSpace(.deviceRGB) ?? dominantColor.color
+        let brightness = rgb.brightnessComponent
+        let saturation = rgb.saturationComponent
+
+        if brightness > 0.8 {
+            return "bright"
+        } else if brightness > 0.6 && saturation < 0.3 {
+            return "soft"
+        } else if brightness < 0.3 {
+            return "dramatic"
+        } else if saturation > 0.6 {
+            return "warm"
+        } else {
+            return "natural"
+        }
+    }
+
+    /// Describes the overall color mood of the image
+    private func describeColorMood(colors: [DominantColor]) -> String {
+        guard !colors.isEmpty else { return "Balanced tones" }
+
+        let avgBrightness = colors.prefix(3).reduce(0.0) { sum, color in
+            let rgb = color.color.usingColorSpace(.deviceRGB) ?? color.color
+            return sum + rgb.brightnessComponent
+        } / CGFloat(min(colors.count, 3))
+
+        let avgSaturation = colors.prefix(3).reduce(0.0) { sum, color in
+            let rgb = color.color.usingColorSpace(.deviceRGB) ?? color.color
+            return sum + rgb.saturationComponent
+        } / CGFloat(min(colors.count, 3))
+
+        if avgSaturation > 0.6 {
+            return "Vibrant, saturated colors"
+        } else if avgSaturation < 0.2 {
+            return "Muted, subtle tones"
+        } else if avgBrightness > 0.7 {
+            return "Bright, luminous palette"
+        } else if avgBrightness < 0.3 {
+            return "Dark, moody atmosphere"
+        } else {
+            return "Balanced tones"
+        }
+    }
+
+    /// Returns a single adjective describing the color palette
+    private func describeColorAdjective(colors: [DominantColor]) -> String {
+        guard !colors.isEmpty else { return "balanced" }
+
+        let avgBrightness = colors.prefix(3).reduce(0.0) { sum, color in
+            let rgb = color.color.usingColorSpace(.deviceRGB) ?? color.color
+            return sum + rgb.brightnessComponent
+        } / CGFloat(min(colors.count, 3))
+
+        let avgSaturation = colors.prefix(3).reduce(0.0) { sum, color in
+            let rgb = color.color.usingColorSpace(.deviceRGB) ?? color.color
+            return sum + rgb.saturationComponent
+        } / CGFloat(min(colors.count, 3))
+
+        // Check for warm/cool tones
+        if let dominant = colors.first {
+            let rgb = dominant.color.usingColorSpace(.deviceRGB) ?? dominant.color
+            let isWarm = rgb.redComponent > rgb.blueComponent
+            if avgSaturation > 0.5 && isWarm {
+                return "warm"
+            } else if avgSaturation > 0.5 && !isWarm {
+                return "cool"
+            }
+        }
+
+        if avgSaturation > 0.6 {
+            return "vibrant"
+        } else if avgSaturation < 0.2 {
+            return "muted"
+        } else if avgBrightness > 0.7 {
+            return "bright"
+        } else if avgBrightness < 0.3 {
+            return "dark"
+        } else {
+            return "balanced"
+        }
+    }
+
+    /// Infers time of day from color analysis
+    private func inferTimeOfDay(from colors: [DominantColor]) -> String {
+        guard !colors.isEmpty else { return "" }
+
+        let avgBrightness = colors.prefix(3).reduce(0.0) { sum, color in
+            let rgb = color.color.usingColorSpace(.deviceRGB) ?? color.color
+            return sum + rgb.brightnessComponent
+        } / CGFloat(min(colors.count, 3))
+
+        // Check for golden hour / sunset colors
+        if let dominant = colors.first {
+            let rgb = dominant.color.usingColorSpace(.deviceRGB) ?? dominant.color
+            let isGolden = rgb.redComponent > 0.6 && rgb.greenComponent > 0.3 && rgb.blueComponent < 0.4
+
+            if isGolden && avgBrightness > 0.4 {
+                return " during golden hour"
+            }
+        }
+
+        // Check for blue hour / dusk
+        if let dominant = colors.first {
+            let rgb = dominant.color.usingColorSpace(.deviceRGB) ?? dominant.color
+            let isBlueHour = rgb.blueComponent > rgb.redComponent && avgBrightness < 0.5 && avgBrightness > 0.2
+
+            if isBlueHour {
+                return " at dusk"
+            }
+        }
+
+        if avgBrightness < 0.2 {
+            return " at night"
+        }
+
+        return ""
+    }
+
+    /// Describes food presentation style
+    private func describeFoodPresentation(colors: [DominantColor]) -> String {
+        guard !colors.isEmpty else { return "Appetizing presentation" }
+
+        let avgSaturation = colors.prefix(3).reduce(0.0) { sum, color in
+            let rgb = color.color.usingColorSpace(.deviceRGB) ?? color.color
+            return sum + rgb.saturationComponent
+        } / CGFloat(min(colors.count, 3))
+
+        let avgBrightness = colors.prefix(3).reduce(0.0) { sum, color in
+            let rgb = color.color.usingColorSpace(.deviceRGB) ?? color.color
+            return sum + rgb.brightnessComponent
+        } / CGFloat(min(colors.count, 3))
+
+        if avgSaturation > 0.6 && avgBrightness > 0.5 {
+            return "Appetizing, colorful presentation"
+        } else if avgBrightness > 0.7 {
+            return "Clean, bright plating"
+        } else if avgBrightness < 0.4 {
+            return "Moody, artistic presentation"
+        } else {
+            return "Natural presentation"
         }
     }
 

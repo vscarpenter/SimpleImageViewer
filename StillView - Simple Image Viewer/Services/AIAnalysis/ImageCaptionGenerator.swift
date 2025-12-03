@@ -202,7 +202,15 @@ final class ImageCaptionGenerator {
         Logger.ai("📝 ImageCaptionGenerator: Building template-based caption with \(subjects.count) subject(s)")
         #endif
 
-        let filteredSubjects = subjects.filter { $0.confidence > 0.5 }
+        // Use adaptive threshold: lower for high-specificity subjects
+        let filteredSubjects = subjects.filter { subject in
+            let specificity = AIAnalysisConstants.getSpecificity(subject.label)
+            // High-specificity subjects (>= 4): use 0.25 threshold
+            // Medium-specificity subjects (>= 2): use 0.35 threshold
+            // Low-specificity subjects: use 0.5 threshold
+            let threshold: Double = specificity >= 4 ? 0.25 : (specificity >= 2 ? 0.35 : 0.5)
+            return subject.confidence > threshold
+        }
 
         guard !filteredSubjects.isEmpty else {
             #if DEBUG
@@ -742,6 +750,7 @@ final class ImageCaptionGenerator {
     }
     
     /// Extract dominant color from a specific region of the image
+    /// Samples the center 50% of the bounding box to avoid background bleeding
     private func extractColorFromRegion(
         _ bbox: CGRect,
         from image: CGImage
@@ -749,19 +758,29 @@ final class ImageCaptionGenerator {
         let imageWidth = CGFloat(image.width)
         let imageHeight = CGFloat(image.height)
 
-        // Convert normalized bbox to pixel coordinates (Vision uses bottom-left origin)
-        let x = Int(bbox.origin.x * imageWidth)
-        let y = Int((1.0 - bbox.origin.y - bbox.height) * imageHeight) // Flip Y coordinate
-        let width = Int(bbox.width * imageWidth)
-        let height = Int(bbox.height * imageHeight)
+        // Calculate center 50% of bounding box to avoid background bleeding
+        // This helps get the true subject color rather than background/edge colors
+        let centerInset: CGFloat = 0.25 // 25% inset from each edge = center 50%
+        let centeredBbox = CGRect(
+            x: bbox.origin.x + bbox.width * centerInset,
+            y: bbox.origin.y + bbox.height * centerInset,
+            width: bbox.width * (1.0 - 2 * centerInset),
+            height: bbox.height * (1.0 - 2 * centerInset)
+        )
 
-        // Ensure bounds are valid
-        guard x >= 0, y >= 0, width > 0, height > 0,
+        // Convert normalized bbox to pixel coordinates (Vision uses bottom-left origin)
+        let x = Int(centeredBbox.origin.x * imageWidth)
+        let y = Int((1.0 - centeredBbox.origin.y - centeredBbox.height) * imageHeight) // Flip Y coordinate
+        let width = Int(centeredBbox.width * imageWidth)
+        let height = Int(centeredBbox.height * imageHeight)
+
+        // Ensure bounds are valid and region is large enough to sample
+        guard x >= 0, y >= 0, width > 4, height > 4,
               x + width <= image.width, y + height <= image.height else {
             return nil
         }
 
-        // Create cropped image for the region
+        // Create cropped image for the centered region
         guard let croppedImage = image.cropping(to: CGRect(x: x, y: y, width: width, height: height)) else {
             return nil
         }

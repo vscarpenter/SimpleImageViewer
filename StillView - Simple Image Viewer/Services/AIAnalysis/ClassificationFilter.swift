@@ -80,8 +80,17 @@ final class ClassificationFilter {
         // Only filter truly generic background terms that add no value
         // Keep nature/landscape terms as they might be the main subject
         let genericBackgroundTerms: Set<String> = [
-            "ground", "land", "wall", "background", "backdrop",
-            "indoor", "inside", "trees in background", "shrubbery"
+            // Surface/ground terms
+            "ground", "land", "wall", "background", "backdrop", "floor", "pavement",
+            // Indoor/outdoor generic
+            "indoor", "inside", "outdoor", "outside",
+            // Vegetation background terms
+            "trees in background", "shrubbery", "lawn", "meadow", "vegetation",
+            "hillside", "foliage", "greenery", "bush", "hedge",
+            // Sky/weather background
+            "skyline", "horizon", "overcast", "cloudy sky", "clear sky",
+            // Generic scene terms
+            "scenery", "setting", "environment", "surroundings", "area"
         ]
 
         let filtered = classifications.filter { classification in

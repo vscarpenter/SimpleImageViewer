@@ -245,13 +245,21 @@ final class SubjectDetector {
             }
 
 
-            // Boost vehicles significantly - they should be primary in most car+person photos
-            // (Fixed: Red Ferrari was being missed when person also in scene)
+            // Boost vehicles - but be smarter about person+vehicle photos
+            // Only boost vehicle as primary when it occupies significant frame area (>15%)
             if isVehicle(object.identifier) {
+                let vehicleArea = object.boundingBox.width * object.boundingBox.height
+
                 if hasPerson {
-                    score *= 3.5  // MUCH higher when person present (car + person photos - car is usually primary)
+                    // Only make vehicle primary if it's large in frame (>15% of image)
+                    // Otherwise person should typically be primary
+                    if vehicleArea > 0.15 {
+                        score *= 2.5  // Vehicle is prominent, boost it
+                    } else {
+                        score *= 1.5  // Vehicle is background/secondary
+                    }
                 } else {
-                    score *= 2.5  // Strong base boost for vehicles
+                    score *= 2.5  // Strong base boost for vehicles without people
                 }
             }
 

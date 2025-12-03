@@ -36,8 +36,7 @@ final class AIImageAnalysisService: ObservableObject {
     // Optional future enhancement: Core ML model manager
     // private let modelManager = CoreMLModelManager.shared
     // private let captioningProvider: ImageCaptioningProvider = NoOpCaptioningProvider.shared
-    private var cache: [String: ImageAnalysisResult] = [:]
-    private let maxCacheEntries = AIAnalysisConstants.maxCacheEntries
+    private let cache = LRUCache<String, ImageAnalysisResult>(capacity: AIAnalysisConstants.maxCacheEntries)
 
     // Cache version - increment this to invalidate all cached analysis when algorithm changes
     private let cacheVersion = AIAnalysisConstants.cacheVersion
@@ -55,7 +54,7 @@ final class AIImageAnalysisService: ObservableObject {
 
     /// Clear analysis cache
     func clearCache() {
-        cache.removeAll()
+        cache.clear()
     }
 
     /// Analyze image with enhanced AI features
@@ -92,8 +91,8 @@ final class AIImageAnalysisService: ObservableObject {
             cacheKey = "\(cacheVersion)_\(cgImage.width)x\(cgImage.height)_\(Date().timeIntervalSince1970)"
         }
 
-        // Check cache
-        if let cachedResult = cache[cacheKey] {
+        // Check cache (LRUCache handles access time updates)
+        if let cachedResult = cache.get(cacheKey) {
             return cachedResult
         }
 
@@ -102,14 +101,8 @@ final class AIImageAnalysisService: ObservableObject {
 
         let result = try await performEnhancedAnalysis(cgImage)
 
-        // Cache management - use LRU strategy
-        if cache.count >= maxCacheEntries {
-            // Remove oldest entry (simple approach - could be enhanced with proper LRU)
-            if let firstKey = cache.keys.first {
-                cache.removeValue(forKey: firstKey)
-            }
-        }
-        cache[cacheKey] = result
+        // Cache result (LRUCache handles eviction automatically)
+        cache.set(cacheKey, value: result)
 
         return result
     }
@@ -145,14 +138,15 @@ final class AIImageAnalysisService: ObservableObject {
             group.addTask { try await .horizon(self.performHorizonDetection(cgImage)) }
             group.addTask { try await .visionKit(self.performVisionKitAnalysis(cgImage)) }
             
-            // Add enhanced Vision analysis with memory pressure monitoring
-            if shouldPerformEnhancedVisionAnalysis() {
+            // Add enhanced Vision analysis with smart skip conditions
+            if shouldPerformEnhancedVisionAnalysis(imageWidth: cgImage.width, imageHeight: cgImage.height) {
                 group.addTask { await .enhancedVision(self.performEnhancedVisionAnalysis(cgImage)) }
             }
 
             // Collect results
             var progress: Double = 0.0
-            let totalTasks: Double = shouldPerformEnhancedVisionAnalysis() ? 12.0 : 11.0
+            let performingEnhancedVision = shouldPerformEnhancedVisionAnalysis(imageWidth: cgImage.width, imageHeight: cgImage.height)
+            let totalTasks: Double = performingEnhancedVision ? 12.0 : 11.0
 
             for try await component in group {
                 progress += 1.0 / totalTasks
@@ -302,7 +296,10 @@ final class AIImageAnalysisService: ObservableObject {
                 colors: colors,
                 landmarks: landmarks,
                 recognizedPeople: recognizedPeople,
-                purpose: purpose
+                purpose: purpose,
+                quality: qualityAssessment.quality,
+                megapixels: qualityAssessment.metrics.megapixels,
+                enhancedVision: enhancedVisionResult
             )
 
             // Derive primary subjects with spatial context (supports multiple subjects)
@@ -1582,15 +1579,20 @@ final class AIImageAnalysisService: ObservableObject {
         }
     }
     
-    /// Check if enhanced Vision analysis should be performed based on memory pressure
-    private func shouldPerformEnhancedVisionAnalysis() -> Bool {
+    /// Check if enhanced Vision analysis should be performed based on multiple factors
+    /// - Parameters:
+    ///   - imageWidth: Width of the image in pixels
+    ///   - imageHeight: Height of the image in pixels
+    /// - Returns: True if enhanced analysis should be performed
+    private func shouldPerformEnhancedVisionAnalysis(imageWidth: Int? = nil, imageHeight: Int? = nil) -> Bool {
+        // Check thermal state first (most important)
         let thermalState = ProcessInfo.processInfo.thermalState
-        
+
         switch thermalState {
         case .nominal:
-            return true
+            break  // Continue with other checks
         case .fair:
-            return true  // Still perform but monitor
+            break  // Still perform but continue checking
         case .serious:
             #if DEBUG
             Logger.warning("Skipping enhanced Vision analysis due to serious thermal state", context: "AIAnalysis")
@@ -1602,8 +1604,37 @@ final class AIImageAnalysisService: ObservableObject {
             #endif
             return false
         @unknown default:
-            return true
+            break
         }
+
+        // Skip for very small images (< 500px on shortest side)
+        // These are typically thumbnails or icons where enhanced analysis adds little value
+        if let width = imageWidth, let height = imageHeight {
+            let minDimension = min(width, height)
+            if minDimension < 500 {
+                #if DEBUG
+                Logger.info("Skipping enhanced Vision analysis for small image (\(width)x\(height))", context: "AIAnalysis")
+                #endif
+                return false
+            }
+        }
+
+        // Check memory pressure
+        // Note: This is a basic check - could be enhanced with actual memory monitoring
+        let processInfo = ProcessInfo.processInfo
+        let physicalMemory = processInfo.physicalMemory
+        let activeProcessorCount = processInfo.activeProcessorCount
+
+        // Skip if system appears resource constrained
+        // (less than 4GB RAM or single core - unlikely but good guard)
+        if physicalMemory < 4_000_000_000 || activeProcessorCount < 2 {
+            #if DEBUG
+            Logger.info("Skipping enhanced Vision analysis due to limited system resources", context: "AIAnalysis")
+            #endif
+            return false
+        }
+
+        return true
     }
 
     // MARK: - Memory Management
@@ -1624,6 +1655,95 @@ final class AIImageAnalysisService: ObservableObject {
             // Clear CoreML model cache (disabled - CoreMLModelManager not implemented yet)
             // modelManager.clearCache()
             Logger.info("Cleared caches due to memory warning", context: "AIAnalysis")
+        }
+    }
+}
+
+// MARK: - LRU Cache
+
+/// Thread-safe LRU (Least Recently Used) cache implementation
+/// Evicts least recently accessed entries when capacity is reached
+final class LRUCache<Key: Hashable, Value> {
+
+    private class CacheEntry {
+        let key: Key
+        var value: Value
+        var accessTime: Date
+
+        init(key: Key, value: Value) {
+            self.key = key
+            self.value = value
+            self.accessTime = Date()
+        }
+
+        func touch() {
+            accessTime = Date()
+        }
+    }
+
+    private var storage: [Key: CacheEntry] = [:]
+    private let capacity: Int
+    private let lock = NSLock()
+
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage.count
+    }
+
+    init(capacity: Int) {
+        precondition(capacity > 0, "LRUCache capacity must be positive")
+        self.capacity = capacity
+    }
+
+    func get(_ key: Key) -> Value? {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard let entry = storage[key] else {
+            return nil
+        }
+
+        entry.touch()
+        return entry.value
+    }
+
+    func set(_ key: Key, value: Value) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let existingEntry = storage[key] {
+            existingEntry.value = value
+            existingEntry.touch()
+            return
+        }
+
+        if storage.count >= capacity {
+            evictLRU()
+        }
+
+        storage[key] = CacheEntry(key: key, value: value)
+    }
+
+    func clear() {
+        lock.lock()
+        defer { lock.unlock() }
+        storage.removeAll()
+    }
+
+    private func evictLRU() {
+        guard !storage.isEmpty else { return }
+
+        var oldestKey: Key?
+        var oldestTime = Date.distantFuture
+
+        for (key, entry) in storage where entry.accessTime < oldestTime {
+            oldestTime = entry.accessTime
+            oldestKey = key
+        }
+
+        if let keyToRemove = oldestKey {
+            storage.removeValue(forKey: keyToRemove)
         }
     }
 }
