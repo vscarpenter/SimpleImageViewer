@@ -22,7 +22,7 @@ final class AIImageAnalysisService: ObservableObject {
 
     // MARK: - Private Properties
     private let compatibilityService = MacOS26CompatibilityService.shared
-    // Optional future enhancement: private let modelManager = CoreMLModelManager.shared
+    private let modelManager = CoreMLModelManager.shared
     private let analysisQueue = DispatchQueue(label: "com.vinny.ai.enhanced", qos: .userInitiated)
 
     // Refactored service dependencies
@@ -33,9 +33,7 @@ final class AIImageAnalysisService: ObservableObject {
     private let tagGenerator = SmartTagGenerator()
     private let purposeDetector = ImagePurposeDetector()
     private let enhancedVisionAnalyzer = EnhancedVisionAnalyzer()
-    // Optional future enhancement: Core ML model manager
-    // private let modelManager = CoreMLModelManager.shared
-    // private let captioningProvider: ImageCaptioningProvider = NoOpCaptioningProvider.shared
+    private let qualityAssessmentService = QualityAssessmentService()
     private let cache = LRUCache<String, ImageAnalysisResult>(capacity: AIAnalysisConstants.maxCacheEntries)
 
     // Cache version - increment this to invalidate all cached analysis when algorithm changes
@@ -150,7 +148,7 @@ final class AIImageAnalysisService: ObservableObject {
 
             for try await component in group {
                 progress += 1.0 / totalTasks
-                updateProgress(progress * 0.9) // Reserve 10% for final processing
+                updateProgress(progress * AIAnalysisConstants.progressReserveFactor) // Reserve 10% for final processing
 
                 switch component {
                 case .classifications(let result): classifications = result
@@ -345,7 +343,7 @@ final class AIImageAnalysisService: ObservableObject {
                 let mlText = mlCaption.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !mlText.isEmpty && mlText.lowercased() != "image." {
                     // Trust model caption if its confidence >= existing or sufficiently high
-                    let useML = mlCaption.confidence >= caption.confidence || mlCaption.confidence >= 0.7
+                    let useML = mlCaption.confidence >= caption.confidence || mlCaption.confidence >= AIAnalysisConstants.mlCaptionConfidenceThreshold
                     if useML {
                         caption = ImageCaption(
                             shortCaption: mlText.hasSuffix(".") ? mlText : mlText + ".",
@@ -407,7 +405,7 @@ final class AIImageAnalysisService: ObservableObject {
     }
 
     // MARK: - Priority 1: Comprehensive Quality Assessment
-    
+
     /// Perform comprehensive quality assessment with actual metrics (not just resolution)
     private func performComprehensiveQualityAssessment(
         _ cgImage: CGImage,
@@ -419,16 +417,17 @@ final class AIImageAnalysisService: ObservableObject {
     ) async throws -> ImageQualityAssessment {
         let width = cgImage.width
         let height = cgImage.height
+        let imageSize = CGSize(width: width, height: height)
         let megapixels = Double(width * height) / 1_000_000.0
 
-        // Calculate real sharpness using Laplacian variance
-        let sharpness = try await detectSharpness(cgImage)
+        // Delegate metric calculations to QualityAssessmentService
+        async let sharpnessResult = qualityAssessmentService.detectSharpness(cgImage)
+        async let exposureResult = qualityAssessmentService.analyzeExposure(cgImage)
+        async let luminanceResult = qualityAssessmentService.calculateLuminance(cgImage)
 
-        // Calculate exposure from histogram
-        let exposure = try await analyzeExposure(cgImage)
-
-        // Calculate luminance
-        let luminance = try await calculateLuminance(cgImage)
+        let sharpness = try await sharpnessResult
+        let exposure = try await exposureResult
+        let luminance = try await luminanceResult
 
         let metrics = ImageQualityAssessment.Metrics(
             megapixels: megapixels,
@@ -438,7 +437,7 @@ final class AIImageAnalysisService: ObservableObject {
         )
 
         // Determine quality from multiple factors
-        let quality = calculateOverallQuality(metrics, imageSize: CGSize(width: width, height: height))
+        let quality = qualityAssessmentService.calculateOverallQuality(metrics, imageSize: imageSize)
 
         let purpose = purposeDetector.detectPurpose(
             classifications: classifications,
@@ -449,13 +448,13 @@ final class AIImageAnalysisService: ObservableObject {
         )
 
         // Generate contextual issues and summary based on purpose
-        let issues = generateContextualIssues(
+        let issues = qualityAssessmentService.generateContextualIssues(
             metrics: metrics,
             purpose: purpose,
-            imageSize: CGSize(width: width, height: height)
+            imageSize: imageSize
         )
 
-        let summary = generateContextualQualitySummary(
+        let summary = qualityAssessmentService.generateContextualQualitySummary(
             quality: quality,
             metrics: metrics,
             purpose: purpose,
@@ -471,350 +470,6 @@ final class AIImageAnalysisService: ObservableObject {
         )
     }
 
-    /// Generate contextual quality issues based on image purpose
-    private func generateContextualIssues(
-        metrics: ImageQualityAssessment.Metrics,
-        purpose: ImagePurpose,
-        imageSize: CGSize
-    ) -> [ImageQualityAssessment.Issue] {
-        var issues: [ImageQualityAssessment.Issue] = []
-
-        switch purpose {
-        case .portrait, .groupPhoto:
-            // Portrait-specific quality checks
-            if metrics.sharpness < 0.5 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Soft Portrait Focus",
-                    detail: "Facial sharpness at \(Int(metrics.sharpness * 100))% may not be suitable for professional headshots. Ideal sharpness for portraits is 70%+."
-                ))
-            }
-            if metrics.exposure < 0.35 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .underexposed,
-                    title: "Dark Portrait Exposure",
-                    detail: "Underexposed by approximately \(String(format: "%.1f", (0.5 - metrics.exposure) * 2)) stops. Faces may lack detail in shadows. Increase exposure to reveal skin tones."
-                ))
-            } else if metrics.exposure > 0.75 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .overexposed,
-                    title: "Overexposed Portrait",
-                    detail: "Overexposed by \(String(format: "%.1f", (metrics.exposure - 0.5) * 2)) stops. Risk of blown highlights on skin. Reduce exposure to preserve facial detail."
-                ))
-            }
-
-        case .landscape, .architecture:
-            // Landscape-specific quality checks
-            if metrics.sharpness < 0.6 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Landscape Sharpness Issue",
-                    detail: "Overall sharpness at \(Int(metrics.sharpness * 100))%. Landscape photos benefit from edge-to-edge sharpness. Consider using smaller aperture (f/8-f/11) or focus stacking."
-                ))
-            }
-            if metrics.megapixels < 8.0 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .lowResolution,
-                    title: "Limited Print Size",
-                    detail: "At \(String(format: "%.1f", metrics.megapixels))MP, maximum quality print size is approximately \(Int(sqrt(metrics.megapixels * 1_000_000) / 300 * 2.54))×\(Int(sqrt(metrics.megapixels * 1_000_000) / 300 * 2.54))cm at 300dpi. Consider higher resolution for large format prints."
-                ))
-            }
-
-        case .document, .screenshot:
-            // Document-specific quality checks
-            if metrics.sharpness < 0.4 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Text Readability Issue",
-                    detail: "Text sharpness at \(Int(metrics.sharpness * 100))% may affect OCR accuracy. Ensure camera is stable and text is in focus for best recognition."
-                ))
-            }
-            if metrics.exposure < 0.4 || metrics.exposure > 0.7 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: metrics.exposure < 0.4 ? .underexposed : .overexposed,
-                    title: "Suboptimal Document Exposure",
-                    detail: "Document contrast is not ideal for text extraction. Aim for even lighting and balanced exposure for maximum OCR accuracy."
-                ))
-            }
-
-        case .productPhoto:
-            // Product photo quality checks
-            if metrics.sharpness < 0.6 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Product Detail Softness",
-                    detail: "Sharpness at \(Int(metrics.sharpness * 100))% may not showcase product details adequately. E-commerce photos require crisp focus on product features."
-                ))
-            }
-            if metrics.megapixels < 4.0 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .lowResolution,
-                    title: "Low Resolution for Commerce",
-                    detail: "At \(String(format: "%.1f", metrics.megapixels))MP, zoom capability is limited. E-commerce platforms recommend 2000×2000px minimum for product detail views."
-                ))
-            }
-
-        case .food:
-            // Food photography quality checks
-            if metrics.exposure < 0.4 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .underexposed,
-                    title: "Dark Food Photography",
-                    detail: "Underexposed food photos reduce appetite appeal. Increase exposure to showcase colors and textures that make food appetizing."
-                ))
-            }
-
-        case .wildlife:
-            // Wildlife photography quality checks
-            if metrics.sharpness < 0.65 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Wildlife Subject Sharpness",
-                    detail: "Subject sharpness at \(Int(metrics.sharpness * 100))% suggests motion blur or focus miss. Wildlife photography requires fast shutter speeds (1/500s+) to freeze action."
-                ))
-            }
-
-        case .general:
-            // Generic quality checks
-            if metrics.sharpness < 0.4 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Soft Focus",
-                    detail: "Overall sharpness at \(Int(metrics.sharpness * 100))%. Image may benefit from sharpening or refocusing."
-                ))
-            }
-            if metrics.exposure < 0.3 || metrics.exposure > 0.8 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: metrics.exposure < 0.3 ? .underexposed : .overexposed,
-                    title: metrics.exposure < 0.3 ? "Underexposed" : "Overexposed",
-                    detail: "Exposure is \(metrics.exposure < 0.3 ? "too dark" : "too bright"). Adjust by \(String(format: "%.1f", abs(metrics.exposure - 0.5) * 2)) stops for balanced histogram."
-                ))
-            }
-        }
-
-        return issues
-    }
-
-    /// Generate contextual quality summary based on image purpose
-    private func generateContextualQualitySummary(
-        quality: ImageQuality,
-        metrics: ImageQualityAssessment.Metrics,
-        purpose: ImagePurpose,
-        issues: [ImageQualityAssessment.Issue]
-    ) -> String {
-        var summary = ""
-
-        switch purpose {
-        case .portrait, .groupPhoto:
-            switch quality {
-            case .high:
-                summary = "Professional-quality portrait with excellent sharpness (\(Int(metrics.sharpness * 100))%) and well-balanced exposure. Suitable for professional headshots, LinkedIn profiles, and high-quality printing."
-            case .medium:
-                summary = "Good portrait quality at \(String(format: "%.1f", metrics.megapixels))MP. Sharpness (\(Int(metrics.sharpness * 100))%) and exposure are acceptable for social media and casual printing. Minor improvements would enhance professional use."
-            case .low:
-                summary = "Portrait quality needs improvement. \(issues.isEmpty ? "Consider better lighting and focus" : issues.map { $0.title }.joined(separator: ", ")). Current quality suitable for thumbnails only."
-            case .unknown:
-                summary = "Portrait quality assessment unavailable"
-            }
-
-        case .landscape, .architecture:
-            switch quality {
-            case .high:
-                summary = "Exceptional landscape quality with \(String(format: "%.1f", metrics.megapixels))MP resolution and \(Int(metrics.sharpness * 100))% sharpness. Excellent for large format printing, desktop wallpapers, and professional portfolios."
-            case .medium:
-                summary = "Good landscape photograph suitable for web display and medium prints (up to A4). Resolution: \(String(format: "%.1f", metrics.megapixels))MP, sharpness: \(Int(metrics.sharpness * 100))%."
-            case .low:
-                summary = "Landscape quality is limited. \(issues.map { $0.title }.joined(separator: ", ")). Best used for small web display or reference."
-            case .unknown:
-                summary = "Landscape quality assessment unavailable"
-            }
-
-        case .document, .screenshot:
-            switch quality {
-            case .high:
-                summary = "Excellent document quality with crisp text (sharpness: \(Int(metrics.sharpness * 100))%). OCR confidence will be very high. Perfect for archival, text extraction, and professional documentation."
-            case .medium:
-                summary = "Good document readability. Text extraction should work reliably. Suitable for notes, reference materials, and most archival needs."
-            case .low:
-                summary = "Document quality may affect text recognition. \(issues.map { $0.title }.joined(separator: ", ")). Consider rescanning with better lighting and focus."
-            case .unknown:
-                summary = "Document quality assessment unavailable"
-            }
-
-        case .productPhoto:
-            switch quality {
-            case .high:
-                summary = "Commercial-grade product photography at \(String(format: "%.1f", metrics.megapixels))MP with \(Int(metrics.sharpness * 100))% sharpness. Ready for e-commerce platforms, catalogs, and marketing materials with zoom functionality."
-            case .medium:
-                summary = "Good product image quality suitable for online listings. Resolution and sharpness adequate for standard e-commerce use without extreme zoom."
-            case .low:
-                summary = "Product photo quality below commercial standards. \(issues.map { $0.title }.joined(separator: ", ")). Improve for professional selling platforms."
-            case .unknown:
-                summary = "Product quality assessment unavailable"
-            }
-
-        case .food:
-            switch quality {
-            case .high:
-                summary = "Restaurant-quality food photography with vibrant presentation and excellent detail. Perfect for menus, social media marketing, and culinary portfolios."
-            case .medium:
-                summary = "Good food photography suitable for casual sharing and online menus. Quality adequate for Instagram, blogs, and recipe documentation."
-            case .low:
-                summary = "Food photo could be improved. Better lighting and composition would enhance appetite appeal. Current quality best for personal reference."
-            case .unknown:
-                summary = "Food photo quality assessment unavailable"
-            }
-
-        case .wildlife:
-            switch quality {
-            case .high:
-                summary = "Excellent wildlife capture with sharp subject focus (\(Int(metrics.sharpness * 100))%) and good exposure. Suitable for nature publications, prints, and professional portfolios."
-            case .medium:
-                summary = "Good wildlife photograph with acceptable sharpness. Suitable for web galleries, social media, and personal collections."
-            case .low:
-                summary = "Wildlife photo quality limited. \(issues.map { $0.title }.joined(separator: ", ")). Best for identification or personal reference."
-            case .unknown:
-                summary = "Wildlife photo quality assessment unavailable"
-            }
-
-        case .general:
-            // Fallback to original summary
-            switch quality {
-            case .high:
-                summary = "High-quality image with excellent resolution (\(String(format: "%.1f", metrics.megapixels))MP), good sharpness (score: \(String(format: "%.2f", metrics.sharpness))), and balanced exposure."
-            case .medium:
-                summary = "Good image quality suitable for most uses. Resolution: \(String(format: "%.1f", metrics.megapixels))MP, sharpness score: \(String(format: "%.2f", metrics.sharpness))."
-            case .low:
-                summary = "Image quality could be improved. "
-                if !issues.isEmpty {
-                    summary += "Issues detected: \(issues.map { $0.title }.joined(separator: ", "))."
-                }
-            case .unknown:
-                summary = "Quality assessment unavailable"
-            }
-        }
-
-        return summary
-    }
-    
-    /// Detect sharpness using Laplacian variance method
-    private func detectSharpness(_ cgImage: CGImage) async throws -> Double {
-        return try await withCheckedThrowingContinuation { continuation in
-            analysisQueue.async {
-                guard let dataProvider = cgImage.dataProvider,
-                      let data = dataProvider.data,
-                      let bytes = CFDataGetBytePtr(data) else {
-                    continuation.resume(returning: 0.5)
-                    return
-                }
-                
-                let width = cgImage.width
-                let height = cgImage.height
-                let bytesPerRow = cgImage.bytesPerRow
-                let bytesPerPixel = cgImage.bitsPerPixel / 8
-                
-                var laplacianSum: Double = 0.0
-                var count: Int = 0
-                
-                // Sample every 4th pixel for performance
-                for y in stride(from: 1, to: height - 1, by: 4) {
-                    for x in stride(from: 1, to: width - 1, by: 4) {
-                        let offset = y * bytesPerRow + x * bytesPerPixel
-                        let centerValue = Double(bytes[offset])
-                        
-                        // Simplified Laplacian kernel
-                        let topValue = Double(bytes[(y - 1) * bytesPerRow + x * bytesPerPixel])
-                        let bottomValue = Double(bytes[(y + 1) * bytesPerRow + x * bytesPerPixel])
-                        let leftValue = Double(bytes[y * bytesPerRow + (x - 1) * bytesPerPixel])
-                        let rightValue = Double(bytes[y * bytesPerRow + (x + 1) * bytesPerPixel])
-                        
-                        let laplacian = abs(4 * centerValue - topValue - bottomValue - leftValue - rightValue)
-                        laplacianSum += laplacian
-                        count += 1
-                    }
-                }
-                
-                // Normalize sharpness score to 0-1 range
-                let variance = count > 0 ? laplacianSum / Double(count) : 0.0
-                let normalizedSharpness = min(1.0, variance / 255.0) // Normalize by max pixel value
-                
-                continuation.resume(returning: normalizedSharpness)
-            }
-        }
-    }
-    
-    /// Analyze exposure from histogram
-    private func analyzeExposure(_ cgImage: CGImage) async throws -> Double {
-        return try await withCheckedThrowingContinuation { continuation in
-            analysisQueue.async {
-                guard let dataProvider = cgImage.dataProvider,
-                      let data = dataProvider.data,
-                      let bytes = CFDataGetBytePtr(data) else {
-                    continuation.resume(returning: 0.5)
-                    return
-                }
-                
-                let width = cgImage.width
-                let height = cgImage.height
-                let bytesPerRow = cgImage.bytesPerRow
-                let bytesPerPixel = cgImage.bitsPerPixel / 8
-                
-                var brightnessSum: Double = 0.0
-                var count: Int = 0
-                
-                // Sample pixels and calculate average brightness
-                for y in stride(from: 0, to: height, by: 8) {
-                    for x in stride(from: 0, to: width, by: 8) {
-                        let offset = y * bytesPerRow + x * bytesPerPixel
-                        let value = Double(bytes[offset])
-                        brightnessSum += value
-                        count += 1
-                    }
-                }
-                
-                // Normalize to 0-1 range
-                let avgBrightness = count > 0 ? brightnessSum / Double(count) / 255.0 : 0.5
-                continuation.resume(returning: avgBrightness)
-            }
-        }
-    }
-    
-    /// Calculate luminance
-    private func calculateLuminance(_ cgImage: CGImage) async throws -> Double {
-        // For simplicity, luminance approximates exposure in this implementation
-        return try await analyzeExposure(cgImage)
-    }
-    
-    /// Calculate overall quality from metrics
-    private func calculateOverallQuality(_ metrics: ImageQualityAssessment.Metrics, imageSize: CGSize) -> ImageQuality {
-        var qualityScore: Double = 0.0
-        
-        // Resolution component (30% weight)
-        if metrics.megapixels >= 12.0 && min(imageSize.width, imageSize.height) >= 2000 {
-            qualityScore += 0.3
-        } else if metrics.megapixels >= 4.0 && min(imageSize.width, imageSize.height) >= 1200 {
-            qualityScore += 0.2
-        } else if metrics.megapixels >= 2.0 {
-            qualityScore += 0.1
-        }
-        
-        // Sharpness component (40% weight)
-        qualityScore += metrics.sharpness * 0.4
-        
-        // Exposure component (30% weight) - penalize over/under exposure
-        let exposureQuality = 1.0 - abs(metrics.exposure - 0.5) * 2.0 // Optimal is 0.5
-        qualityScore += max(0, exposureQuality) * 0.3
-        
-        // Determine quality tier
-        if qualityScore >= 0.75 {
-            return .high
-        } else if qualityScore >= 0.45 {
-            return .medium
-        } else {
-            return .low
-        }
-    }
-
     // MARK: - Priority 2: Enhanced Classification
     
     /// Enhanced classification with confidence filtering
@@ -828,10 +483,10 @@ final class AIImageAnalysisService: ObservableObject {
                     }
 
                     let observations = (request.results as? [VNClassificationObservation]) ?? []
-                    // Take top 10 with confidence > 0.1 (much better than arbitrary top 5)
+                    // Take top results with confidence above threshold
                     let classifications = observations
-                        .filter { $0.confidence > 0.1 }
-                        .prefix(10)
+                        .filter { $0.confidence > AIAnalysisConstants.minimumClassificationConfidence }
+                        .prefix(AIAnalysisConstants.maxClassifications)
                         .map { ClassificationResult(identifier: $0.identifier, confidence: $0.confidence) }
 
                     continuation.resume(returning: Array(classifications))
@@ -849,9 +504,16 @@ final class AIImageAnalysisService: ObservableObject {
 
     /// ResNet-50 classification using Core ML for enhanced accuracy
     private func performResNetClassification(_ cgImage: CGImage) async throws -> [ClassificationResult] {
-        // NOTE: ResNet classification temporarily disabled until CoreMLModelManager is implemented
-        // This is an optional enhancement - basic Vision classification still works
-        return []
+        // Use CoreMLModelManager to classify with ResNet50
+        let resnetResults = await modelManager.classifyWithResNet50(
+            cgImage,
+            maxResults: AIAnalysisConstants.maxClassifications
+        )
+
+        // Convert to ClassificationResult format
+        return resnetResults
+            .filter { $0.confidence > AIAnalysisConstants.minimumClassificationConfidence }
+            .map { ClassificationResult(identifier: $0.identifier, confidence: $0.confidence) }
     }
 
     // MARK: - VisionKit Analysis

@@ -308,12 +308,13 @@ The current AI insights implementation has a solid modular architecture with goo
 
 ## Implementation Status
 
-### Completed (v9)
+### Completed (v10)
 
 | Item | Description | Status |
 |------|-------------|--------|
 | 1.1 | Fix generic caption fallbacks | ✅ Done |
 | 1.2 | Improve subject color extraction | ✅ Done |
+| 1.3 | Enable ResNet50 Classification | ✅ Done (v10) |
 | 2.1 | Tune specificity levels | ✅ Done |
 | 2.2 | Fix person/object confusion | ✅ Done |
 | 2.3 | Improve background filtering | ✅ Done |
@@ -323,7 +324,8 @@ The current AI insights implementation has a solid modular architecture with goo
 | 4.1 | Reduce tag redundancy | ✅ Done |
 | 4.2 | Improve use case tag relevance | ✅ Done |
 | 4.3 | Add activity-based tags | ✅ Done |
-| 5.2 | Remove magic numbers | ✅ Done |
+| 5.1 | Reduce file length violations | ✅ Partial (v10) - Extracted QualityAssessmentService (~340 lines) |
+| 5.2 | Remove magic numbers | ✅ Done (v10) - Added 30+ constants to AIAnalysisConstants |
 | 6.1 | Implement proper LRU cache | ✅ Done |
 | 6.2 | Smarter Enhanced Vision skip | ✅ Done |
 
@@ -331,8 +333,7 @@ The current AI insights implementation has a solid modular architecture with goo
 
 | Item | Description | Status |
 |------|-------------|--------|
-| 1.3 | Enable ResNet50 Classification | Pending |
-| 5.1 | Reduce file length violations | Partial |
+| 5.1 | Reduce file length violations | Further extraction possible |
 | 5.3 | Reduce duplicate logic | Partial |
 | 7.1 | Face quality assessment | Pending |
 | 7.2 | Landmark detection | Pending |
@@ -359,4 +360,4 @@ The current AI insights implementation has a solid modular architecture with goo
 
 ---
 
-*Document Version 1.0 | Created for AI Insights v7 Enhancement*
+*Document Version 1.1 | Updated for AI Insights v10 - CoreML integration, constants centralization, quality service extraction*

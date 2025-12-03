@@ -114,6 +114,98 @@ enum AIAnalysisConstants {
     /// Minimum overall quality score for "excellent" (0.0-1.0)
     static let excellentQualityThreshold: Double = 0.8
 
+    // MARK: - Purpose-Specific Quality Thresholds
+
+    /// Portrait sharpness threshold for quality issues
+    static let portraitSharpnessThreshold: Double = 0.5
+
+    /// Portrait underexposed threshold
+    static let portraitUnderexposedThreshold: Double = 0.35
+
+    /// Portrait overexposed threshold
+    static let portraitOverexposedThreshold: Double = 0.75
+
+    /// Landscape/architecture sharpness threshold
+    static let landscapeSharpnessThreshold: Double = 0.6
+
+    /// Landscape minimum megapixels for print quality
+    static let landscapeMinMegapixels: Double = 8.0
+
+    /// Document text sharpness threshold for OCR
+    static let documentSharpnessThreshold: Double = 0.4
+
+    /// Document exposure minimum threshold
+    static let documentExposureMin: Double = 0.4
+
+    /// Document exposure maximum threshold
+    static let documentExposureMax: Double = 0.7
+
+    /// Product photo sharpness threshold
+    static let productSharpnessThreshold: Double = 0.6
+
+    /// Product minimum megapixels for e-commerce
+    static let productMinMegapixels: Double = 4.0
+
+    /// Food photography underexposed threshold
+    static let foodUnderexposedThreshold: Double = 0.4
+
+    /// Wildlife sharpness threshold
+    static let wildlifeSharpnessThreshold: Double = 0.65
+
+    /// General purpose sharpness threshold
+    static let generalSharpnessThreshold: Double = 0.4
+
+    /// General purpose underexposed threshold
+    static let generalUnderexposedThreshold: Double = 0.3
+
+    /// General purpose overexposed threshold
+    static let generalOverexposedThreshold: Double = 0.8
+
+    // MARK: - Overall Quality Calculation
+
+    /// High quality image minimum megapixels
+    static let highQualityMinMegapixels: Double = 12.0
+
+    /// High quality image minimum dimension
+    static let highQualityMinDimension: CGFloat = 2000
+
+    /// Medium quality image minimum megapixels
+    static let mediumQualityMinMegapixels: Double = 4.0
+
+    /// Medium quality image minimum dimension
+    static let mediumQualityMinDimension: CGFloat = 1200
+
+    /// Low quality image minimum megapixels
+    static let lowQualityMinMegapixels: Double = 2.0
+
+    /// Weight for resolution in quality score calculation
+    static let qualityResolutionWeight: Double = 0.3
+
+    /// Weight for sharpness in quality score calculation
+    static let qualitySharpnessWeight: Double = 0.4
+
+    /// Weight for exposure in quality score calculation
+    static let qualityExposureWeight: Double = 0.3
+
+    /// Threshold for high quality tier
+    static let highQualityScoreThreshold: Double = 0.75
+
+    /// Threshold for medium quality tier
+    static let mediumQualityScoreThreshold: Double = 0.45
+
+    /// Optimal exposure value (midpoint)
+    static let optimalExposure: Double = 0.5
+
+    // MARK: - Analysis Progress
+
+    /// Reserve factor for final processing (progress * this value)
+    static let progressReserveFactor: Double = 0.9
+
+    // MARK: - ML Caption
+
+    /// Confidence threshold for preferring ML caption over standard
+    static let mlCaptionConfidenceThreshold: Double = 0.7
+
     // MARK: - Color/Mood Thresholds
 
     /// Brightness threshold for "dark" mood (0.0-1.0)
@@ -197,7 +289,7 @@ enum AIAnalysisConstants {
     static let maxCacheEntries = 20
 
     /// Current cache version - increment to invalidate cache
-    static let cacheVersion = "v9"  // Incremented for phases 2-6 improvements
+    static let cacheVersion = "v10"  // Incremented for CoreML integration and constants centralization
 
     // MARK: - Helper Functions
 
