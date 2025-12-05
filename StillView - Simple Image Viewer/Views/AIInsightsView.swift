@@ -62,7 +62,7 @@ struct AIInsightsView: View {
             analysisErrorView(error)
         } else if let analysis = viewModel.currentAnalysis {
             ScrollView {
-                EnhancedAIInsightContent(analysis: analysis, isCompact: false)
+                EnhancedAIInsightContent(analysis: analysis, insights: viewModel.aiInsights, isCompact: false)
                     .padding()
             }
         } else if viewModel.isAnalyzingAI {
@@ -230,6 +230,7 @@ struct AIInsightsView: View {
 
 struct EnhancedAIInsightContent: View {
     let analysis: ImageAnalysisResult
+    let insights: [AIInsight]
     let isCompact: Bool
 
     private var titleFont: Font { isCompact ? .headline : .title3 }
@@ -238,39 +239,114 @@ struct EnhancedAIInsightContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: isCompact ? 16 : 20) {
+            // Image Caption - New Feature
+            if let caption = analysis.caption {
+                captionSection(caption)
+            }
+
             // Intelligent Narrative (Priority 3)
             narrativeSection
-            
-            if analysis.primarySubject != nil || !analysis.recognizedPeople.isEmpty || !analysis.classifications.isEmpty {
+
+            if analysis.primarySubject != nil || !analysis.recognizedPeople.isEmpty || !analysis.rankedSubjects.isEmpty {
                 subjectSection
             }
-            
+
             // Quality Assessment (Priority 1)
             qualitySection
-            
+
             // Saliency & Composition (Priority 2)
             if let saliency = analysis.saliencyAnalysis, !saliency.attentionPoints.isEmpty {
                 saliencySection(saliency)
             }
-            
+
             // Actionable Insights
-            if !analysis.actionableInsights.isEmpty {
+            if !insights.isEmpty {
                 insightsSection
             }
-            
+
             // Smart Tags
             if !analysis.smartTags.isEmpty {
                 smartTagsSection
             }
-            
+
             // Additional Details
             additionalDetailsSection
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     
+    // MARK: - Caption Section
+
+    private func captionSection(_ caption: ImageCaption) -> some View {
+        VStack(alignment: .leading, spacing: isCompact ? 8 : 10) {
+            HStack {
+                Image(systemName: "captions.bubble")
+                    .foregroundColor(.accentColor)
+                Text("Image Caption")
+                    .font(titleFont)
+                    .fontWeight(.semibold)
+                Spacer()
+                if caption.confidence > 0 {
+                    Text(String(format: "%.0f%% confidence", caption.confidence * 100))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                // Main caption
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(caption.detailedCaption)
+                        .font(bodyFont)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // Technical caption if available
+                if let technicalCaption = caption.technicalCaption {
+                    Divider()
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "camera")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                        Text(technicalCaption)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+
+                // Accessibility caption
+                if !isCompact {
+                    Divider()
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "person.badge.key")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Accessibility")
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                            Text(caption.accessibilityCaption)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.leading)
+                        }
+                    }
+                }
+            }
+            .padding(isCompact ? 12 : 16)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(NSColor.controlBackgroundColor).opacity(0.5))
+            )
+        }
+    }
+
     // MARK: - Narrative Section (Priority 3)
-    
+
     private var narrativeSection: some View {
         VStack(alignment: .leading, spacing: isCompact ? 8 : 10) {
             HStack {
@@ -306,8 +382,9 @@ struct EnhancedAIInsightContent: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
+                // Show recognized people first if available
                 if !analysis.recognizedPeople.isEmpty {
-                    ForEach(Array(analysis.recognizedPeople.prefix(3)), id: \.name) { person in
+                    ForEach(Array(analysis.recognizedPeople.prefix(2)), id: \.name) { person in
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(person.name)
@@ -324,56 +401,33 @@ struct EnhancedAIInsightContent: View {
                                 .foregroundColor(confidenceColor(person.confidence))
                         }
                     }
-                } else if let primary = analysis.primarySubject {
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "person.crop.square")
-                            .foregroundColor(.accentColor)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(primary.label)
-                                .font(detailFont)
-                                .fontWeight(.semibold)
-                            if let detail = primary.detail {
-                                Text(detail)
+                }
+
+                // Show ranked subjects (objects + classifications, intelligently sorted)
+                let rankedSubjects = analysis.rankedSubjects
+                if !rankedSubjects.isEmpty {
+                    ForEach(Array(rankedSubjects.prefix(3).enumerated()), id: \.element.label) { index, subject in
+                        HStack(alignment: .center, spacing: 8) {
+                            Image(systemName: subjectIcon(for: subject))
+                                .foregroundColor(subject.source == .detectedObject ? .accentColor : .secondary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(subject.label)
+                                    .font(detailFont)
+                                    .fontWeight(index == 0 ? .semibold : .regular)
+                                Text(subjectDescription(for: subject))
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
-                        }
-                        Spacer()
-                        Text(String(format: "%.0f%%", primary.confidence * 100))
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(confidenceColor(primary.confidence))
-                    }
-                } else if let firstClassification = analysis.classifications.first {
-                    HStack(alignment: .center, spacing: 8) {
-                        Image(systemName: "photo")
-                            .foregroundColor(.accentColor)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(firstClassification.identifier.replacingOccurrences(of: "_", with: " "))
-                                .font(detailFont)
+                            Spacer()
+                            Text(String(format: "%.0f%%", subject.confidence * 100))
+                                .font(.caption)
                                 .fontWeight(.semibold)
-                            Text("Top classification suggestion")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(confidenceColor(subject.confidence))
                         }
-                        Spacer()
-                        Text(String(format: "%.0f%%", firstClassification.confidence * 100))
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(confidenceColor(Double(firstClassification.confidence)))
                     }
                 } else {
-                    Text("No primary subject detected")
+                    Text("No subjects detected")
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                if let detail = analysis.primarySubject?.detail,
-                   !detail.isEmpty,
-                   analysis.recognizedPeople.isEmpty {
-                    Divider()
-                    Text(detail)
-                        .font(.caption2)
                         .foregroundColor(.secondary)
                 }
             }
@@ -560,7 +614,32 @@ struct EnhancedAIInsightContent: View {
             return .orange
         }
     }
-    
+
+    private func subjectIcon(for subject: SubjectItem) -> String {
+        if subject.source == .detectedObject {
+            let label = subject.label.lowercased()
+            if label.contains("person") || label.contains("human") || label.contains("face") {
+                return "person.fill"
+            } else if label.contains("car") || label.contains("vehicle") {
+                return "car.fill"
+            } else if label.contains("dog") || label.contains("cat") || label.contains("animal") {
+                return "pawprint.fill"
+            } else {
+                return "scope"
+            }
+        } else {
+            return "photo"
+        }
+    }
+
+    private func subjectDescription(for subject: SubjectItem) -> String {
+        if subject.source == .detectedObject {
+            return "Detected on-device"
+        } else {
+            return "Classified on-device"
+        }
+    }
+
     // MARK: - Insights Section
     
     private var insightsSection: some View {
@@ -574,7 +653,7 @@ struct EnhancedAIInsightContent: View {
             }
             
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(analysis.actionableInsights.prefix(5), id: \.title) { insight in
+                ForEach(insights) { insight in
                     InsightCard(insight: insight, isCompact: isCompact)
                 }
             }
@@ -705,7 +784,7 @@ struct DetailRow: View {
 }
 
 struct InsightCard: View {
-    let insight: ActionableInsight
+    let insight: AIInsight
     let isCompact: Bool
     
     var body: some View {
@@ -722,11 +801,13 @@ struct InsightCard: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             
-            HStack {
-                Spacer()
-                Text(insight.actionText)
-                    .font(.caption2)
-                    .foregroundColor(.accentColor)
+            if let action = insight.action, action != .none {
+                HStack {
+                    Spacer()
+                    Text(actionText)
+                        .font(.caption2)
+                        .foregroundColor(.accentColor)
+                }
             }
         }
         .padding(isCompact ? 8 : 12)
@@ -736,23 +817,85 @@ struct InsightCard: View {
         )
     }
     
+    private var actionText: String {
+        guard let action = insight.action else { return "" }
+        switch action {
+        case .crop:
+            return "View Crop Suggestions"
+        case .enhance:
+            return "Enhance Quality"
+        case .tag:
+            return "Tag People"
+        case .export:
+            return "Export Image"
+        case .share:
+            return "Share"
+        case .copy:
+            return "Copy"
+        case .navigate:
+            return "Navigate"
+        case .search:
+            return "Search Similar"
+        case .addToCollection:
+            return "Add to Collection"
+        case .viewMetadata:
+            return "View Metadata"
+        case .none:
+            return ""
+        }
+    }
+    
     private var insightIcon: String {
         switch insight.type {
-        case .copyText: return "doc.on.doc"
-        case .cropImage: return "crop"
-        case .enhanceQuality: return "wand.and.stars"
-        case .tagFaces: return "person.crop.circle"
-        case .improveComposition: return "viewfinder.circle"
-        default: return "lightbulb"
+        case .compositional:
+            return "viewfinder.circle"
+        case .quality:
+            return "wand.and.stars"
+        case .content:
+            return "lightbulb"
+        case .technical:
+            return "info.circle"
+        case .accessibility:
+            return "accessibility"
+        case .organization:
+            return "folder"
+        case .enhancement:
+            return "wand.and.rays"
+        case .context:
+            return "location.circle"
+        case .privacy:
+            return "lock.shield"
+        case .discovery:
+            return "sparkles"
+       case .action:
+            return "bolt.circle"
         }
     }
     
     private var insightColor: Color {
         switch insight.type {
-        case .enhanceQuality: return .orange
-        case .cropImage, .improveComposition: return .blue
-        case .tagFaces: return .purple
-        default: return .accentColor
+        case .quality:
+            return .orange
+        case .compositional:
+            return .blue
+        case .content:
+            return .purple
+        case .technical:
+            return .gray
+        case .accessibility:
+            return .green
+        case .organization:
+            return .indigo
+        case .enhancement:
+            return .pink
+        case .context:
+            return .teal
+        case .privacy:
+            return .red
+        case .discovery:
+            return .yellow
+        case .action:
+            return .cyan
         }
     }
 }
@@ -785,6 +928,7 @@ struct TagView: View {
         case .style: return "paintbrush"
         case .event: return "calendar"
         case .time: return "clock"
+        case .useCase: return "lightbulb"
         }
     }
     
@@ -797,6 +941,7 @@ struct TagView: View {
         case .style: return .pink
         case .event: return .red
         case .time: return .cyan
+        case .useCase: return .yellow
         }
     }
 }

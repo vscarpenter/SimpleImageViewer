@@ -14,6 +14,7 @@ struct Logger {
     private static let thumbnails = OSLog(subsystem: subsystem, category: "Thumbnails")
     private static let performance = OSLog(subsystem: subsystem, category: "Performance")
     private static let error = OSLog(subsystem: subsystem, category: "Error")
+    private static let ai = OSLog(subsystem: subsystem, category: "AI")
     
     // MARK: - Instance Properties
     
@@ -136,6 +137,11 @@ struct Logger {
         debug(message, category: performance, file: file, function: function, line: line)
     }
     
+    /// Log AI analysis-related information
+    static func ai(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
+        debug(message, category: ai, file: file, function: function, line: line)
+    }
+    
     // MARK: - Convenience Methods
     
     /// Log success messages
@@ -218,6 +224,8 @@ extension Logger {
             category = performance
         case "error":
             category = error
+        case "ai":
+            category = ai
         default:
             category = general
         }

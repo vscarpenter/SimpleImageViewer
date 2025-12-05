@@ -1,0 +1,10 @@
+  1. Description text - Still showing "Portrait of Blue Sky" instead of focusing on person
+  2. Subject ordering - Detected objects (Person, Face) should appear at top but aren't consistently
+
+  The core logic is sound, but there seems to be a caching or state management issue preventing the new analysis from being used. When we come back, we can:
+  - Debug the cache invalidation more thoroughly
+  - Possibly add a manual "Re-analyze" button for testing
+  - Check if there's persistent storage we missed
+
+  Feel free to reach out when you're ready to tackle this again!
+

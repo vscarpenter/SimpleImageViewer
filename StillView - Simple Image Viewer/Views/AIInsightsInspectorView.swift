@@ -52,7 +52,7 @@ struct AIInsightsInspectorView: View {
             analysisErrorView(error)
         } else if let analysis = viewModel.currentAnalysis {
             ScrollView {
-                EnhancedAIInsightContent(analysis: analysis, isCompact: true)
+                EnhancedAIInsightContent(analysis: analysis, insights: viewModel.aiInsights, isCompact: true)
                     .padding()
             }
         } else if viewModel.isAnalyzingAI {

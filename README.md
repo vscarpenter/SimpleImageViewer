@@ -4,7 +4,7 @@
 
 [![macOS](https://img.shields.io/badge/macOS-12.0+-blue)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.0+-orange)](https://swift.org/)
-[![App Store](https://img.shields.io/badge/Available_on-Mac_App_Store-blue?logo=apple)](https://apps.apple.com/us/app/stillview-image-viewer/id6749210445?mt=12)
+[![App Store](https://img.shields.io/badge/Available_on-Mac_App_Store-blue?logo=apple)](https://apps.apple.com/us/app/stillview-image-viewer/id6749210445)
 
 A minimalist, elegant image viewer designed specifically for macOS users who want a clean, distraction-free way to browse through image collections. Built with SwiftUI and optimized for the Mac App Store with advanced features like thumbnail navigation, slideshow mode, and comprehensive help system.
 
@@ -60,6 +60,17 @@ View all your images with crystal-clear quality:
 - Universal Binary (Intel + Apple Silicon)
 - **Comprehensive Help System** with searchable documentation
 
+### 🧠 **Intelligent Image Analysis (macOS 26+)**
+- **Powered by On-Device AI** - Industry-standard ResNet50 Core ML model for deep learning classification
+- **Hybrid Intelligence** - Intelligently merges ResNet50 with Apple's Vision framework as a reliable fallback
+- **Object Detection** - Identifies people, objects, and faces with confidence scoring
+- **Scene Classification** - Understands image context and lighting conditions
+- **Text Recognition** - OCR capabilities for extracting text from images
+- **Quality Assessment** - Automated evaluation of sharpness, exposure, and technical quality
+- **Smart Tags** - Automatically generated tags organized by category
+- **Enhancement Suggestions** - Context-aware recommendations for image improvement
+- **Complete Privacy** - All AI processing performed locally on your device
+
 ### 🔒 **Privacy & Security**
 - **No internet required** - works completely offline
 - **No data collection** or tracking
@@ -79,7 +90,7 @@ View all your images with crystal-clear quality:
 ## 📦 Installation
 
 ### Mac App Store (Recommended)
-Download from the [Mac App Store](https://apps.apple.com/app/simple-image-viewer/) for automatic updates and sandboxed security.
+Download from the [Mac App Store](https://apps.apple.com/us/app/stillview-image-viewer/id6749210445) for automatic updates and sandboxed security.
 
 ### Building from Source
 ```bash

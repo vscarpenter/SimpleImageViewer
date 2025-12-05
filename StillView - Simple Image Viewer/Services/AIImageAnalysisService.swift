@@ -24,8 +24,20 @@ final class AIImageAnalysisService: ObservableObject {
     private let compatibilityService = MacOS26CompatibilityService.shared
     private let modelManager = CoreMLModelManager.shared
     private let analysisQueue = DispatchQueue(label: "com.vinny.ai.enhanced", qos: .userInitiated)
-    private var cache: [String: ImageAnalysisResult] = [:]
-    private let maxCacheEntries = 20  // Reduced from 50 to conserve memory with ResNet-50
+
+    // Refactored service dependencies
+    private let classificationFilter = ClassificationFilter()
+    private let subjectDetector = SubjectDetector()
+    private let captionGenerator = ImageCaptionGenerator()
+    private let narrativeGenerator = NarrativeGenerator()
+    private let tagGenerator = SmartTagGenerator()
+    private let purposeDetector = ImagePurposeDetector()
+    private let enhancedVisionAnalyzer = EnhancedVisionAnalyzer()
+    private let qualityAssessmentService = QualityAssessmentService()
+    private let cache = LRUCache<String, ImageAnalysisResult>(capacity: AIAnalysisConstants.maxCacheEntries)
+
+    // Cache version - increment this to invalidate all cached analysis when algorithm changes
+    private let cacheVersion = AIAnalysisConstants.cacheVersion
 
     // MARK: - Initialization
     private init() {
@@ -40,7 +52,7 @@ final class AIImageAnalysisService: ObservableObject {
 
     /// Clear analysis cache
     func clearCache() {
-        cache.removeAll()
+        cache.clear()
     }
 
     /// Analyze image with enhanced AI features
@@ -71,14 +83,14 @@ final class AIImageAnalysisService: ObservableObject {
                 let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
                 modTimeStamp = Double(cgImage.width * cgImage.height) + Double(fileSize)
             }
-            cacheKey = "\(url.path)_\(Int64(modTimeStamp))"
+            cacheKey = "\(cacheVersion)_\(url.path)_\(Int64(modTimeStamp))"
         } else {
             // If no URL, use timestamp to prevent stale cache
-            cacheKey = "\(cgImage.width)x\(cgImage.height)_\(Date().timeIntervalSince1970)"
+            cacheKey = "\(cacheVersion)_\(cgImage.width)x\(cgImage.height)_\(Date().timeIntervalSince1970)"
         }
 
-        // Check cache
-        if let cachedResult = cache[cacheKey] {
+        // Check cache (LRUCache handles access time updates)
+        if let cachedResult = cache.get(cacheKey) {
             return cachedResult
         }
 
@@ -87,14 +99,8 @@ final class AIImageAnalysisService: ObservableObject {
 
         let result = try await performEnhancedAnalysis(cgImage)
 
-        // Cache management - use LRU strategy
-        if cache.count >= maxCacheEntries {
-            // Remove oldest entry (simple approach - could be enhanced with proper LRU)
-            if let firstKey = cache.keys.first {
-                cache.removeValue(forKey: firstKey)
-            }
-        }
-        cache[cacheKey] = result
+        // Cache result (LRUCache handles eviction automatically)
+        cache.set(cacheKey, value: result)
 
         return result
     }
@@ -115,6 +121,7 @@ final class AIImageAnalysisService: ObservableObject {
             var barcodes: [DetectedBarcode] = []
             var horizon: HorizonDetection?
             var visionKitResult: VisionKitAnalysisResult?
+            var enhancedVisionResult: EnhancedVisionResult?
 
             // Launch all analyses in parallel
             group.addTask { try await .classifications(self.performEnhancedClassification(cgImage)) }
@@ -128,14 +135,20 @@ final class AIImageAnalysisService: ObservableObject {
             group.addTask { try await .barcodes(self.performBarcodeDetection(cgImage)) }
             group.addTask { try await .horizon(self.performHorizonDetection(cgImage)) }
             group.addTask { try await .visionKit(self.performVisionKitAnalysis(cgImage)) }
+            
+            // Add enhanced Vision analysis with smart skip conditions
+            if shouldPerformEnhancedVisionAnalysis(imageWidth: cgImage.width, imageHeight: cgImage.height) {
+                group.addTask { await .enhancedVision(self.performEnhancedVisionAnalysis(cgImage)) }
+            }
 
             // Collect results
             var progress: Double = 0.0
-            let totalTasks: Double = 11.0
+            let performingEnhancedVision = shouldPerformEnhancedVisionAnalysis(imageWidth: cgImage.width, imageHeight: cgImage.height)
+            let totalTasks: Double = performingEnhancedVision ? 12.0 : 11.0
 
             for try await component in group {
                 progress += 1.0 / totalTasks
-                updateProgress(progress * 0.9) // Reserve 10% for final processing
+                updateProgress(progress * AIAnalysisConstants.progressReserveFactor) // Reserve 10% for final processing
 
                 switch component {
                 case .classifications(let result): classifications = result
@@ -149,27 +162,97 @@ final class AIImageAnalysisService: ObservableObject {
                 case .barcodes(let result): barcodes = result
                 case .horizon(let result): horizon = result
                 case .visionKit(let result): visionKitResult = result
+                case .enhancedVision(let result): enhancedVisionResult = result
                 }
             }
 
-            // Debug logging for classification results
+#if DEBUG
+            // TODO: Re-enable when AIInsightReport is refactored to be accessible  
+            // printInsightReport(classifications: classifications, resnetClassifications: resnetClassifications, objects: objects, scenes: scenes, text: text, colors: colors, saliency: saliency, landmarks: landmarks, barcodes: barcodes, horizon: horizon, enhancedVision: enhancedVisionResult)
+#endif
+
+            // Log top 5 classifications with confidence scores
             #if DEBUG
-            print("🔍 Vision classifications: \(classifications.prefix(3).map { "\($0.identifier) (\(String(format: "%.1f%%", $0.confidence * 100)))" }.joined(separator: ", "))")
-            print("🔍 ResNet-50 classifications: \(resnetClassifications.prefix(3).map { "\($0.identifier) (\(String(format: "%.1f%%", $0.confidence * 100)))" }.joined(separator: ", "))")
+            Logger.ai("🔍 Top 5 Vision classifications:")
+            for (index, classification) in classifications.prefix(5).enumerated() {
+                Logger.ai("  \(index + 1). \(classification.identifier) (confidence: \(String(format: "%.1f%%", classification.confidence * 100)))")
+            }
+            
+            Logger.ai("🔍 Top 5 ResNet-50 classifications:")
+            for (index, classification) in resnetClassifications.prefix(5).enumerated() {
+                Logger.ai("  \(index + 1). \(classification.identifier) (confidence: \(String(format: "%.1f%%", classification.confidence * 100)))")
+            }
             #endif
 
             // Merge ResNet-50 classifications with Vision classifications
-            classifications = mergeClassifications(visionResults: classifications, resnetResults: resnetClassifications)
+            // Detect foreground subjects for filtering
+            let hasPersonDetection = objects.contains(where: {
+                let id = $0.identifier.lowercased()
+                return id.contains("person") || id.contains("face")
+            })
+            let hasVehicleDetection = objects.contains(where: {
+                let id = $0.identifier.lowercased()
+                return id.contains("car") || id.contains("vehicle") || id.contains("automobile") ||
+                       id.contains("truck") || id.contains("bus") || id.contains("motorcycle") || id.contains("bicycle")
+            })
+            let hasForegroundSubjects = hasPersonDetection || hasVehicleDetection || 
+                                       objects.count > 0 // Any detected objects suggest foreground subjects
+            
+            classifications = classificationFilter.mergeClassifications(
+                visionResults: classifications,
+                resnetResults: resnetClassifications,
+                hasPersonDetection: hasPersonDetection,
+                hasVehicleDetection: hasVehicleDetection,
+                hasForegroundSubjects: hasForegroundSubjects
+            )
+
+            // Filter out clothing/accessory classifications when person/face detected
+            let hasPersonOrFace = objects.contains(where: {
+                let id = $0.identifier.lowercased()
+                return id.contains("person") || id.contains("face")
+            })
+
+            classifications = classificationFilter.filterForPersonDetection(
+                classifications,
+                hasPersonOrFace: hasPersonOrFace
+            )
 
             #if DEBUG
-            print("🔍 Merged classifications: \(classifications.prefix(3).map { "\($0.identifier) (\(String(format: "%.1f%%", $0.confidence * 100)))" }.joined(separator: ", "))")
+            Logger.ai("🔍 Final merged and filtered classifications (top 5):")
+            for (index, classification) in classifications.prefix(5).enumerated() {
+                Logger.ai("  \(index + 1). \(classification.identifier) (confidence: \(String(format: "%.1f%%", classification.confidence * 100)))")
+            }
+            
+            // Log detected objects with bounding boxes
+            if !objects.isEmpty {
+                Logger.ai("🎯 Detected \(objects.count) object(s):")
+                for (index, object) in objects.enumerated() {
+                    let bboxInfo = "bbox: [\(String(format: "%.2f", object.boundingBox.origin.x)), \(String(format: "%.2f", object.boundingBox.origin.y)), \(String(format: "%.2f", object.boundingBox.width)), \(String(format: "%.2f", object.boundingBox.height))]"
+                    Logger.ai("  \(index + 1). \(object.identifier) (confidence: \(String(format: "%.1f%%", object.confidence * 100)), \(bboxInfo))")
+                }
+            }
+            
+            // Log saliency analysis results
+            if let saliency = saliency {
+                Logger.ai("✨ Saliency analysis: \(saliency.attentionPoints.count) attention points detected")
+                if !saliency.attentionPoints.isEmpty {
+                    let topPoints = saliency.attentionPoints.prefix(3)
+                    Logger.ai("  Top salient regions:")
+                    for (index, point) in topPoints.enumerated() {
+                        Logger.ai("    \(index + 1). Location: (\(String(format: "%.2f", point.location.x)), \(String(format: "%.2f", point.location.y))), Intensity: \(String(format: "%.2f", point.intensity))")
+                    }
+                }
+            }
             #endif
 
             // Priority 1: Comprehensive Quality Assessment with real metrics
             let qualityAssessment = try await performComprehensiveQualityAssessment(
                 cgImage,
                 classifications: classifications,
-                saliency: saliency
+                saliency: saliency,
+                objects: objects,
+                scenes: scenes,
+                text: text
             )
             
             updateProgress(0.95)
@@ -182,7 +265,7 @@ final class AIImageAnalysisService: ObservableObject {
             )
 
             // Priority 3: Generate intelligent narrative
-            let narrative = generateIntelligentNarrative(
+            let narrative = narrativeGenerator.generateNarrative(
                 classifications: classifications,
                 objects: objects,
                 scenes: scenes,
@@ -193,39 +276,90 @@ final class AIImageAnalysisService: ObservableObject {
                 recognizedPeople: recognizedPeople
             )
             
-            // Enhanced insights
-            let insights = generateAdvancedInsights(
-                classifications: classifications,
-                objects: objects,
-                scenes: scenes,
-                text: text,
-                colors: colors,
-                quality: qualityAssessment,
-                saliency: saliency,
-                recognizedPeople: recognizedPeople
-            )
             
             // Hierarchical smart tags
-            let smartTags = generateHierarchicalSmartTags(
-                from: classifications,
+            let purpose = purposeDetector.detectPurpose(
+                classifications: classifications,
+                objects: objects,
+                scenes: scenes,
+                text: text,
+                saliency: saliency
+            )
+
+            let smartTags = tagGenerator.generateSmartTags(
+                classifications: classifications,
                 objects: objects,
                 scenes: scenes,
                 text: text,
                 colors: colors,
                 landmarks: landmarks,
-                recognizedPeople: recognizedPeople
+                recognizedPeople: recognizedPeople,
+                purpose: purpose,
+                quality: qualityAssessment.quality,
+                megapixels: qualityAssessment.metrics.megapixels,
+                enhancedVision: enhancedVisionResult
             )
-            
-            // Derive primary subject with spatial context
-            let primarySubject = derivePrimarySubjectWithContext(
+
+            // Derive primary subjects with spatial context (supports multiple subjects)
+            let primarySubjects = subjectDetector.determinePrimarySubjects(
                 classifications: classifications,
                 objects: objects,
                 saliency: saliency,
                 recognizedPeople: recognizedPeople
             )
             
-            updateProgress(1.0)
+            // Log detected subjects with confidence scores
+            #if DEBUG
+            if !primarySubjects.isEmpty {
+                Logger.ai("🎯 Detected \(primarySubjects.count) primary subject(s):")
+                for (index, subject) in primarySubjects.enumerated() {
+                    Logger.ai("  \(index + 1). \(subject.label) (confidence: \(String(format: "%.1f%%", subject.confidence * 100)), source: \(subject.source))")
+                }
+            } else {
+                Logger.ai("⚠️ No primary subjects detected")
+            }
+            #endif
             
+            // Backward compatibility: keep primarySubject as first subject
+            // Generate comprehensive image captions with enhanced Vision data
+            var caption = captionGenerator.generateCaption(
+                classifications: classifications,
+                objects: objects,
+                scenes: scenes,
+                text: text,
+                colors: colors,
+                landmarks: landmarks,
+                recognizedPeople: recognizedPeople,
+                qualityAssessment: qualityAssessment,
+                primarySubjects: primarySubjects,
+                enhancedVision: enhancedVisionResult,
+                image: cgImage
+            )
+
+            // Optional: If a specialized captioning model is available, prefer its short caption when confident
+            // Commented out until ImageCaptioningProvider is implemented
+            /*
+            if let mlCaption = await captioningProvider.generateShortCaption(for: cgImage) {
+                let mlText = mlCaption.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !mlText.isEmpty && mlText.lowercased() != "image." {
+                    // Trust model caption if its confidence >= existing or sufficiently high
+                    let useML = mlCaption.confidence >= caption.confidence || mlCaption.confidence >= AIAnalysisConstants.mlCaptionConfidenceThreshold
+                    if useML {
+                        caption = ImageCaption(
+                            shortCaption: mlText.hasSuffix(".") ? mlText : mlText + ".",
+                            detailedCaption: caption.detailedCaption,
+                            accessibilityCaption: caption.accessibilityCaption,
+                            technicalCaption: caption.technicalCaption,
+                            confidence: max(caption.confidence, mlCaption.confidence),
+                            language: caption.language
+                        )
+                    }
+                }
+            }
+            */
+
+            updateProgress(1.0)
+
             return ImageAnalysisResult(
                 classifications: classifications,
                 objects: objects,
@@ -234,19 +368,21 @@ final class AIImageAnalysisService: ObservableObject {
                 colors: colors,
                 quality: qualityAssessment.quality,
                 qualityAssessment: qualityAssessment,
-                primarySubject: primarySubject,
+                primarySubject: primarySubjects.first,
+                primarySubjects: primarySubjects,
                 suggestions: [],
                 duplicateAnalysis: nil,
                 saliencyAnalysis: saliency,
                 faceQualityAssessment: nil,
-                actionableInsights: insights,
                 smartTags: smartTags,
                 narrative: narrative,
+                caption: caption,
                 landmarks: landmarks,
                 barcodes: barcodes,
                 horizon: horizon,
                 recognizedPeople: recognizedPeople,
-                visionKitResult: visionKitResult
+                visionKitResult: visionKitResult,
+                enhancedVisionResult: enhancedVisionResult
             )
         }
     }
@@ -265,28 +401,33 @@ final class AIImageAnalysisService: ObservableObject {
         case barcodes([DetectedBarcode])
         case horizon(HorizonDetection?)
         case visionKit(VisionKitAnalysisResult?)
+        case enhancedVision(EnhancedVisionResult?)
     }
 
     // MARK: - Priority 1: Comprehensive Quality Assessment
-    
+
     /// Perform comprehensive quality assessment with actual metrics (not just resolution)
     private func performComprehensiveQualityAssessment(
         _ cgImage: CGImage,
         classifications: [ClassificationResult],
-        saliency: SaliencyAnalysis?
+        saliency: SaliencyAnalysis?,
+        objects: [DetectedObject],
+        scenes: [SceneClassification],
+        text: [RecognizedText]
     ) async throws -> ImageQualityAssessment {
         let width = cgImage.width
         let height = cgImage.height
+        let imageSize = CGSize(width: width, height: height)
         let megapixels = Double(width * height) / 1_000_000.0
 
-        // Calculate real sharpness using Laplacian variance
-        let sharpness = try await detectSharpness(cgImage)
+        // Delegate metric calculations to QualityAssessmentService
+        async let sharpnessResult = qualityAssessmentService.detectSharpness(cgImage)
+        async let exposureResult = qualityAssessmentService.analyzeExposure(cgImage)
+        async let luminanceResult = qualityAssessmentService.calculateLuminance(cgImage)
 
-        // Calculate exposure from histogram
-        let exposure = try await analyzeExposure(cgImage)
-
-        // Calculate luminance
-        let luminance = try await calculateLuminance(cgImage)
+        let sharpness = try await sharpnessResult
+        let exposure = try await exposureResult
+        let luminance = try await luminanceResult
 
         let metrics = ImageQualityAssessment.Metrics(
             megapixels: megapixels,
@@ -296,29 +437,24 @@ final class AIImageAnalysisService: ObservableObject {
         )
 
         // Determine quality from multiple factors
-        let quality = calculateOverallQuality(metrics, imageSize: CGSize(width: width, height: height))
+        let quality = qualityAssessmentService.calculateOverallQuality(metrics, imageSize: imageSize)
 
-        // Detect image purpose for contextual assessment (reuse detection logic)
-        let objects = try? await performEnhancedObjectDetection(cgImage)
-        let scenes = try? await performEnhancedSceneClassification(cgImage)
-        let text = try? await performTextRecognition(cgImage)
-
-        let purpose = detectImagePurpose(
+        let purpose = purposeDetector.detectPurpose(
             classifications: classifications,
-            objects: objects ?? [],
-            scenes: scenes ?? [],
-            text: text ?? [],
+            objects: objects.isEmpty ? (try? await performEnhancedObjectDetection(cgImage)) ?? [] : objects,
+            scenes: scenes.isEmpty ? (try? await performEnhancedSceneClassification(cgImage)) ?? [] : scenes,
+            text: text.isEmpty ? (try? await performTextRecognition(cgImage)) ?? [] : text,
             saliency: saliency
         )
 
         // Generate contextual issues and summary based on purpose
-        let issues = generateContextualIssues(
+        let issues = qualityAssessmentService.generateContextualIssues(
             metrics: metrics,
             purpose: purpose,
-            imageSize: CGSize(width: width, height: height)
+            imageSize: imageSize
         )
 
-        let summary = generateContextualQualitySummary(
+        let summary = qualityAssessmentService.generateContextualQualitySummary(
             quality: quality,
             metrics: metrics,
             purpose: purpose,
@@ -334,350 +470,6 @@ final class AIImageAnalysisService: ObservableObject {
         )
     }
 
-    /// Generate contextual quality issues based on image purpose
-    private func generateContextualIssues(
-        metrics: ImageQualityAssessment.Metrics,
-        purpose: ImagePurpose,
-        imageSize: CGSize
-    ) -> [ImageQualityAssessment.Issue] {
-        var issues: [ImageQualityAssessment.Issue] = []
-
-        switch purpose {
-        case .portrait, .groupPhoto:
-            // Portrait-specific quality checks
-            if metrics.sharpness < 0.5 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Soft Portrait Focus",
-                    detail: "Facial sharpness at \(Int(metrics.sharpness * 100))% may not be suitable for professional headshots. Ideal sharpness for portraits is 70%+."
-                ))
-            }
-            if metrics.exposure < 0.35 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .underexposed,
-                    title: "Dark Portrait Exposure",
-                    detail: "Underexposed by approximately \(String(format: "%.1f", (0.5 - metrics.exposure) * 2)) stops. Faces may lack detail in shadows. Increase exposure to reveal skin tones."
-                ))
-            } else if metrics.exposure > 0.75 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .overexposed,
-                    title: "Overexposed Portrait",
-                    detail: "Overexposed by \(String(format: "%.1f", (metrics.exposure - 0.5) * 2)) stops. Risk of blown highlights on skin. Reduce exposure to preserve facial detail."
-                ))
-            }
-
-        case .landscape, .architecture:
-            // Landscape-specific quality checks
-            if metrics.sharpness < 0.6 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Landscape Sharpness Issue",
-                    detail: "Overall sharpness at \(Int(metrics.sharpness * 100))%. Landscape photos benefit from edge-to-edge sharpness. Consider using smaller aperture (f/8-f/11) or focus stacking."
-                ))
-            }
-            if metrics.megapixels < 8.0 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .lowResolution,
-                    title: "Limited Print Size",
-                    detail: "At \(String(format: "%.1f", metrics.megapixels))MP, maximum quality print size is approximately \(Int(sqrt(metrics.megapixels * 1_000_000) / 300 * 2.54))×\(Int(sqrt(metrics.megapixels * 1_000_000) / 300 * 2.54))cm at 300dpi. Consider higher resolution for large format prints."
-                ))
-            }
-
-        case .document, .screenshot:
-            // Document-specific quality checks
-            if metrics.sharpness < 0.4 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Text Readability Issue",
-                    detail: "Text sharpness at \(Int(metrics.sharpness * 100))% may affect OCR accuracy. Ensure camera is stable and text is in focus for best recognition."
-                ))
-            }
-            if metrics.exposure < 0.4 || metrics.exposure > 0.7 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: metrics.exposure < 0.4 ? .underexposed : .overexposed,
-                    title: "Suboptimal Document Exposure",
-                    detail: "Document contrast is not ideal for text extraction. Aim for even lighting and balanced exposure for maximum OCR accuracy."
-                ))
-            }
-
-        case .productPhoto:
-            // Product photo quality checks
-            if metrics.sharpness < 0.6 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Product Detail Softness",
-                    detail: "Sharpness at \(Int(metrics.sharpness * 100))% may not showcase product details adequately. E-commerce photos require crisp focus on product features."
-                ))
-            }
-            if metrics.megapixels < 4.0 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .lowResolution,
-                    title: "Low Resolution for Commerce",
-                    detail: "At \(String(format: "%.1f", metrics.megapixels))MP, zoom capability is limited. E-commerce platforms recommend 2000×2000px minimum for product detail views."
-                ))
-            }
-
-        case .food:
-            // Food photography quality checks
-            if metrics.exposure < 0.4 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .underexposed,
-                    title: "Dark Food Photography",
-                    detail: "Underexposed food photos reduce appetite appeal. Increase exposure to showcase colors and textures that make food appetizing."
-                ))
-            }
-
-        case .wildlife:
-            // Wildlife photography quality checks
-            if metrics.sharpness < 0.65 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Wildlife Subject Sharpness",
-                    detail: "Subject sharpness at \(Int(metrics.sharpness * 100))% suggests motion blur or focus miss. Wildlife photography requires fast shutter speeds (1/500s+) to freeze action."
-                ))
-            }
-
-        case .general:
-            // Generic quality checks
-            if metrics.sharpness < 0.4 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Soft Focus",
-                    detail: "Overall sharpness at \(Int(metrics.sharpness * 100))%. Image may benefit from sharpening or refocusing."
-                ))
-            }
-            if metrics.exposure < 0.3 || metrics.exposure > 0.8 {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: metrics.exposure < 0.3 ? .underexposed : .overexposed,
-                    title: metrics.exposure < 0.3 ? "Underexposed" : "Overexposed",
-                    detail: "Exposure is \(metrics.exposure < 0.3 ? "too dark" : "too bright"). Adjust by \(String(format: "%.1f", abs(metrics.exposure - 0.5) * 2)) stops for balanced histogram."
-                ))
-            }
-        }
-
-        return issues
-    }
-
-    /// Generate contextual quality summary based on image purpose
-    private func generateContextualQualitySummary(
-        quality: ImageQuality,
-        metrics: ImageQualityAssessment.Metrics,
-        purpose: ImagePurpose,
-        issues: [ImageQualityAssessment.Issue]
-    ) -> String {
-        var summary = ""
-
-        switch purpose {
-        case .portrait, .groupPhoto:
-            switch quality {
-            case .high:
-                summary = "Professional-quality portrait with excellent sharpness (\(Int(metrics.sharpness * 100))%) and well-balanced exposure. Suitable for professional headshots, LinkedIn profiles, and high-quality printing."
-            case .medium:
-                summary = "Good portrait quality at \(String(format: "%.1f", metrics.megapixels))MP. Sharpness (\(Int(metrics.sharpness * 100))%) and exposure are acceptable for social media and casual printing. Minor improvements would enhance professional use."
-            case .low:
-                summary = "Portrait quality needs improvement. \(issues.isEmpty ? "Consider better lighting and focus" : issues.map { $0.title }.joined(separator: ", ")). Current quality suitable for thumbnails only."
-            case .unknown:
-                summary = "Portrait quality assessment unavailable"
-            }
-
-        case .landscape, .architecture:
-            switch quality {
-            case .high:
-                summary = "Exceptional landscape quality with \(String(format: "%.1f", metrics.megapixels))MP resolution and \(Int(metrics.sharpness * 100))% sharpness. Excellent for large format printing, desktop wallpapers, and professional portfolios."
-            case .medium:
-                summary = "Good landscape photograph suitable for web display and medium prints (up to A4). Resolution: \(String(format: "%.1f", metrics.megapixels))MP, sharpness: \(Int(metrics.sharpness * 100))%."
-            case .low:
-                summary = "Landscape quality is limited. \(issues.map { $0.title }.joined(separator: ", ")). Best used for small web display or reference."
-            case .unknown:
-                summary = "Landscape quality assessment unavailable"
-            }
-
-        case .document, .screenshot:
-            switch quality {
-            case .high:
-                summary = "Excellent document quality with crisp text (sharpness: \(Int(metrics.sharpness * 100))%). OCR confidence will be very high. Perfect for archival, text extraction, and professional documentation."
-            case .medium:
-                summary = "Good document readability. Text extraction should work reliably. Suitable for notes, reference materials, and most archival needs."
-            case .low:
-                summary = "Document quality may affect text recognition. \(issues.map { $0.title }.joined(separator: ", ")). Consider rescanning with better lighting and focus."
-            case .unknown:
-                summary = "Document quality assessment unavailable"
-            }
-
-        case .productPhoto:
-            switch quality {
-            case .high:
-                summary = "Commercial-grade product photography at \(String(format: "%.1f", metrics.megapixels))MP with \(Int(metrics.sharpness * 100))% sharpness. Ready for e-commerce platforms, catalogs, and marketing materials with zoom functionality."
-            case .medium:
-                summary = "Good product image quality suitable for online listings. Resolution and sharpness adequate for standard e-commerce use without extreme zoom."
-            case .low:
-                summary = "Product photo quality below commercial standards. \(issues.map { $0.title }.joined(separator: ", ")). Improve for professional selling platforms."
-            case .unknown:
-                summary = "Product quality assessment unavailable"
-            }
-
-        case .food:
-            switch quality {
-            case .high:
-                summary = "Restaurant-quality food photography with vibrant presentation and excellent detail. Perfect for menus, social media marketing, and culinary portfolios."
-            case .medium:
-                summary = "Good food photography suitable for casual sharing and online menus. Quality adequate for Instagram, blogs, and recipe documentation."
-            case .low:
-                summary = "Food photo could be improved. Better lighting and composition would enhance appetite appeal. Current quality best for personal reference."
-            case .unknown:
-                summary = "Food photo quality assessment unavailable"
-            }
-
-        case .wildlife:
-            switch quality {
-            case .high:
-                summary = "Excellent wildlife capture with sharp subject focus (\(Int(metrics.sharpness * 100))%) and good exposure. Suitable for nature publications, prints, and professional portfolios."
-            case .medium:
-                summary = "Good wildlife photograph with acceptable sharpness. Suitable for web galleries, social media, and personal collections."
-            case .low:
-                summary = "Wildlife photo quality limited. \(issues.map { $0.title }.joined(separator: ", ")). Best for identification or personal reference."
-            case .unknown:
-                summary = "Wildlife photo quality assessment unavailable"
-            }
-
-        case .general:
-            // Fallback to original summary
-            switch quality {
-            case .high:
-                summary = "High-quality image with excellent resolution (\(String(format: "%.1f", metrics.megapixels))MP), good sharpness (score: \(String(format: "%.2f", metrics.sharpness))), and balanced exposure."
-            case .medium:
-                summary = "Good image quality suitable for most uses. Resolution: \(String(format: "%.1f", metrics.megapixels))MP, sharpness score: \(String(format: "%.2f", metrics.sharpness))."
-            case .low:
-                summary = "Image quality could be improved. "
-                if !issues.isEmpty {
-                    summary += "Issues detected: \(issues.map { $0.title }.joined(separator: ", "))."
-                }
-            case .unknown:
-                summary = "Quality assessment unavailable"
-            }
-        }
-
-        return summary
-    }
-    
-    /// Detect sharpness using Laplacian variance method
-    private func detectSharpness(_ cgImage: CGImage) async throws -> Double {
-        return try await withCheckedThrowingContinuation { continuation in
-            analysisQueue.async {
-                guard let dataProvider = cgImage.dataProvider,
-                      let data = dataProvider.data,
-                      let bytes = CFDataGetBytePtr(data) else {
-                    continuation.resume(returning: 0.5)
-                    return
-                }
-                
-                let width = cgImage.width
-                let height = cgImage.height
-                let bytesPerRow = cgImage.bytesPerRow
-                let bytesPerPixel = cgImage.bitsPerPixel / 8
-                
-                var laplacianSum: Double = 0.0
-                var count: Int = 0
-                
-                // Sample every 4th pixel for performance
-                for y in stride(from: 1, to: height - 1, by: 4) {
-                    for x in stride(from: 1, to: width - 1, by: 4) {
-                        let offset = y * bytesPerRow + x * bytesPerPixel
-                        let centerValue = Double(bytes[offset])
-                        
-                        // Simplified Laplacian kernel
-                        let topValue = Double(bytes[(y - 1) * bytesPerRow + x * bytesPerPixel])
-                        let bottomValue = Double(bytes[(y + 1) * bytesPerRow + x * bytesPerPixel])
-                        let leftValue = Double(bytes[y * bytesPerRow + (x - 1) * bytesPerPixel])
-                        let rightValue = Double(bytes[y * bytesPerRow + (x + 1) * bytesPerPixel])
-                        
-                        let laplacian = abs(4 * centerValue - topValue - bottomValue - leftValue - rightValue)
-                        laplacianSum += laplacian
-                        count += 1
-                    }
-                }
-                
-                // Normalize sharpness score to 0-1 range
-                let variance = count > 0 ? laplacianSum / Double(count) : 0.0
-                let normalizedSharpness = min(1.0, variance / 255.0) // Normalize by max pixel value
-                
-                continuation.resume(returning: normalizedSharpness)
-            }
-        }
-    }
-    
-    /// Analyze exposure from histogram
-    private func analyzeExposure(_ cgImage: CGImage) async throws -> Double {
-        return try await withCheckedThrowingContinuation { continuation in
-            analysisQueue.async {
-                guard let dataProvider = cgImage.dataProvider,
-                      let data = dataProvider.data,
-                      let bytes = CFDataGetBytePtr(data) else {
-                    continuation.resume(returning: 0.5)
-                    return
-                }
-                
-                let width = cgImage.width
-                let height = cgImage.height
-                let bytesPerRow = cgImage.bytesPerRow
-                let bytesPerPixel = cgImage.bitsPerPixel / 8
-                
-                var brightnessSum: Double = 0.0
-                var count: Int = 0
-                
-                // Sample pixels and calculate average brightness
-                for y in stride(from: 0, to: height, by: 8) {
-                    for x in stride(from: 0, to: width, by: 8) {
-                        let offset = y * bytesPerRow + x * bytesPerPixel
-                        let value = Double(bytes[offset])
-                        brightnessSum += value
-                        count += 1
-                    }
-                }
-                
-                // Normalize to 0-1 range
-                let avgBrightness = count > 0 ? brightnessSum / Double(count) / 255.0 : 0.5
-                continuation.resume(returning: avgBrightness)
-            }
-        }
-    }
-    
-    /// Calculate luminance
-    private func calculateLuminance(_ cgImage: CGImage) async throws -> Double {
-        // For simplicity, luminance approximates exposure in this implementation
-        return try await analyzeExposure(cgImage)
-    }
-    
-    /// Calculate overall quality from metrics
-    private func calculateOverallQuality(_ metrics: ImageQualityAssessment.Metrics, imageSize: CGSize) -> ImageQuality {
-        var qualityScore: Double = 0.0
-        
-        // Resolution component (30% weight)
-        if metrics.megapixels >= 12.0 && min(imageSize.width, imageSize.height) >= 2000 {
-            qualityScore += 0.3
-        } else if metrics.megapixels >= 4.0 && min(imageSize.width, imageSize.height) >= 1200 {
-            qualityScore += 0.2
-        } else if metrics.megapixels >= 2.0 {
-            qualityScore += 0.1
-        }
-        
-        // Sharpness component (40% weight)
-        qualityScore += metrics.sharpness * 0.4
-        
-        // Exposure component (30% weight) - penalize over/under exposure
-        let exposureQuality = 1.0 - abs(metrics.exposure - 0.5) * 2.0 // Optimal is 0.5
-        qualityScore += max(0, exposureQuality) * 0.3
-        
-        // Determine quality tier
-        if qualityScore >= 0.75 {
-            return .high
-        } else if qualityScore >= 0.45 {
-            return .medium
-        } else {
-            return .low
-        }
-    }
-
     // MARK: - Priority 2: Enhanced Classification
     
     /// Enhanced classification with confidence filtering
@@ -691,10 +483,10 @@ final class AIImageAnalysisService: ObservableObject {
                     }
 
                     let observations = (request.results as? [VNClassificationObservation]) ?? []
-                    // Take top 10 with confidence > 0.1 (much better than arbitrary top 5)
+                    // Take top results with confidence above threshold
                     let classifications = observations
-                        .filter { $0.confidence > 0.1 }
-                        .prefix(10)
+                        .filter { $0.confidence > AIAnalysisConstants.minimumClassificationConfidence }
+                        .prefix(AIAnalysisConstants.maxClassifications)
                         .map { ClassificationResult(identifier: $0.identifier, confidence: $0.confidence) }
 
                     continuation.resume(returning: Array(classifications))
@@ -712,133 +504,16 @@ final class AIImageAnalysisService: ObservableObject {
 
     /// ResNet-50 classification using Core ML for enhanced accuracy
     private func performResNetClassification(_ cgImage: CGImage) async throws -> [ClassificationResult] {
-        do {
-            // Load ResNet-50 model
-            let model = try await modelManager.loadModel(.resnet50)
+        // Use CoreMLModelManager to classify with ResNet50
+        let resnetResults = await modelManager.classifyWithResNet50(
+            cgImage,
+            maxResults: AIAnalysisConstants.maxClassifications
+        )
 
-            // Use Vision framework's Core ML request for better integration
-            let visionModel = try VNCoreMLModel(for: model)
-            let request = VNCoreMLRequest(model: visionModel)
-
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            try handler.perform([request])
-
-            guard let results = request.results as? [VNClassificationObservation] else {
-                #if DEBUG
-                print("⚠️ ResNet-50: No classification results returned")
-                #endif
-                return []
-            }
-
-            // Return top 10 results with confidence > 0.05
-            let classifications = results
-                .filter { $0.confidence > 0.05 }
-                .prefix(10)
-                .map { ClassificationResult(identifier: $0.identifier, confidence: $0.confidence) }
-
-            #if DEBUG
-            if classifications.isEmpty {
-                print("⚠️ ResNet-50: All results filtered out (confidence < 0.05)")
-            }
-            #endif
-
-            return Array(classifications)
-        } catch {
-            // If ResNet-50 fails, return empty array (fallback to Vision framework classifications)
-            print("❌ ResNet-50 classification failed: \(error.localizedDescription)")
-            return []
-        }
-    }
-
-    /// Merge Vision and ResNet-50 classifications intelligently
-    /// Strategy: Prioritize specific classifications over generic ones
-    private func mergeClassifications(
-        visionResults: [ClassificationResult],
-        resnetResults: [ClassificationResult]
-    ) -> [ClassificationResult] {
-        var mergedDict: [String: ClassificationResult] = [:]
-
-        // Define generic category terms that should be deprioritized
-        let genericTerms: Set<String> = [
-            "food", "meal", "dish", "cuisine", "snack", "beverage", "drink",
-            "animal", "mammal", "bird", "fish", "insect", "reptile",
-            "plant", "flower", "tree", "vegetation",
-            "object", "item", "thing", "artifact",
-            "person", "people", "human", "individual",
-            "scene", "location", "place", "setting",
-            "vehicle", "transport", "transportation",
-            "building", "structure", "architecture",
-            "indoor", "outdoor", "inside", "outside",
-            "natural", "man-made", "artificial"
-        ]
-
-        // Helper to check if a classification is generic
-        let isGeneric: (String) -> Bool = { identifier in
-            let lowerIdentifier = identifier.lowercased()
-            // Check if the identifier is a single generic term or contains only generic words
-            let words = lowerIdentifier.components(separatedBy: CharacterSet(charactersIn: " ,-_"))
-            return words.allSatisfy { genericTerms.contains($0) } || genericTerms.contains(lowerIdentifier)
-        }
-
-        // Add all Vision results with generic penalty
-        for result in visionResults {
-            let adjustedConfidence = isGeneric(result.identifier) ? result.confidence * 0.7 : result.confidence
-            mergedDict[result.identifier] = ClassificationResult(
-                identifier: result.identifier,
-                confidence: adjustedConfidence
-            )
-        }
-
-        // Merge ResNet-50 results - these are often more specific (1000 ImageNet categories)
-        for resnetResult in resnetResults {
-            if let existingResult = mergedDict[resnetResult.identifier] {
-                // Both models agree - boost confidence significantly
-                let avgConfidence = (existingResult.confidence + resnetResult.confidence) / 2.0
-                let boostedConfidence = min(avgConfidence * 1.3, 1.0) // 30% boost for agreement
-                mergedDict[resnetResult.identifier] = ClassificationResult(
-                    identifier: resnetResult.identifier,
-                    confidence: boostedConfidence
-                )
-            } else {
-                // ResNet-50 specific detection
-                // Boost confidence for specific terms, slight penalty for generic ones
-                let isResnetGeneric = isGeneric(resnetResult.identifier)
-                let finalConfidence: Float
-
-                if !isResnetGeneric && resnetResult.confidence >= 0.5 {
-                    // Specific classification with decent confidence - boost it
-                    finalConfidence = min(resnetResult.confidence * 1.15, 1.0)
-                } else if isResnetGeneric {
-                    // Generic term from ResNet - apply penalty
-                    finalConfidence = resnetResult.confidence * 0.8
-                } else {
-                    // Specific but low confidence - keep as-is
-                    finalConfidence = resnetResult.confidence
-                }
-
-                mergedDict[resnetResult.identifier] = ClassificationResult(
-                    identifier: resnetResult.identifier,
-                    confidence: finalConfidence
-                )
-            }
-        }
-
-        // Sort by confidence, but prefer specific terms when confidence is close
-        return mergedDict.values
-            .sorted { (a, b) in
-                let confidenceDiff = abs(a.confidence - b.confidence)
-                // If confidence is within 10%, prefer the more specific one
-                if confidenceDiff < 0.1 {
-                    let aIsGeneric = isGeneric(a.identifier)
-                    let bIsGeneric = isGeneric(b.identifier)
-                    if aIsGeneric != bIsGeneric {
-                        return !aIsGeneric // Prefer non-generic (specific)
-                    }
-                }
-                return a.confidence > b.confidence
-            }
-            .prefix(15)
-            .map { $0 }
+        // Convert to ClassificationResult format
+        return resnetResults
+            .filter { $0.confidence > AIAnalysisConstants.minimumClassificationConfidence }
+            .map { ClassificationResult(identifier: $0.identifier, confidence: $0.confidence) }
     }
 
     // MARK: - VisionKit Analysis
@@ -1390,9 +1065,30 @@ final class AIImageAnalysisService: ObservableObject {
         var people: [RecognizedPerson] = []
         var seenNames = Set<String>()
 
-        for classification in classifications.sorted(by: { $0.confidence > $1.confidence }).prefix(10) {
-            guard classification.confidence > 0.1 else { continue }
-            guard let rawName = extractPersonName(from: classification.identifier) else { continue }
+        // DISABLED: Don't extract person names from classifications
+        // This was incorrectly identifying things like "Blue Sky" and "Palm Tree" as person names
+        // Only extract names from detected text (OCR)
+        
+        // for classification in classifications.sorted(by: { $0.confidence > $1.confidence }).prefix(10) {
+        //     guard classification.confidence > 0.1 else { continue }
+        //     guard let rawName = extractPersonName(from: classification.identifier) else { continue }
+        //     let normalized = normalizePersonName(rawName)
+        //     guard !normalized.isEmpty else { continue }
+        //
+        //     if seenNames.insert(normalized.lowercased()).inserted {
+        //         people.append(
+        //             RecognizedPerson(
+        //                 name: normalized,
+        //                 confidence: Double(classification.confidence),
+        //                 source: .classification
+        //             )
+        //         )
+        //     }
+        // }
+
+        // Extract person names from detected text (OCR) only
+        for textObservation in text.sorted(by: { $0.confidence > $1.confidence }).prefix(8) {
+            guard let rawName = extractPersonName(from: textObservation.text) else { continue }
             let normalized = normalizePersonName(rawName)
             guard !normalized.isEmpty else { continue }
 
@@ -1400,28 +1096,10 @@ final class AIImageAnalysisService: ObservableObject {
                 people.append(
                     RecognizedPerson(
                         name: normalized,
-                        confidence: Double(classification.confidence),
-                        source: .classification
+                        confidence: Double(textObservation.confidence),
+                        source: .text
                     )
                 )
-            }
-        }
-
-        if people.isEmpty {
-            for textObservation in text.sorted(by: { $0.confidence > $1.confidence }).prefix(8) {
-                guard let rawName = extractPersonName(from: textObservation.text) else { continue }
-                let normalized = normalizePersonName(rawName)
-                guard !normalized.isEmpty else { continue }
-
-                if seenNames.insert(normalized.lowercased()).inserted {
-                    people.append(
-                        RecognizedPerson(
-                            name: normalized,
-                            confidence: Double(textObservation.confidence),
-                            source: .text
-                        )
-                    )
-                }
             }
         }
 
@@ -1509,928 +1187,6 @@ final class AIImageAnalysisService: ObservableObject {
         return components.joined(separator: " ")
     }
 
-    // MARK: - Priority 3: Intelligent Narrative Generation
-
-    /// Generate intelligent, context-aware narrative with purpose detection
-    private func generateIntelligentNarrative(
-        classifications: [ClassificationResult],
-        objects: [DetectedObject],
-        scenes: [SceneClassification],
-        text: [RecognizedText],
-        colors: [DominantColor],
-        saliency: SaliencyAnalysis?,
-        landmarks: [DetectedLandmark],
-        recognizedPeople: [RecognizedPerson]
-    ) -> String {
-        // Detect image purpose first
-        let purpose = detectImagePurpose(
-            classifications: classifications,
-            objects: objects,
-            scenes: scenes,
-            text: text,
-            saliency: saliency
-        )
-
-        // Generate purpose-specific narrative
-        return generatePurposeSpecificNarrative(
-            purpose: purpose,
-            classifications: classifications,
-            objects: objects,
-            scenes: scenes,
-            text: text,
-            colors: colors,
-            saliency: saliency,
-            landmarks: landmarks,
-            recognizedPeople: recognizedPeople
-        )
-    }
-
-    /// Detect the primary purpose/type of the image
-    private func detectImagePurpose(
-        classifications: [ClassificationResult],
-        objects: [DetectedObject],
-        scenes: [SceneClassification],
-        text: [RecognizedText],
-        saliency: SaliencyAnalysis?
-    ) -> ImagePurpose {
-        let faceCount = objects.filter { $0.identifier == "face" }.count
-        let peopleCount = objects.filter { $0.identifier == "person" }.count
-        let totalPeople = max(faceCount, peopleCount)
-
-        let textCoverage = calculateTextCoverage(text)
-        let hasDocumentShape = objects.contains { $0.identifier == "document" }
-        let hasUIElements = text.contains {
-            let lower = $0.text.lowercased()
-            return lower.contains("⌘") || lower.contains("file") || lower.contains("edit") || lower.contains("view")
-        }
-        let hasSignificantText = (text.count >= 6 && textCoverage > 0.22) || text.count >= 12
-
-        let foodKeywords = [
-            "food", "meal", "dish", "cuisine", "dessert", "snack", "plate", "pretzel",
-            "bread", "bagel", "pizza", "burger", "sandwich", "salad", "pasta", "noodle",
-            "drink", "beverage", "coffee", "tea", "cocktail"
-        ]
-        let classificationSuggestsFood = classifications.contains { result in
-            let identifier = result.identifier.lowercased()
-            return foodKeywords.contains(where: { identifier.contains($0) })
-        }
-        let sceneSuggestsFood = scenes.contains { $0.identifier.lowercased().contains("food") || $0.identifier.lowercased().contains("restaurant") }
-
-        // Portrait detection
-        if totalPeople == 1 && faceCount > 0 {
-            return .portrait
-        } else if totalPeople > 1 {
-            return .groupPhoto
-        }
-
-        // Food detection should win over document heuristics when text is incidental
-        if (classificationSuggestsFood || sceneSuggestsFood) && textCoverage < 0.45 {
-            return .food
-        }
-
-        // Product photo detection
-        let hasProducts = objects.contains { obj in
-            let id = obj.identifier.lowercased()
-            return id.contains("bottle") || id.contains("device") || id.contains("watch") ||
-                   id.contains("phone") || id.contains("computer") || id.contains("gadget")
-        }
-        if hasProducts && (saliency?.visualBalance.score ?? 0) > 0.6 {
-            return .productPhoto
-        }
-
-        // Document/Screenshot detection (requires meaningful coverage)
-        if hasSignificantText || hasDocumentShape {
-            if hasUIElements && textCoverage > 0.25 {
-                return .screenshot
-            }
-            if textCoverage > 0.35 || hasDocumentShape {
-                return .document
-            }
-        }
-
-        // Landscape detection
-        let isOutdoor = scenes.contains { $0.identifier.lowercased().contains("outdoor") }
-        let hasNature = scenes.contains { scene in
-            let id = scene.identifier.lowercased()
-            return id.contains("nature") || id.contains("landscape") || id.contains("mountain") ||
-                   id.contains("beach") || id.contains("forest") || id.contains("sky")
-        }
-        if isOutdoor && hasNature {
-            return .landscape
-        }
-
-        // Architecture detection
-        let hasArchitecture = scenes.contains { scene in
-            let id = scene.identifier.lowercased()
-            return id.contains("architecture") || id.contains("building") || id.contains("city")
-        }
-        if hasArchitecture {
-            return .architecture
-        }
-
-        // Animal/Wildlife detection
-        let hasAnimals = objects.contains { obj in
-            !["person", "face", "document"].contains(obj.identifier.lowercased())
-        }
-        if hasAnimals && objects.count <= 3 {
-            return .wildlife
-        }
-
-        // Fallback food detection when text coverage is high (e.g., menus with plated food)
-        if classificationSuggestsFood || sceneSuggestsFood {
-            return .food
-        }
-
-        return .general
-    }
-
-    private func calculateTextCoverage(_ text: [RecognizedText]) -> Double {
-        guard !text.isEmpty else { return 0.0 }
-
-        let total = text.reduce(0.0) { partial, observation in
-            let rect = observation.boundingBox.standardized
-            let width = max(0.0, min(rect.width, 1.0))
-            let height = max(0.0, min(rect.height, 1.0))
-            return partial + Double(width * height)
-        }
-
-        return min(1.0, total)
-    }
-
-    /// Generate narrative tailored to image purpose
-    private func generatePurposeSpecificNarrative(
-        purpose: ImagePurpose,
-        classifications: [ClassificationResult],
-        objects: [DetectedObject],
-        scenes: [SceneClassification],
-        text: [RecognizedText],
-        colors: [DominantColor],
-        saliency: SaliencyAnalysis?,
-        landmarks: [DetectedLandmark],
-        recognizedPeople: [RecognizedPerson]
-    ) -> String {
-        switch purpose {
-        case .portrait:
-            return generatePortraitNarrative(
-                objects: objects,
-                colors: colors,
-                saliency: saliency,
-                recognizedPeople: recognizedPeople,
-                classifications: classifications
-            )
-        case .groupPhoto:
-            return generateGroupPhotoNarrative(objects: objects, colors: colors)
-        case .landscape:
-            return generateLandscapeNarrative(scenes: scenes, colors: colors, saliency: saliency)
-        case .architecture:
-            return generateArchitectureNarrative(scenes: scenes, saliency: saliency)
-        case .wildlife:
-            return generateWildlifeNarrative(objects: objects, scenes: scenes, colors: colors)
-        case .food:
-            return generateFoodNarrative(colors: colors, saliency: saliency)
-        case .productPhoto:
-            return generateProductNarrative(objects: objects, saliency: saliency)
-        case .document:
-            return generateDocumentNarrative(text: text)
-        case .screenshot:
-            return generateScreenshotNarrative(text: text)
-        case .general:
-            return generateGeneralNarrative(classifications: classifications, objects: objects, colors: colors)
-        }
-    }
-
-    private func generatePortraitNarrative(
-        objects: [DetectedObject],
-        colors: [DominantColor],
-        saliency: SaliencyAnalysis?,
-        recognizedPeople: [RecognizedPerson],
-        classifications: [ClassificationResult]
-    ) -> String {
-        var narrative: String
-
-        if let person = recognizedPeople.first {
-            narrative = "Portrait of \(person.name)"
-        } else if let firstClassification = classifications.first {
-            let cleaned = firstClassification.identifier
-                .replacingOccurrences(of: "_", with: " ")
-                .replacingOccurrences(of: "-", with: " ")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-
-            narrative = "Portrait photograph featuring \(cleaned.lowercased())"
-        } else {
-            narrative = "Professional portrait photograph"
-        }
-
-        // Composition analysis
-        if let balance = saliency?.visualBalance {
-            if balance.score > 0.7 {
-                narrative += " with excellent composition following the rule of thirds"
-            } else if balance.score > 0.5 {
-                narrative += " with balanced framing"
-            }
-        }
-
-        // Lighting analysis from colors
-        if let dominantColor = colors.first {
-            let rgb = dominantColor.color.usingColorSpace(.deviceRGB) ?? dominantColor.color
-            let brightness = rgb.brightnessComponent
-
-            if brightness > 0.7 {
-                narrative += ". Bright, high-key lighting creates an airy, professional atmosphere"
-            } else if brightness < 0.3 {
-                narrative += ". Low-key lighting with dramatic shadows adds depth and mood"
-            } else {
-                narrative += ". Natural, balanced lighting enhances facial features"
-            }
-        }
-
-        if let person = recognizedPeople.first {
-            narrative += ". Subject positioning and presentation emphasize \(person.name.split(separator: " ").last ?? Substring(person.name))'s presence"
-        } else {
-            narrative += ". Subject positioned for optimal visual impact and professional presentation"
-        }
-
-        narrative += "."
-        return narrative
-    }
-
-    private func generateGroupPhotoNarrative(objects: [DetectedObject], colors: [DominantColor]) -> String {
-        let peopleCount = max(
-            objects.filter { $0.identifier == "face" }.count,
-            objects.filter { $0.identifier == "person" }.count
-        )
-
-        return "Group photograph capturing \(peopleCount) people in a candid moment. The composition balances multiple subjects while maintaining visual interest. Ideal for memories and social sharing."
-    }
-
-    private func generateLandscapeNarrative(scenes: [SceneClassification], colors: [DominantColor], saliency: SaliencyAnalysis?) -> String {
-        var narrative = ""
-
-        // Determine landscape type
-        let sceneTypes = scenes.map { $0.identifier.lowercased() }
-        if sceneTypes.contains(where: { $0.contains("mountain") }) {
-            narrative = "Expansive mountain landscape"
-        } else if sceneTypes.contains(where: { $0.contains("beach") || $0.contains("ocean") }) {
-            narrative = "Coastal seascape"
-        } else if sceneTypes.contains(where: { $0.contains("forest") || $0.contains("tree") }) {
-            narrative = "Natural forest scene"
-        } else {
-            narrative = "Outdoor landscape photograph"
-        }
-
-        // Lighting conditions from colors
-        if let dominantColor = colors.first {
-            let rgb = dominantColor.color.usingColorSpace(.deviceRGB) ?? dominantColor.color
-            let hue = rgb.hueComponent * 360.0
-            let saturation = rgb.saturationComponent
-
-            if hue >= 20 && hue <= 60 && saturation > 0.4 {
-                narrative += " captured during golden hour, with warm, soft light enhancing natural tones"
-            } else if saturation < 0.2 {
-                narrative += " with muted tones suggesting overcast conditions or intentional desaturation"
-            } else {
-                narrative += " showcasing vibrant natural colors"
-            }
-        }
-
-        // Composition
-        if let balance = saliency?.visualBalance, balance.score > 0.6 {
-            narrative += ". Strong compositional elements guide the viewer's eye through the scene"
-        }
-
-        narrative += ". Perfect for printing or desktop wallpaper."
-        return narrative
-    }
-
-    private func generateArchitectureNarrative(scenes: [SceneClassification], saliency: SaliencyAnalysis?) -> String {
-        var narrative = "Architectural photograph"
-
-        if scenes.contains(where: { $0.identifier.lowercased().contains("urban") }) {
-            narrative += " capturing urban design and structural details"
-        } else {
-            narrative += " showcasing building design and geometric patterns"
-        }
-
-        if let balance = saliency?.visualBalance, balance.score > 0.7 {
-            narrative += ". Precise framing and symmetry create visual harmony"
-        }
-
-        narrative += ". Strong lines and perspective demonstrate architectural photography techniques."
-        return narrative
-    }
-
-    private func generateWildlifeNarrative(objects: [DetectedObject], scenes: [SceneClassification], colors: [DominantColor]) -> String {
-        guard let subject = objects.first(where: { !["person", "face", "document"].contains($0.identifier.lowercased()) }) else {
-            return "Wildlife photograph capturing natural animal behavior in its habitat."
-        }
-
-        let subjectName = subject.identifier.replacingOccurrences(of: "_", with: " ").capitalized
-        var narrative = "\(subjectName) captured in natural environment"
-
-        // Habitat context
-        let isOutdoor = scenes.contains { $0.identifier.lowercased().contains("outdoor") }
-        if isOutdoor {
-            narrative += ", showcasing authentic wildlife behavior and habitat"
-        }
-
-        // Focus quality
-        if subject.confidence > 0.8 {
-            narrative += ". Sharp focus on the subject demonstrates skilled wildlife photography technique"
-        }
-
-        narrative += ". Ideal for nature enthusiasts and educational purposes."
-        return narrative
-    }
-
-    private func generateFoodNarrative(colors: [DominantColor], saliency: SaliencyAnalysis?) -> String {
-        var narrative = "Food photography"
-
-        // Color analysis for appetite appeal
-        if let dominantColor = colors.first {
-            let rgb = dominantColor.color.usingColorSpace(.deviceRGB) ?? dominantColor.color
-            let saturation = rgb.saturationComponent
-
-            if saturation > 0.5 {
-                narrative += " with vibrant colors enhancing visual appeal and appetite"
-            } else {
-                narrative += " styled with natural, subdued tones"
-            }
-        }
-
-        if let balance = saliency?.visualBalance, balance.score > 0.7 {
-            narrative += ". Professional composition and plating create restaurant-quality presentation"
-        } else {
-            narrative += " capturing the dish in casual, authentic style"
-        }
-
-        narrative += ". Perfect for menus, social media, or culinary documentation."
-        return narrative
-    }
-
-    private func generateProductNarrative(objects: [DetectedObject], saliency: SaliencyAnalysis?) -> String {
-        var narrative = "Product photography with commercial-quality presentation"
-
-        if let balance = saliency?.visualBalance, balance.score > 0.7 {
-            narrative += ". Professional framing isolates the product as the clear focal point"
-        }
-
-        narrative += ". Clean composition suitable for e-commerce, catalogs, or marketing materials."
-        return narrative
-    }
-
-    private func generateDocumentNarrative(text: [RecognizedText]) -> String {
-        let textCount = text.count
-        let hasLongText = text.contains { $0.text.count > 20 }
-
-        if hasLongText {
-            return "Document scan or photograph containing \(textCount) text elements. High text density suggests formal document, article, or printed material. Text is clearly readable and suitable for archival or OCR extraction."
-        } else {
-            return "Document with \(textCount) text blocks. Clear text visibility makes this suitable for digital archival and text recognition processing."
-        }
-    }
-
-    private func generateScreenshotNarrative(text: [RecognizedText]) -> String {
-        let hasMenuText = text.contains {
-            $0.text.contains("File") || $0.text.contains("Edit") || $0.text.contains("View")
-        }
-
-        if hasMenuText {
-            return "Application screenshot capturing user interface elements and menus. Clear UI visibility makes this ideal for tutorials, documentation, or technical support materials. Text is highly readable for annotation or reference."
-        } else {
-            return "Screen capture containing \(text.count) text elements. High contrast and sharp text rendering ensure excellent readability for documentation, presentations, or technical guides."
-        }
-    }
-
-    private func generateGeneralNarrative(classifications: [ClassificationResult], objects: [DetectedObject], colors: [DominantColor]) -> String {
-        var narrative = "Photograph"
-
-        if let primary = classifications.first {
-            narrative += " featuring \(primary.identifier.replacingOccurrences(of: "_", with: " ").lowercased())"
-        }
-
-        if !objects.isEmpty {
-            let objectNames = objects.prefix(2).map { $0.identifier.replacingOccurrences(of: "_", with: " ") }
-            narrative += " with \(objectNames.joined(separator: " and "))"
-        }
-
-        if let dominantColor = colors.first {
-            let rgb = dominantColor.color.usingColorSpace(.deviceRGB) ?? dominantColor.color
-            let saturation = rgb.saturationComponent
-
-            if saturation > 0.6 {
-                narrative += ". Vibrant color palette creates visual energy"
-            } else if saturation < 0.2 {
-                narrative += ". Muted tones create subtle, understated aesthetic"
-            }
-        }
-
-        narrative += "."
-        return narrative
-    }
-
-    // MARK: - Enhanced Insights Generation
-    
-    private func generateAdvancedInsights(
-        classifications: [ClassificationResult],
-        objects: [DetectedObject],
-        scenes: [SceneClassification],
-        text: [RecognizedText],
-        colors: [DominantColor],
-        quality: ImageQualityAssessment,
-        saliency: SaliencyAnalysis?,
-        recognizedPeople: [RecognizedPerson]
-    ) -> [ActionableInsight] {
-        var insights: [ActionableInsight] = []
-        
-        // Compositional insights from saliency
-        if let saliency = saliency, !saliency.croppingSuggestions.isEmpty {
-            insights.append(ActionableInsight(
-                type: .cropImage,
-                title: "Composition Suggestion",
-                description: "Improve framing by focusing on the main subject. \(saliency.visualBalance.feedback)",
-                actionText: "View Crop Suggestions",
-                confidence: saliency.croppingSuggestions.first!.confidence,
-                metadata: ["balance": "\(saliency.visualBalance.score)"]
-            ))
-        }
-        
-        // Quality-based insights
-        for issue in quality.issues {
-            switch issue.kind {
-            case .softFocus:
-                insights.append(ActionableInsight(
-                    type: .enhanceQuality,
-                    title: "Sharpness Enhancement",
-                    description: issue.detail,
-                    actionText: "Enhance Sharpness",
-                    confidence: 0.9,
-                    metadata: ["issue": "sharpness"]
-                ))
-            case .underexposed, .overexposed:
-                insights.append(ActionableInsight(
-                    type: .enhanceQuality,
-                    title: "Exposure Adjustment",
-                    description: issue.detail,
-                    actionText: "Adjust Exposure",
-                    confidence: 0.85,
-                    metadata: ["issue": "exposure"]
-                ))
-            case .lowResolution:
-                insights.append(ActionableInsight(
-                    type: .enhanceQuality,
-                    title: "Resolution Notice",
-                    description: issue.detail,
-                    actionText: "Learn More",
-                    confidence: 1.0,
-                    metadata: ["issue": "resolution"]
-                ))
-            }
-        }
-        
-        // Text extraction insight
-        if text.count >= 3 {
-            insights.append(ActionableInsight(
-                type: .copyText,
-                title: "Text Content Detected",
-                description: "Found \(text.count) text elements. Extract for editing or copying.",
-                actionText: "Extract All Text",
-                confidence: 0.95,
-                metadata: ["textCount": "\(text.count)"]
-            ))
-        }
-        
-        // Portrait insight
-        if objects.contains(where: { $0.identifier == "face" || $0.identifier == "person" }) {
-            let description: String
-            if let person = recognizedPeople.first {
-                description = "Potentially depicts \(person.name). Confirm and tag to keep your library organised."
-            } else {
-                description = "This appears to be a portrait or group photo"
-            }
-
-            var metadata: [String: String] = ["type": "portrait"]
-            if let name = recognizedPeople.first?.name {
-                metadata["recognized"] = name
-            }
-
-            insights.append(ActionableInsight(
-                type: .tagFaces,
-                title: "People Detected",
-                description: description,
-                actionText: "Tag People",
-                confidence: max(0.85, recognizedPeople.first?.confidence ?? 0.85),
-                metadata: metadata
-            ))
-        }
-        
-        return Array(insights.prefix(5))
-    }
-
-    // MARK: - Hierarchical Smart Tags
-
-    private func generateHierarchicalSmartTags(
-        from classifications: [ClassificationResult],
-        objects: [DetectedObject],
-        scenes: [SceneClassification],
-        text: [RecognizedText],
-        colors: [DominantColor],
-        landmarks: [DetectedLandmark],
-        recognizedPeople: [RecognizedPerson]
-    ) -> [SmartTag] {
-        var tags: [SmartTag] = []
-
-        // Detect image purpose for semantic tagging
-        let purpose = detectImagePurpose(
-            classifications: classifications,
-            objects: objects,
-            scenes: scenes,
-            text: text,
-            saliency: nil
-        )
-
-        // WHAT: Content-based tags (what's in the image)
-        tags.append(contentsOf: generateContentTags(
-            classifications: classifications,
-            objects: objects,
-            purpose: purpose
-        ))
-
-        // WHERE: Location/Setting tags
-        tags.append(contentsOf: generateLocationTags(
-            scenes: scenes,
-            purpose: purpose
-        ))
-
-        // WHEN: Time/Lighting tags
-        tags.append(contentsOf: generateTimeTags(
-            colors: colors,
-            scenes: scenes
-        ))
-
-        // WHO: People tags
-        tags.append(contentsOf: generatePeopleTags(
-            objects: objects,
-            recognizedPeople: recognizedPeople
-        ))
-
-        // STYLE: Aesthetic and color tags
-        tags.append(contentsOf: generateStyleTags(
-            colors: colors,
-            purpose: purpose
-        ))
-
-        // USE CASE: Purpose-based searchable tags
-        tags.append(contentsOf: generateUseCaseTags(
-            purpose: purpose,
-            objects: objects
-        ))
-
-        // Remove duplicates and limit to top tags
-        var uniqueTags: [SmartTag] = []
-        var seenNames = Set<String>()
-
-        for tag in tags {
-            if !seenNames.contains(tag.name.lowercased()) {
-                uniqueTags.append(tag)
-                seenNames.insert(tag.name.lowercased())
-            }
-        }
-
-        return Array(uniqueTags.sorted { $0.confidence > $1.confidence }.prefix(12))
-    }
-
-    /// Generate semantic content tags (WHAT)
-    private func generateContentTags(
-        classifications: [ClassificationResult],
-        objects: [DetectedObject],
-        purpose: ImagePurpose
-    ) -> [SmartTag] {
-        var tags: [SmartTag] = []
-
-        // Purpose-specific primary tags
-        switch purpose {
-        case .portrait:
-            tags.append(SmartTag(name: "Portrait Photography", category: .content, confidence: 0.95, isAutoGenerated: true))
-        case .groupPhoto:
-            tags.append(SmartTag(name: "Group Photo", category: .content, confidence: 0.95, isAutoGenerated: true))
-        case .landscape:
-            tags.append(SmartTag(name: "Landscape Photography", category: .content, confidence: 0.95, isAutoGenerated: true))
-        case .architecture:
-            tags.append(SmartTag(name: "Architecture", category: .content, confidence: 0.95, isAutoGenerated: true))
-        case .wildlife:
-            tags.append(SmartTag(name: "Wildlife Photography", category: .content, confidence: 0.95, isAutoGenerated: true))
-        case .food:
-            tags.append(SmartTag(name: "Food Photography", category: .content, confidence: 0.95, isAutoGenerated: true))
-        case .productPhoto:
-            tags.append(SmartTag(name: "Product Photography", category: .content, confidence: 0.95, isAutoGenerated: true))
-        case .document:
-            tags.append(SmartTag(name: "Document Scan", category: .content, confidence: 0.95, isAutoGenerated: true))
-        case .screenshot:
-            tags.append(SmartTag(name: "Screenshot", category: .content, confidence: 0.95, isAutoGenerated: true))
-        case .general:
-            break
-        }
-
-        // Add specific subject tags from objects
-        for object in objects.prefix(3) {
-            let humanReadable = humanReadableObjectName(object.identifier)
-            tags.append(SmartTag(
-                name: humanReadable,
-                category: .content,
-                confidence: Double(object.confidence),
-                isAutoGenerated: true
-            ))
-        }
-
-        return tags
-    }
-
-    /// Generate location/setting tags (WHERE)
-    private func generateLocationTags(
-        scenes: [SceneClassification],
-        purpose: ImagePurpose
-    ) -> [SmartTag] {
-        var tags: [SmartTag] = []
-
-        // Detect indoor/outdoor
-        let outdoorScenes = scenes.filter { $0.identifier.lowercased().contains("outdoor") }
-        let indoorScenes = scenes.filter { $0.identifier.lowercased().contains("indoor") }
-
-        if !outdoorScenes.isEmpty && outdoorScenes.first!.confidence > 0.5 {
-            tags.append(SmartTag(name: "Outdoor", category: .location, confidence: Double(outdoorScenes.first!.confidence), isAutoGenerated: true))
-        } else if !indoorScenes.isEmpty && indoorScenes.first!.confidence > 0.5 {
-            tags.append(SmartTag(name: "Indoor", category: .location, confidence: Double(indoorScenes.first!.confidence), isAutoGenerated: true))
-        }
-
-        // Specific location types
-        for scene in scenes.prefix(3) {
-            let id = scene.identifier.lowercased()
-            if id.contains("beach") || id.contains("ocean") || id.contains("sea") {
-                tags.append(SmartTag(name: "Beach", category: .location, confidence: Double(scene.confidence), isAutoGenerated: true))
-            } else if id.contains("mountain") || id.contains("hill") {
-                tags.append(SmartTag(name: "Mountain", category: .location, confidence: Double(scene.confidence), isAutoGenerated: true))
-            } else if id.contains("forest") || id.contains("tree") || id.contains("wood") {
-                tags.append(SmartTag(name: "Forest", category: .location, confidence: Double(scene.confidence), isAutoGenerated: true))
-            } else if id.contains("city") || id.contains("urban") || id.contains("street") {
-                tags.append(SmartTag(name: "Urban", category: .location, confidence: Double(scene.confidence), isAutoGenerated: true))
-            } else if id.contains("park") || id.contains("garden") {
-                tags.append(SmartTag(name: "Park", category: .location, confidence: Double(scene.confidence), isAutoGenerated: true))
-            }
-        }
-
-        return tags
-    }
-
-    /// Generate time/lighting tags (WHEN)
-    private func generateTimeTags(
-        colors: [DominantColor],
-        scenes: [SceneClassification]
-    ) -> [SmartTag] {
-        var tags: [SmartTag] = []
-
-        guard let dominantColor = colors.first else { return tags }
-
-        let rgb = dominantColor.color.usingColorSpace(.deviceRGB) ?? dominantColor.color
-        let hue = rgb.hueComponent * 360.0
-        let saturation = rgb.saturationComponent
-        let brightness = rgb.brightnessComponent
-
-        // Golden hour detection (warm hues)
-        if hue >= 20 && hue <= 60 && saturation > 0.4 && brightness > 0.4 {
-            tags.append(SmartTag(name: "Golden Hour", category: .time, confidence: 0.85, isAutoGenerated: true))
-            tags.append(SmartTag(name: "Sunset", category: .time, confidence: 0.75, isAutoGenerated: true))
-        }
-
-        // Blue hour detection (cool blue tones)
-        if hue >= 200 && hue <= 250 && saturation > 0.3 {
-            tags.append(SmartTag(name: "Blue Hour", category: .time, confidence: 0.80, isAutoGenerated: true))
-        }
-
-        // Night/low light detection
-        if brightness < 0.25 {
-            tags.append(SmartTag(name: "Night Photography", category: .time, confidence: 0.85, isAutoGenerated: true))
-        } else if brightness > 0.75 {
-            tags.append(SmartTag(name: "Bright Daylight", category: .time, confidence: 0.80, isAutoGenerated: true))
-        }
-
-        // Scene-based time detection
-        for scene in scenes {
-            let id = scene.identifier.lowercased()
-            if id.contains("sunset") {
-                tags.append(SmartTag(name: "Sunset", category: .time, confidence: Double(scene.confidence), isAutoGenerated: true))
-            } else if id.contains("sunrise") {
-                tags.append(SmartTag(name: "Sunrise", category: .time, confidence: Double(scene.confidence), isAutoGenerated: true))
-            } else if id.contains("night") {
-                tags.append(SmartTag(name: "Night", category: .time, confidence: Double(scene.confidence), isAutoGenerated: true))
-            }
-        }
-
-        return tags
-    }
-
-    /// Generate people-related tags (WHO)
-    private func generatePeopleTags(objects: [DetectedObject], recognizedPeople: [RecognizedPerson]) -> [SmartTag] {
-        var tags: [SmartTag] = []
-
-        let faceCount = objects.filter { $0.identifier == "face" }.count
-        let peopleCount = objects.filter { $0.identifier == "person" }.count
-        let totalPeople = max(faceCount, peopleCount)
-
-        if totalPeople == 1 {
-            tags.append(SmartTag(name: "Single Person", category: .people, confidence: 0.95, isAutoGenerated: true))
-            if faceCount > 0 {
-                tags.append(SmartTag(name: "Headshot", category: .people, confidence: 0.90, isAutoGenerated: true))
-            }
-        } else if totalPeople == 2 {
-            tags.append(SmartTag(name: "Couple", category: .people, confidence: 0.90, isAutoGenerated: true))
-        } else if totalPeople >= 3 {
-            tags.append(SmartTag(name: "Group", category: .people, confidence: 0.95, isAutoGenerated: true))
-            if totalPeople >= 5 {
-                tags.append(SmartTag(name: "Large Group", category: .people, confidence: 0.90, isAutoGenerated: true))
-            }
-        }
-
-        if let person = recognizedPeople.first {
-            tags.append(
-                SmartTag(
-                    name: person.name,
-                    category: .people,
-                    confidence: person.confidence,
-                    isAutoGenerated: true
-                )
-            )
-        }
-
-        return tags
-    }
-
-    /// Generate style and aesthetic tags (STYLE)
-    private func generateStyleTags(
-        colors: [DominantColor],
-        purpose: ImagePurpose
-    ) -> [SmartTag] {
-        var tags: [SmartTag] = []
-
-        guard let dominantColor = colors.first else { return tags }
-
-        let rgb = dominantColor.color.usingColorSpace(.deviceRGB) ?? dominantColor.color
-        let saturation = rgb.saturationComponent
-        let brightness = rgb.brightnessComponent
-
-        // Color vibrancy
-        if saturation > 0.6 {
-            tags.append(SmartTag(name: "Vibrant Colors", category: .style, confidence: 0.85, isAutoGenerated: true))
-        } else if saturation < 0.2 {
-            tags.append(SmartTag(name: "Muted Tones", category: .style, confidence: 0.85, isAutoGenerated: true))
-            if brightness > 0.6 {
-                tags.append(SmartTag(name: "Minimal", category: .style, confidence: 0.75, isAutoGenerated: true))
-            }
-        }
-
-        // Lighting style
-        if brightness > 0.7 && saturation < 0.3 {
-            tags.append(SmartTag(name: "High Key", category: .style, confidence: 0.80, isAutoGenerated: true))
-        } else if brightness < 0.3 {
-            tags.append(SmartTag(name: "Low Key", category: .style, confidence: 0.80, isAutoGenerated: true))
-            tags.append(SmartTag(name: "Dramatic", category: .style, confidence: 0.75, isAutoGenerated: true))
-        }
-
-        // Monochrome detection
-        if saturation < 0.15 {
-            tags.append(SmartTag(name: "Black & White", category: .style, confidence: 0.90, isAutoGenerated: true))
-        }
-
-        // Add dominant color name
-        if let colorName = dominantColor.name {
-            tags.append(SmartTag(name: colorName, category: .style, confidence: 0.80, isAutoGenerated: true))
-        }
-
-        return tags
-    }
-
-    /// Generate use-case tags for organization (USE CASE)
-    private func generateUseCaseTags(
-        purpose: ImagePurpose,
-        objects: [DetectedObject]
-    ) -> [SmartTag] {
-        var tags: [SmartTag] = []
-
-        switch purpose {
-        case .portrait:
-            tags.append(SmartTag(name: "Professional Use", category: .event, confidence: 0.85, isAutoGenerated: true))
-            tags.append(SmartTag(name: "Social Media Ready", category: .event, confidence: 0.90, isAutoGenerated: true))
-            tags.append(SmartTag(name: "LinkedIn Profile", category: .event, confidence: 0.80, isAutoGenerated: true))
-
-        case .landscape:
-            tags.append(SmartTag(name: "Wallpaper Quality", category: .event, confidence: 0.85, isAutoGenerated: true))
-            tags.append(SmartTag(name: "Print Suitable", category: .event, confidence: 0.80, isAutoGenerated: true))
-
-        case .food:
-            tags.append(SmartTag(name: "Instagram Ready", category: .event, confidence: 0.90, isAutoGenerated: true))
-            tags.append(SmartTag(name: "Menu Photography", category: .event, confidence: 0.85, isAutoGenerated: true))
-
-        case .productPhoto:
-            tags.append(SmartTag(name: "E-commerce Ready", category: .event, confidence: 0.90, isAutoGenerated: true))
-            tags.append(SmartTag(name: "Commercial Use", category: .event, confidence: 0.85, isAutoGenerated: true))
-
-        case .document, .screenshot:
-            tags.append(SmartTag(name: "Reference Material", category: .event, confidence: 0.90, isAutoGenerated: true))
-            tags.append(SmartTag(name: "Documentation", category: .event, confidence: 0.85, isAutoGenerated: true))
-
-        case .groupPhoto:
-            tags.append(SmartTag(name: "Social Event", category: .event, confidence: 0.85, isAutoGenerated: true))
-            tags.append(SmartTag(name: "Memories", category: .event, confidence: 0.90, isAutoGenerated: true))
-
-        default:
-            break
-        }
-
-        return tags
-    }
-
-    /// Convert technical object identifiers to human-readable names
-    private func humanReadableObjectName(_ identifier: String) -> String {
-        let specialCases: [String: String] = [
-            "dog": "Dog",
-            "cat": "Cat",
-            "person": "Person",
-            "face": "Face",
-            "bird": "Bird",
-            "car": "Vehicle",
-            "automobile": "Car",
-            "building": "Building",
-            "tree": "Tree",
-            "flower": "Flowers"
-        ]
-
-        if let readable = specialCases[identifier.lowercased()] {
-            return readable
-        }
-
-        // Convert snake_case or camelCase to Title Case
-        return identifier
-            .replacingOccurrences(of: "_", with: " ")
-            .split(separator: " ")
-            .map { $0.capitalized }
-            .joined(separator: " ")
-    }
-
-    private func derivePrimarySubjectWithContext(
-        classifications: [ClassificationResult],
-        objects: [DetectedObject],
-        saliency: SaliencyAnalysis?,
-        recognizedPeople: [RecognizedPerson]
-    ) -> PrimarySubject? {
-        // Prioritize people/faces
-        if let person = objects.first(where: { $0.identifier == "person" || $0.identifier == "face" }) {
-            if let detectedPerson = recognizedPeople.first {
-                return PrimarySubject(
-                    label: detectedPerson.name,
-                    confidence: max(Double(person.confidence), detectedPerson.confidence),
-                    source: .face,
-                    detail: "Likely depicts \(detectedPerson.name)"
-                )
-            }
-
-            return PrimarySubject(
-                label: person.identifier == "face" ? "Portrait" : "People",
-                confidence: Double(person.confidence),
-                source: .face,
-                detail: "Human subject detected with high confidence"
-            )
-        }
-        
-        if let detectedPerson = recognizedPeople.first {
-            return PrimarySubject(
-                label: detectedPerson.name,
-                confidence: detectedPerson.confidence,
-                source: .classification,
-                detail: "Name inferred from classification results"
-            )
-        }
-
-        // Use animal detection
-        if let animal = objects.first(where: { $0.identifier != "person" && $0.identifier != "face" && $0.identifier != "document" }) {
-            return PrimarySubject(
-                label: animal.identifier.capitalized,
-                confidence: Double(animal.confidence),
-                source: .object,
-                detail: "Animal or object subject detected"
-            )
-        }
-        
-        // Fallback to classification
-        if let first = classifications.first {
-            return PrimarySubject(
-                label: first.identifier.capitalized,
-                confidence: Double(first.confidence),
-                source: .classification,
-                detail: "Primary classification"
-            )
-        }
-        
-        return nil
-    }
 
     private func updateProgress(_ progress: Double) {
         Task { @MainActor in
@@ -2458,6 +1214,91 @@ final class AIImageAnalysisService: ObservableObject {
         )
     }
 
+    // MARK: - Enhanced Vision Analysis
+    
+    /// Perform enhanced Vision analysis with graceful error handling
+    private func performEnhancedVisionAnalysis(_ cgImage: CGImage) async -> EnhancedVisionResult? {
+        do {
+            let result = try await enhancedVisionAnalyzer.performEnhancedAnalysis(cgImage)
+            
+            #if DEBUG
+            if result.hasEnhancedData {
+                Logger.debug("Enhanced Vision analysis successful:", context: "AIAnalysis")
+                if let animals = result.animals {
+                    Logger.debug("Animals: \(animals.map { $0.displayName }.joined(separator: ", "))", context: "AIAnalysis")
+                }
+                if let activity = result.bodyPose?.detectedActivity {
+                    Logger.debug("Activity: \(activity)", context: "AIAnalysis")
+                }
+            }
+            #endif
+            
+            return result
+        } catch {
+            // Graceful degradation: log error but don't fail the entire analysis
+            Logger.error("Enhanced Vision analysis failed: \(error.localizedDescription)", context: "AIAnalysis")
+            return nil
+        }
+    }
+    
+    /// Check if enhanced Vision analysis should be performed based on multiple factors
+    /// - Parameters:
+    ///   - imageWidth: Width of the image in pixels
+    ///   - imageHeight: Height of the image in pixels
+    /// - Returns: True if enhanced analysis should be performed
+    private func shouldPerformEnhancedVisionAnalysis(imageWidth: Int? = nil, imageHeight: Int? = nil) -> Bool {
+        // Check thermal state first (most important)
+        let thermalState = ProcessInfo.processInfo.thermalState
+
+        switch thermalState {
+        case .nominal:
+            break  // Continue with other checks
+        case .fair:
+            break  // Still perform but continue checking
+        case .serious:
+            #if DEBUG
+            Logger.warning("Skipping enhanced Vision analysis due to serious thermal state", context: "AIAnalysis")
+            #endif
+            return false
+        case .critical:
+            #if DEBUG
+            Logger.warning("Skipping enhanced Vision analysis due to critical thermal state", context: "AIAnalysis")
+            #endif
+            return false
+        @unknown default:
+            break
+        }
+
+        // Skip for very small images (< 500px on shortest side)
+        // These are typically thumbnails or icons where enhanced analysis adds little value
+        if let width = imageWidth, let height = imageHeight {
+            let minDimension = min(width, height)
+            if minDimension < 500 {
+                #if DEBUG
+                Logger.info("Skipping enhanced Vision analysis for small image (\(width)x\(height))", context: "AIAnalysis")
+                #endif
+                return false
+            }
+        }
+
+        // Check memory pressure
+        // Note: This is a basic check - could be enhanced with actual memory monitoring
+        let processInfo = ProcessInfo.processInfo
+        let physicalMemory = processInfo.physicalMemory
+        let activeProcessorCount = processInfo.activeProcessorCount
+
+        // Skip if system appears resource constrained
+        // (less than 4GB RAM or single core - unlikely but good guard)
+        if physicalMemory < 4_000_000_000 || activeProcessorCount < 2 {
+            #if DEBUG
+            Logger.info("Skipping enhanced Vision analysis due to limited system resources", context: "AIAnalysis")
+            #endif
+            return false
+        }
+
+        return true
+    }
+
     // MARK: - Memory Management
 
     private func setupMemoryWarningObserver() {
@@ -2473,9 +1314,98 @@ final class AIImageAnalysisService: ObservableObject {
         Task { @MainActor in
             // Clear analysis cache
             clearCache()
-            // Clear CoreML model cache
-            modelManager.clearCache()
-            print("AIImageAnalysisService: Cleared caches due to memory warning")
+            // Clear CoreML model cache (disabled - CoreMLModelManager not implemented yet)
+            // modelManager.clearCache()
+            Logger.info("Cleared caches due to memory warning", context: "AIAnalysis")
+        }
+    }
+}
+
+// MARK: - LRU Cache
+
+/// Thread-safe LRU (Least Recently Used) cache implementation
+/// Evicts least recently accessed entries when capacity is reached
+final class LRUCache<Key: Hashable, Value> {
+
+    private class CacheEntry {
+        let key: Key
+        var value: Value
+        var accessTime: Date
+
+        init(key: Key, value: Value) {
+            self.key = key
+            self.value = value
+            self.accessTime = Date()
+        }
+
+        func touch() {
+            accessTime = Date()
+        }
+    }
+
+    private var storage: [Key: CacheEntry] = [:]
+    private let capacity: Int
+    private let lock = NSLock()
+
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage.count
+    }
+
+    init(capacity: Int) {
+        precondition(capacity > 0, "LRUCache capacity must be positive")
+        self.capacity = capacity
+    }
+
+    func get(_ key: Key) -> Value? {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard let entry = storage[key] else {
+            return nil
+        }
+
+        entry.touch()
+        return entry.value
+    }
+
+    func set(_ key: Key, value: Value) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let existingEntry = storage[key] {
+            existingEntry.value = value
+            existingEntry.touch()
+            return
+        }
+
+        if storage.count >= capacity {
+            evictLRU()
+        }
+
+        storage[key] = CacheEntry(key: key, value: value)
+    }
+
+    func clear() {
+        lock.lock()
+        defer { lock.unlock() }
+        storage.removeAll()
+    }
+
+    private func evictLRU() {
+        guard !storage.isEmpty else { return }
+
+        var oldestKey: Key?
+        var oldestTime = Date.distantFuture
+
+        for (key, entry) in storage where entry.accessTime < oldestTime {
+            oldestTime = entry.accessTime
+            oldestKey = key
+        }
+
+        if let keyToRemove = oldestKey {
+            storage.removeValue(forKey: keyToRemove)
         }
     }
 }
@@ -2504,19 +1434,21 @@ struct ImageAnalysisResult: Equatable {
     let colors: [DominantColor]
     let quality: ImageQuality
     let qualityAssessment: ImageQualityAssessment
-    let primarySubject: PrimarySubject?
+    let primarySubject: PrimarySubject?  // Kept for backward compatibility
+    let primarySubjects: [PrimarySubject]  // New field for multiple subjects
     let suggestions: [EnhancementSuggestion]
     let duplicateAnalysis: DuplicateAnalysis?
     let saliencyAnalysis: SaliencyAnalysis?
     let faceQualityAssessment: FaceQualityAssessment?
-    let actionableInsights: [ActionableInsight]
     let smartTags: [SmartTag]
     let narrative: String?
+    let caption: ImageCaption?  // New field for detailed captions
     let landmarks: [DetectedLandmark]
     let barcodes: [DetectedBarcode]
     let horizon: HorizonDetection?
     let recognizedPeople: [RecognizedPerson]
     let visionKitResult: VisionKitAnalysisResult?
+    let enhancedVisionResult: EnhancedVisionResult?  // New field for enhanced Vision analysis
 
     init(
         classifications: [ClassificationResult],
@@ -2527,18 +1459,20 @@ struct ImageAnalysisResult: Equatable {
         quality: ImageQuality,
         qualityAssessment: ImageQualityAssessment,
         primarySubject: PrimarySubject?,
+        primarySubjects: [PrimarySubject] = [],
         suggestions: [EnhancementSuggestion],
         duplicateAnalysis: DuplicateAnalysis?,
         saliencyAnalysis: SaliencyAnalysis?,
         faceQualityAssessment: FaceQualityAssessment?,
-        actionableInsights: [ActionableInsight],
         smartTags: [SmartTag],
         narrative: String? = nil,
+        caption: ImageCaption? = nil,
         landmarks: [DetectedLandmark] = [],
         barcodes: [DetectedBarcode] = [],
         horizon: HorizonDetection? = nil,
         recognizedPeople: [RecognizedPerson] = [],
-        visionKitResult: VisionKitAnalysisResult? = nil
+        visionKitResult: VisionKitAnalysisResult? = nil,
+        enhancedVisionResult: EnhancedVisionResult? = nil
     ) {
         self.classifications = classifications
         self.objects = objects
@@ -2548,18 +1482,20 @@ struct ImageAnalysisResult: Equatable {
         self.quality = quality
         self.qualityAssessment = qualityAssessment
         self.primarySubject = primarySubject
+        self.primarySubjects = primarySubjects
         self.suggestions = suggestions
         self.duplicateAnalysis = duplicateAnalysis
         self.saliencyAnalysis = saliencyAnalysis
         self.faceQualityAssessment = faceQualityAssessment
-        self.actionableInsights = actionableInsights
         self.smartTags = smartTags
         self.narrative = narrative
+        self.caption = caption
         self.landmarks = landmarks
         self.barcodes = barcodes
         self.horizon = horizon
         self.recognizedPeople = recognizedPeople
         self.visionKitResult = visionKitResult
+        self.enhancedVisionResult = enhancedVisionResult
     }
     
     static func == (lhs: ImageAnalysisResult, rhs: ImageAnalysisResult) -> Bool {
@@ -2570,6 +1506,91 @@ struct ImageAnalysisResult: Equatable {
                lhs.colors == rhs.colors &&
                lhs.quality == rhs.quality &&
                lhs.recognizedPeople == rhs.recognizedPeople
+    }
+
+    /// Smart ranked subjects combining detected objects and classifications
+    /// Prioritizes: detected objects > specific classifications > scene classifications
+    var rankedSubjects: [SubjectItem] {
+        var subjects: [SubjectItem] = []
+
+        // Background terms to filter out
+        let backgroundTerms: Set<String> = [
+            "sky", "blue sky", "cloud", "clouds", "horizon",
+            "grass", "lawn", "ground", "field",
+            "wall", "background", "backdrop",
+            "palm tree", "palm", "trees in background",
+            "foliage", "greenery", "shrubbery"
+        ]
+
+        let isBackground: (String) -> Bool = { identifier in
+            let lowerIdentifier = identifier.lowercased()
+            return backgroundTerms.contains(lowerIdentifier) ||
+                   backgroundTerms.contains(where: { lowerIdentifier.contains($0) })
+        }
+
+        // Add detected objects first (people, cars, animals, etc.)
+        for object in objects.prefix(5) {
+            // Skip background objects
+            if isBackground(object.identifier) {
+                continue
+            }
+
+            let label = object.identifier.replacingOccurrences(of: "_", with: " ").capitalized
+            subjects.append(SubjectItem(
+                label: label,
+                confidence: Double(object.confidence),
+                source: .detectedObject,
+                isBackground: false
+            ))
+        }
+
+        // Add non-background classifications
+        for classification in classifications.prefix(10) {
+            let isBg = isBackground(classification.identifier)
+
+            // Skip if already have 5 foreground subjects and this is background
+            if subjects.count >= 5 && isBg {
+                continue
+            }
+
+            let label = classification.identifier.replacingOccurrences(of: "_", with: " ")
+                .capitalized
+            subjects.append(SubjectItem(
+                label: label,
+                confidence: Double(classification.confidence),
+                source: .classification,
+                isBackground: isBg
+            ))
+        }
+
+        // Sort: detected objects > foreground classifications > background (always)
+        return subjects.sorted { (a, b) in
+            // First priority: Detected objects ALWAYS beat classifications
+            if a.source != b.source {
+                return a.source == .detectedObject
+            }
+
+            // Second priority: Foreground always beats background (within same source type)
+            if a.isBackground != b.isBackground {
+                return !a.isBackground
+            }
+
+            // Third priority: Sort by confidence within same source and background status
+            return a.confidence > b.confidence
+        }.prefix(8).map { $0 }
+    }
+}
+
+/// Subject item combining objects and classifications
+struct SubjectItem: Equatable {
+    let label: String
+    let confidence: Double
+    let source: SubjectSource
+    let isBackground: Bool
+
+    enum SubjectSource {
+        case detectedObject
+        case classification
     }
 }
 
@@ -2583,6 +1604,35 @@ struct DetectedObject: Equatable {
     let confidence: Float
     let boundingBox: CGRect
     let description: String
+
+    /// Calculate prominence score based on size, position, and object type
+    /// Returns 0.0-1.0 where 1.0 is most prominent
+    func prominenceScore(imageSize: CGSize) -> Float {
+        // Size factor: larger objects are more prominent (0.0-0.4)
+        let area = boundingBox.width * boundingBox.height
+        let sizeFactor = min(Float(area) * 0.4, 0.4)
+
+        // Center proximity: objects near center are more prominent (0.0-0.3)
+        let centerX = boundingBox.midX
+        let centerY = boundingBox.midY
+        let distanceFromCenter = sqrt(pow(centerX - 0.5, 2) + pow(centerY - 0.5, 2))
+        let centerFactor = Float((1.0 - min(distanceFromCenter * 2.0, 1.0)) * 0.3)
+
+        // Subject type priority: people/faces/animals are more prominent (0.0-0.3)
+        let typeFactor: Float
+        switch identifier.lowercased() {
+        case "person", "face", "human":
+            typeFactor = 0.3
+        case let id where id.contains("dog") || id.contains("cat") || id.contains("animal"):
+            typeFactor = 0.25
+        case let id where id.contains("car") || id.contains("vehicle"):
+            typeFactor = 0.2
+        default:
+            typeFactor = 0.0
+        }
+
+        return sizeFactor + centerFactor + typeFactor
+    }
 }
 
 struct SceneClassification: Equatable {
@@ -2685,6 +1735,15 @@ struct PrimarySubject: Equatable {
     let confidence: Double
     let source: Source
     let detail: String?
+    let boundingBox: CGRect?
+    
+    init(label: String, confidence: Double, source: Source, detail: String?, boundingBox: CGRect? = nil) {
+        self.label = label
+        self.confidence = confidence
+        self.source = source
+        self.detail = detail
+        self.boundingBox = boundingBox
+    }
 }
 
 struct EnhancementSuggestion: Equatable {
@@ -2785,6 +1844,7 @@ struct SmartTag: Equatable {
         case time
         case quality
         case style
+        case useCase
     }
 }
 
@@ -2987,6 +2047,35 @@ struct LiveTextItem: Equatable {
         case address
         case date
         case unknown
+    }
+}
+
+// MARK: - Image Caption Types
+
+struct ImageCaption: Equatable {
+    let shortCaption: String       // Brief 1-sentence caption
+    let detailedCaption: String    // Detailed 2-3 sentence caption
+    let accessibilityCaption: String  // Accessibility-focused caption
+    let technicalCaption: String?  // Technical details caption
+    let confidence: Double
+    let language: String           // Language code (e.g., "en", "es", "fr")
+    let generatedAt: Date
+
+    init(
+        shortCaption: String,
+        detailedCaption: String,
+        accessibilityCaption: String,
+        technicalCaption: String? = nil,
+        confidence: Double = 0.85,
+        language: String = "en"
+    ) {
+        self.shortCaption = shortCaption
+        self.detailedCaption = detailedCaption
+        self.accessibilityCaption = accessibilityCaption
+        self.technicalCaption = technicalCaption
+        self.confidence = confidence
+        self.language = language
+        self.generatedAt = Date()
     }
 }
 

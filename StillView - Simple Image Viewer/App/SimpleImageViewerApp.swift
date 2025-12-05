@@ -20,20 +20,23 @@ struct SimpleImageViewerApp: App {
     @State private var showingHelp = false
     @State private var showingWhatsNew = false
     @State private var hasCompletedInitialLaunch = false
-    
+
     // WhatsNewService for managing version updates and content
     private let whatsNewService: WhatsNewServiceProtocol = WhatsNewService()
-    
+
     // Performance and memory management services
     private let performanceService = PerformanceOptimizationService.shared
     private let memoryService = MemoryManagementService.shared
     private let unifiedErrorService = UnifiedErrorHandlingService.shared
-    
+
     // Preferences coordinator for managing preferences window
     @StateObject private var preferencesCoordinator = PreferencesCoordinator()
-    
+
     // Accessibility service for system-wide accessibility support
     private let accessibilityService = AccessibilityService.shared
+
+    // Feedback service for user feedback submission
+    private let feedbackService: FeedbackServiceProtocol = FeedbackService()
     
     var body: some Scene {
         WindowGroup {
@@ -133,10 +136,15 @@ struct SimpleImageViewerApp: App {
 
                 Divider()
 
-                Button("Reset AI Consent (Debug)") {
-                    resetAIConsentForTesting()
+                Button("Send Feedback via GitHub...") {
+                    feedbackService.openGitHubFeedbackForm()
                 }
-                .keyboardShortcut("r", modifiers: [.command, .option, .shift])
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+
+                Button("Send Feedback via Email...") {
+                    feedbackService.openEmailFeedbackForm()
+                }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
 
                 Divider()
 
@@ -145,6 +153,13 @@ struct SimpleImageViewerApp: App {
                         NSWorkspace.shared.open(url)
                     }
                 }
+
+                Divider()
+
+                Button("Reset AI Consent (Debug)") {
+                    resetAIConsentForTesting()
+                }
+                .keyboardShortcut("r", modifiers: [.command, .option, .shift])
             }
         }
     }

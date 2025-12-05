@@ -475,8 +475,7 @@ extension Notification.Name {
     static let showWhatsNew = Notification.Name("showWhatsNew")
     static let whatsNewDismissed = Notification.Name("whatsNewDismissed")
     static let openPreferences = Notification.Name("openPreferences")
-    static let aiAnalysisPreferenceDidChange = Notification.Name("aiAnalysisPreferenceDidChange")
-    static let imageEnhancementsPreferenceDidChange = Notification.Name("imageEnhancementsPreferenceDidChange")
     static let notificationSystemFailure = Notification.Name("notificationSystemFailure")
     // aiInsightsInitializationComplete is defined in SimpleImageViewerApp.swift
+    // aiAnalysisPreferenceDidChange, imageEnhancementsPreferenceDidChange, and aiCaptionPreferencesDidChange are defined in PreferencesService.swift
 }
