@@ -569,39 +569,90 @@ final class NarrativeGenerator {
         }
     }
 
-    /// Infers time of day from color analysis
+    /// Infers time of day from color analysis using both brightness AND color temperature
+    /// This fixes the issue where time-of-day only used brightness, missing golden hour/sunset
     private func inferTimeOfDay(from colors: [DominantColor]) -> String {
         guard !colors.isEmpty else { return "" }
 
+        // Calculate average brightness
         let avgBrightness = colors.prefix(3).reduce(0.0) { sum, color in
             let rgb = color.color.usingColorSpace(.deviceRGB) ?? color.color
             return sum + rgb.brightnessComponent
         } / CGFloat(min(colors.count, 3))
 
-        // Check for golden hour / sunset colors
-        if let dominant = colors.first {
-            let rgb = dominant.color.usingColorSpace(.deviceRGB) ?? dominant.color
-            let isGolden = rgb.redComponent > 0.6 && rgb.greenComponent > 0.3 && rgb.blueComponent < 0.4
+        // Calculate color temperature indicators across multiple colors
+        var warmColorScore: CGFloat = 0.0
+        var coolColorScore: CGFloat = 0.0
+        var colorCount: CGFloat = 0.0
 
-            if isGolden && avgBrightness > 0.4 {
-                return " during golden hour"
+        for color in colors.prefix(5) {
+            let rgb = color.color.usingColorSpace(.deviceRGB) ?? color.color
+            let percentage = CGFloat(color.percentage)
+
+            // Warm colors: high red, medium-high green, low blue
+            let warmness = (rgb.redComponent + rgb.greenComponent * 0.5 - rgb.blueComponent) * percentage
+            warmColorScore += max(0, warmness)
+
+            // Cool colors: high blue relative to red
+            let coolness = (rgb.blueComponent - rgb.redComponent * 0.5) * percentage
+            coolColorScore += max(0, coolness)
+
+            colorCount += percentage
+        }
+
+        // Normalize scores
+        if colorCount > 0 {
+            warmColorScore /= colorCount
+            coolColorScore /= colorCount
+        }
+
+        // Golden hour: warm colors dominant + medium brightness (0.35-0.65)
+        if warmColorScore > 0.3 && avgBrightness >= 0.35 && avgBrightness <= 0.65 {
+            // Check for specific golden/orange tones
+            if let dominant = colors.first {
+                let rgb = dominant.color.usingColorSpace(.deviceRGB) ?? dominant.color
+                let isGolden = rgb.redComponent > 0.5 && rgb.greenComponent > 0.25 && rgb.blueComponent < 0.45
+                if isGolden {
+                    return " during golden hour"
+                }
+            }
+            // General warm light at medium brightness
+            return " in warm light"
+        }
+
+        // Sunset/sunrise: warm colors + lower brightness (0.25-0.55)
+        if warmColorScore > 0.25 && avgBrightness >= 0.25 && avgBrightness <= 0.55 {
+            if let dominant = colors.first {
+                let rgb = dominant.color.usingColorSpace(.deviceRGB) ?? dominant.color
+                // Orange/red sunset colors
+                if rgb.redComponent > 0.55 && rgb.blueComponent < 0.4 {
+                    return " at sunset"
+                }
             }
         }
 
-        // Check for blue hour / dusk
-        if let dominant = colors.first {
-            let rgb = dominant.color.usingColorSpace(.deviceRGB) ?? dominant.color
-            let isBlueHour = rgb.blueComponent > rgb.redComponent && avgBrightness < 0.5 && avgBrightness > 0.2
-
-            if isBlueHour {
-                return " at dusk"
+        // Blue hour: cool colors dominant + low-medium brightness (0.15-0.45)
+        if coolColorScore > 0.2 && avgBrightness >= 0.15 && avgBrightness <= 0.45 {
+            if let dominant = colors.first {
+                let rgb = dominant.color.usingColorSpace(.deviceRGB) ?? dominant.color
+                let isBlueHour = rgb.blueComponent > rgb.redComponent && rgb.blueComponent > 0.3
+                if isBlueHour {
+                    return " at dusk"
+                }
             }
         }
 
-        if avgBrightness < 0.2 {
+        // Night: very low brightness
+        if avgBrightness < 0.15 {
             return " at night"
         }
 
+        // Bright daylight: high brightness + not overly warm (normal daylight)
+        if avgBrightness > 0.7 && warmColorScore < 0.4 {
+            return " in daylight"
+        }
+
+        // No distinctive time signal
         return ""
     }
 

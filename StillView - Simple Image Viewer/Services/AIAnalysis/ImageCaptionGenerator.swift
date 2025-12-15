@@ -52,38 +52,26 @@ final class ImageCaptionGenerator {
             enhancedVision: enhancedVision
         )
 
-        // ENHANCED PIPELINE: Multi-subject caption generation with fallback
+        // ENHANCED PIPELINE: Multi-subject caption generation with tiered fallback
 
-        // Low-signal handling: generate a minimal but descriptive caption instead of a neutral placeholder
-        let topSignalConfidence = max(
-            classifications.map { Double($0.confidence) }.max() ?? 0.0,
-            objects.map { Double($0.confidence) }.max() ?? 0.0,
-            scenes.map { Double($0.confidence) }.max() ?? 0.0,
-            text.map { Double($0.confidence) }.max() ?? 0.0
-        )
-        if topSignalConfidence < 0.25 {  // Raised from 0.12 for better quality
-            var parts: [String] = []
-            if let obj = objects.first {
-                parts.append(obj.identifier.replacingOccurrences(of: "_", with: " ").lowercased())
-            } else if let cls = classifications.first {
-                parts.append(cls.identifier.replacingOccurrences(of: "_", with: " ").lowercased())
-            }
-            if let scene = scenes.first {
-                let sceneText = scene.identifier.replacingOccurrences(of: "_", with: " ").lowercased()
-                if !sceneText.isEmpty { parts.append("in a \(sceneText) setting") }
-            }
-            let textFlag = !text.isEmpty ? " with readable text" : ""
-            let sentenceBody = parts.isEmpty ? "image" : parts.joined(separator: " ")
-            let short = ("\(sentenceBody)\(textFlag).").capitalized
-            let fallbackCaption = ImageCaption(
-                shortCaption: short,
-                detailedCaption: short,
-                accessibilityCaption: short,
-                technicalCaption: nil,
-                confidence: 0.55,
-                language: "en"
+        // Calculate signal strengths from different sources
+        let classificationMax = classifications.map { Double($0.confidence) }.max() ?? 0.0
+        let objectsMax = objects.map { Double($0.confidence) }.max() ?? 0.0
+        let scenesMax = scenes.map { Double($0.confidence) }.max() ?? 0.0
+        let textMax = text.map { Double($0.confidence) }.max() ?? 0.0
+        let topSignalConfidence = max(classificationMax, objectsMax, scenesMax, textMax)
+
+        // Tiered fallback: Instead of a single threshold, use progressive degradation
+        // This fixes the issue where 75% of mid-confidence detections got minimal captions
+        if topSignalConfidence < AIAnalysisConstants.lowSignalConfidenceThreshold {
+            // Very low signal - aggregate multiple weak signals for better caption
+            return generateAggregatedFallbackCaption(
+                classifications: classifications,
+                objects: objects,
+                scenes: scenes,
+                text: text,
+                colors: colors
             )
-            return fallbackCaption
         }
 
         // Improved fallback: if no subjects detected, use best available content
@@ -1168,6 +1156,104 @@ final class ImageCaptionGenerator {
         return caption
     }
     
+    /// Generate aggregated fallback caption by combining multiple weak signals
+    /// This provides better captions than the previous single-threshold approach
+    private func generateAggregatedFallbackCaption(
+        classifications: [ClassificationResult],
+        objects: [DetectedObject],
+        scenes: [SceneClassification],
+        text: [RecognizedText],
+        colors: [DominantColor]
+    ) -> ImageCaption {
+        #if DEBUG
+        Logger.ai("📝 Generating aggregated fallback caption from weak signals")
+        #endif
+
+        var parts: [String] = []
+        var totalConfidence: Double = 0.0
+        var signalCount: Int = 0
+
+        // Aggregate classifications above minimum threshold (combine weak signals)
+        let relevantClassifications = classifications
+            .filter { $0.confidence >= Float(AIAnalysisConstants.minimumConfidenceTier) }
+            .sorted { lhs, rhs in
+                // Prioritize by specificity, then confidence
+                let lhsSpec = AIAnalysisConstants.getSpecificity(lhs.identifier)
+                let rhsSpec = AIAnalysisConstants.getSpecificity(rhs.identifier)
+                if lhsSpec != rhsSpec { return lhsSpec > rhsSpec }
+                return lhs.confidence > rhs.confidence
+            }
+            .prefix(3)
+
+        if let topClass = relevantClassifications.first {
+            let classText = topClass.identifier.replacingOccurrences(of: "_", with: " ").lowercased()
+            if !AIAnalysisConstants.isBackground(topClass.identifier) {
+                parts.append(classText)
+                totalConfidence += Double(topClass.confidence)
+                signalCount += 1
+            }
+        }
+
+        // Add scene context even at lower confidence
+        if let scene = scenes.first, scene.confidence >= Float(AIAnalysisConstants.minimumConfidenceTier) {
+            let sceneText = scene.identifier.replacingOccurrences(of: "_", with: " ").lowercased()
+            if !sceneText.isEmpty && sceneText != "outdoor" && sceneText != "indoor" {
+                parts.append("in a \(sceneText) setting")
+                totalConfidence += Double(scene.confidence)
+                signalCount += 1
+            }
+        }
+
+        // Add objects if they provide additional context
+        let significantObjects = objects
+            .filter { $0.confidence >= Float(AIAnalysisConstants.lowConfidenceTier) }
+            .prefix(2)
+
+        for obj in significantObjects where parts.count < 3 {
+            let objText = obj.identifier.replacingOccurrences(of: "_", with: " ").lowercased()
+            if !parts.contains(where: { $0.contains(objText) }) {
+                totalConfidence += Double(obj.confidence)
+                signalCount += 1
+            }
+        }
+
+        // Add text indicator
+        let textFlag = !text.isEmpty ? " with readable text" : ""
+
+        // Build caption from aggregated signals
+        let sentenceBody: String
+        if parts.isEmpty {
+            // Fall back to color description if no meaningful signals
+            if !colors.isEmpty {
+                let colorDesc = describeColors(colors).lowercased()
+                sentenceBody = "\(colorDesc) image"
+            } else {
+                sentenceBody = "image"
+            }
+        } else {
+            sentenceBody = parts.joined(separator: " ")
+        }
+
+        let caption = ("\(sentenceBody)\(textFlag).").capitalized
+
+        // Calculate aggregated confidence (average of signals, slightly boosted for multiple sources)
+        let avgConfidence = signalCount > 0 ? totalConfidence / Double(signalCount) : 0.3
+        let aggregatedConfidence = min(0.6, avgConfidence * (1.0 + Double(signalCount - 1) * 0.1))
+
+        #if DEBUG
+        Logger.ai("📝 Aggregated fallback caption: '\(caption)' (confidence: \(String(format: "%.2f", aggregatedConfidence)))")
+        #endif
+
+        return ImageCaption(
+            shortCaption: caption,
+            detailedCaption: caption,
+            accessibilityCaption: caption,
+            technicalCaption: nil,
+            confidence: aggregatedConfidence,
+            language: "en"
+        )
+    }
+
     /// Generate observation-based caption when normal caption generation fails
     /// Uses colors, dimensions, and quality metrics instead of subject detection
     private func generateObservationBasedCaption(context: CaptionContext) -> ImageCaption {
