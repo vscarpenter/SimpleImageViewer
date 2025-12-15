@@ -1,6 +1,6 @@
 {
-  "version": "2.9.0",
-  "releaseDate": "2025-09-29T00:00:00Z",
+  "version": "3.0.0",
+  "releaseDate": "2025-12-15T00:00:00Z",
   "sections": [
     {
       "title": "New Features",
@@ -47,6 +47,11 @@
       "title": "Improvements",
       "type": "improvements",
       "items": [
+        {
+          "title": "Major AI Accuracy Improvements",
+          "description": "Completely overhauled AI analysis engine with 9 critical fixes: improved sharpness detection using proper luminance calculation, balanced confidence scoring, enhanced time-of-day detection with color temperature analysis, and smarter activity/event recognition. Expect significantly more accurate captions, tags, and quality assessments.",
+          "isHighlighted": true
+        },
         {
           "title": "AI Features with Complete Privacy",
           "description": "All AI processing happens entirely on your Mac using Apple's Vision and Core ML. No cloud services, no data collection, no tracking. Your images never leave your device.",

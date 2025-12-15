@@ -315,16 +315,28 @@ private struct SpecificityCandidate {
     let confidence: Float
     let specificityLevel: Int
     let source: CandidateSource
-    
+
     /// Weighted score combining confidence and specificity
+    /// FIXED: Now favors confidence over specificity to prevent low-confidence
+    /// specific terms from beating high-confidence generic terms
     var weightedScore: Float {
-        // Weight specificity more heavily (60%) than confidence (40%)
-        // This ensures we prefer specific terms when confidence is reasonable
-        let specificityWeight: Float = 0.6
-        let confidenceWeight: Float = 0.4
-        
+        // Confidence should dominate - a high-confidence detection is more reliable
+        let confidenceWeight: Float = 0.65
+        let specificityWeight: Float = 0.35
+
+        // Calculate effective specificity - only boost specificity if confidence is reasonable
         let normalizedSpecificity = Float(specificityLevel) / 3.0
-        return (normalizedSpecificity * specificityWeight) + (confidence * confidenceWeight)
+        let effectiveSpecificity: Float
+        if confidence >= 0.4 {
+            // Good confidence - use full specificity boost
+            effectiveSpecificity = normalizedSpecificity
+        } else {
+            // Low confidence - scale down specificity contribution
+            // This prevents a 0.2 confidence "Ferrari" from beating a 0.9 confidence "car"
+            effectiveSpecificity = normalizedSpecificity * (confidence / 0.4)
+        }
+
+        return (confidence * confidenceWeight) + (effectiveSpecificity * specificityWeight)
     }
 }
 

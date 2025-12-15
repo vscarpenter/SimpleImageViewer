@@ -91,6 +91,8 @@
 		FB9F40EC2E38708B005C2968 /* ImageInfoOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */; };
 		FBA046082E36DBA8006F9C47 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA046072E36DBA8006F9C47 /* HelpView.swift */; };
 		FBA0460A2E36DC34006F9C47 /* HelpContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA046092E36DC34006F9C47 /* HelpContent.swift */; };
+		FBA12B5F2EF0639900BB4AC2 /* CoreMLModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA12B5E2EF0639900BB4AC2 /* CoreMLModelManager.swift */; };
+		FBA12B612EF063AF00BB4AC2 /* QualityAssessmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA12B602EF063AF00BB4AC2 /* QualityAssessmentService.swift */; };
 		FBA5E0AC2E45ABA0009F3D00 /* WhatsNewContentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA5E0AA2E45ABA0009F3D00 /* WhatsNewContentProvider.swift */; };
 		FBA5E0AD2E45ABA0009F3D00 /* WhatsNewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA5E0AB2E45ABA0009F3D00 /* WhatsNewService.swift */; };
 		FBA5E0B02E45ABAE009F3D00 /* WhatsNewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA5E0AF2E45ABAE009F3D00 /* WhatsNewContent.swift */; };
@@ -218,6 +220,8 @@
 		FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInfoOverlayView.swift; sourceTree = "<group>"; };
 		FBA046072E36DBA8006F9C47 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		FBA046092E36DC34006F9C47 /* HelpContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpContent.swift; sourceTree = "<group>"; };
+		FBA12B5E2EF0639900BB4AC2 /* CoreMLModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreMLModelManager.swift; sourceTree = "<group>"; };
+		FBA12B602EF063AF00BB4AC2 /* QualityAssessmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityAssessmentService.swift; sourceTree = "<group>"; };
 		FBA5E0AA2E45ABA0009F3D00 /* WhatsNewContentProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewContentProvider.swift; sourceTree = "<group>"; };
 		FBA5E0AB2E45ABA0009F3D00 /* WhatsNewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewService.swift; sourceTree = "<group>"; };
 		FBA5E0AE2E45ABAE009F3D00 /* VersionTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionTracker.swift; sourceTree = "<group>"; };
@@ -325,6 +329,8 @@
 		A100000A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				FBA12B5E2EF0639900BB4AC2 /* CoreMLModelManager.swift */,
+				FBA12B602EF063AF00BB4AC2 /* QualityAssessmentService.swift */,
 				FBB1DB2D2E95FE0300CA4EF6 /* AIAnalysisConstants.swift */,
 				FBB1DB2E2E95FE0300CA4EF6 /* AIAnalysis/ClassificationFilter.swift */,
 				FBB1DB2F2E95FE0300CA4EF6 /* AIAnalysis/ImageCaptionGenerator.swift */,
@@ -695,6 +701,7 @@
 				FBA5E0BC2E45ABD5009F3D00 /* AnimationPresets.swift in Sources */,
 				FBA5E0BD2E45ABD5009F3D00 /* GlassEffectModifier.swift in Sources */,
 				FBA5E0BE2E45ABD5009F3D00 /* Typography+Scale.swift in Sources */,
+				FBA12B612EF063AF00BB4AC2 /* QualityAssessmentService.swift in Sources */,
 				FBF3C88D2E5FDC1600F10DC8 /* PreferencesSection.swift in Sources */,
 				FBF3C88E2E5FDC1600F10DC8 /* KeyboardShortcutsHelpView.swift in Sources */,
 				FBF3C88F2E5FDC1600F10DC8 /* PreferencesHelpTooltip.swift in Sources */,
@@ -713,6 +720,7 @@
 				FB2E7C8F2E556A31000525C4 /* PerformanceOptimizationService.swift in Sources */,
 				FB2E7C902E556A31000525C4 /* UnifiedErrorHandlingService.swift in Sources */,
 				FB2E7C912E556A31000525C4 /* MemoryManagementService.swift in Sources */,
+				FBA12B5F2EF0639900BB4AC2 /* CoreMLModelManager.swift in Sources */,
 				A10000A1 /* KeyCaptureViewRepresentable.swift in Sources */,
 				A10000A6 /* AboutView.swift in Sources */,
 				A10000A8 /* SecurityScopedAccessManager.swift in Sources */,
@@ -867,7 +875,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -892,7 +900,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 2.9.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -909,7 +917,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -934,7 +942,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 2.9.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

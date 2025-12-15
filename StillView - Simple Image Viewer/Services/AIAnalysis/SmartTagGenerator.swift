@@ -241,42 +241,82 @@ final class SmartTagGenerator {
         return activityMap[activity.lowercased()] ?? ""
     }
 
-    /// Infer activities from detected objects
+    /// Infer activities from detected objects using whole-word matching
+    /// This fixes the issue where "ball" matched "eyeball", "crystal ball", etc.
     private func inferActivitiesFromObjects(_ objects: [DetectedObject]) -> [(String, Double)] {
         var activities: [(String, Double)] = []
 
         let objectIds = objects.map { $0.identifier.lowercased() }
 
+        // Helper for whole-word matching to avoid false positives like "eyeball" matching "ball"
+        func containsWholeWord(_ text: String, _ word: String) -> Bool {
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: word))\\b"
+            return text.range(of: pattern, options: .regularExpression) != nil
+        }
+
+        // Helper to check if any object matches any of the target words (whole word)
+        func objectsContainAny(_ targets: [String]) -> Bool {
+            return objectIds.contains { objId in
+                targets.contains { target in
+                    // Use whole-word matching for short generic words, substring for compound words
+                    if target.count <= 4 {
+                        return containsWholeWord(objId, target)
+                    } else {
+                        return objId.contains(target) || objId == target
+                    }
+                }
+            }
+        }
+
         // Sports equipment -> Sports activity
-        let sportsObjects = ["ball", "racket", "bat", "golf", "tennis", "basketball", "football", "soccer"]
-        if objectIds.contains(where: { id in sportsObjects.contains(where: { id.contains($0) }) }) {
+        // Use specific compound words to avoid "ball" matching "eyeball", "crystal ball"
+        let sportsObjects = [
+            "tennis racket", "racket", "baseball bat",
+            "golf club", "golf ball", "tennis ball",
+            "basketball", "football", "soccer ball", "volleyball",
+            "hockey stick", "badminton"
+        ]
+        if objectsContainAny(sportsObjects) {
             activities.append(("Sports", 0.75))
         }
 
         // Laptop/computer -> Working
-        if objectIds.contains(where: { $0.contains("laptop") || $0.contains("computer") || $0.contains("keyboard") }) {
+        // "keyboard" alone is too broad (musical keyboard), require context
+        let workObjects = ["laptop", "computer", "desktop", "monitor with keyboard"]
+        if objectsContainAny(workObjects) {
             activities.append(("Working", 0.7))
+        }
+        // Keyboard only suggests working if there's also a desk/office context
+        if objectIds.contains(where: { $0.contains("keyboard") }) &&
+           objectIds.contains(where: { $0.contains("desk") || $0.contains("office") || $0.contains("laptop") }) {
+            if !activities.contains(where: { $0.0 == "Working" }) {
+                activities.append(("Working", 0.65))
+            }
         }
 
         // Musical instruments -> Music
-        let musicObjects = ["guitar", "piano", "violin", "drums", "microphone"]
-        if objectIds.contains(where: { id in musicObjects.contains(where: { id.contains($0) }) }) {
+        let musicObjects = ["guitar", "piano", "violin", "drums", "drum kit", "microphone stand", "saxophone", "trumpet"]
+        if objectsContainAny(musicObjects) {
             activities.append(("Music", 0.75))
         }
 
         // Camera equipment -> Photography
-        if objectIds.contains(where: { $0.contains("camera") || $0.contains("tripod") }) {
+        let photoObjects = ["camera", "tripod", "dslr", "lens"]
+        if objectsContainAny(photoObjects) {
             activities.append(("Photography", 0.7))
         }
 
         // Cooking/kitchen items -> Cooking
-        let cookingObjects = ["pan", "pot", "stove", "oven", "cutting board", "knife"]
-        if objectIds.contains(where: { id in cookingObjects.contains(where: { id.contains($0) }) }) {
+        // More specific to avoid false positives
+        let cookingObjects = ["frying pan", "saucepan", "stove", "oven", "cutting board", "chef knife", "spatula", "whisk"]
+        if objectsContainAny(cookingObjects) {
             activities.append(("Cooking", 0.7))
         }
 
         // Books/reading -> Reading
-        if objectIds.contains(where: { $0.contains("book") || $0.contains("magazine") || $0.contains("newspaper") }) {
+        // Be specific about reading materials
+        let readingObjects = ["book", "textbook", "magazine", "newspaper", "e-reader", "kindle"]
+        if objectsContainAny(readingObjects) {
             activities.append(("Reading", 0.7))
         }
 
@@ -287,10 +327,24 @@ final class SmartTagGenerator {
     private func inferEventType(objects: [DetectedObject], enhancedVision: EnhancedVisionResult?) -> String? {
         let objectIds = objects.map { $0.identifier.lowercased() }
 
+        // Count people/faces for group event detection
+        let peopleCount = objects.filter { obj in
+            let id = obj.identifier.lowercased()
+            return id.contains("person") || id.contains("people") || id.contains("human")
+        }.count
+
+        let faceCount = objects.filter { obj in
+            obj.identifier.lowercased().contains("face")
+        }.count
+
+        let totalPeople = max(peopleCount, faceCount)
+
         // Party/celebration indicators
         let partyObjects = ["cake", "balloon", "candle", "champagne", "wine", "cocktail"]
         let partyCount = objectIds.filter { id in partyObjects.contains(where: { id.contains($0) }) }.count
-        if partyCount >= 2 {
+
+        // Celebration: party objects + people
+        if partyCount >= 2 || (partyCount >= 1 && totalPeople >= 2) {
             return "Celebration"
         }
 
@@ -306,9 +360,26 @@ final class SmartTagGenerator {
             return "Vacation"
         }
 
-        // Meeting indicators (multiple people + formal setting objects)
-        if let faceCount = enhancedVision?.animals, faceCount.isEmpty == false {
-            // This is a placeholder - in real implementation, check for multiple faces
+        // Group/meeting detection based on people count
+        if totalPeople >= 4 {
+            // Check for formal setting indicators
+            let formalObjects = ["table", "chair", "laptop", "presentation", "whiteboard", "conference"]
+            let hasFormalSetting = objectIds.contains { id in
+                formalObjects.contains(where: { id.contains($0) })
+            }
+            if hasFormalSetting {
+                return "Meeting"
+            }
+            return "Group Event"
+        } else if totalPeople >= 2 {
+            // Smaller gatherings
+            let diningObjects = ["table", "plate", "glass", "food", "restaurant"]
+            let hasDiningSetting = objectIds.contains { id in
+                diningObjects.contains(where: { id.contains($0) })
+            }
+            if hasDiningSetting {
+                return "Gathering"
+            }
         }
 
         return nil

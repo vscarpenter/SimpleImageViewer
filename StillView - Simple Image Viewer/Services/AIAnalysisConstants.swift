@@ -220,42 +220,68 @@ enum AIAnalysisConstants {
     /// Saturation threshold for "monochromatic" mood (0.0-1.0)
     static let monochromaticSaturationThreshold: CGFloat = 0.1
 
-    // MARK: - Confidence Thresholds
+    // MARK: - Confidence Tiers (Unified System)
+    // Use these tiers consistently across all AI analysis components
+
+    /// Tier 1: High confidence - use in all contexts without caveats
+    static let highConfidenceTier: Float = 0.70
+
+    /// Tier 2: Medium confidence - use with context, suitable for most purposes
+    static let mediumConfidenceTier: Float = 0.45
+
+    /// Tier 3: Low confidence - use only when no better data available
+    static let lowConfidenceTier: Float = 0.25
+
+    /// Tier 4: Minimum confidence - absolute floor for inclusion
+    static let minimumConfidenceTier: Float = 0.10
+
+    // MARK: - Confidence Thresholds (Legacy - mapped to tiers for consistency)
 
     /// Minimum confidence for including a classification in results
-    static let minimumClassificationConfidence: Float = 0.1
+    static let minimumClassificationConfidence: Float = minimumConfidenceTier
 
     /// Confidence threshold for low-signal detection in captions/narratives
-    static let lowSignalConfidenceThreshold: Double = 0.20
+    /// Now uses low confidence tier for consistency
+    static let lowSignalConfidenceThreshold: Double = Double(lowConfidenceTier)
 
     /// Confidence threshold for including subjects in captions
-    static let captionSubjectConfidence: Double = 0.5
+    /// Now uses medium confidence tier for consistency
+    static let captionSubjectConfidence: Double = Double(mediumConfidenceTier)
 
     /// Confidence threshold for high-specificity subjects in captions
-    static let highSpecificityConfidenceThreshold: Double = 0.25
+    /// High-specificity items can use lower threshold since they're more reliable
+    static let highSpecificityConfidenceThreshold: Double = Double(lowConfidenceTier)
 
     /// Confidence threshold for medium-specificity subjects in captions
     static let mediumSpecificityConfidenceThreshold: Double = 0.35
 
     /// Confidence threshold for location context in captions
-    static let locationContextConfidence: Float = 0.6
+    /// Location requires higher confidence to avoid false positives
+    static let locationContextConfidence: Float = highConfidenceTier
 
     /// Minimum confidence for background classification to be kept
     static let backgroundKeepConfidence: Float = 0.75
 
     // MARK: - Boost Factors
+    // IMPORTANT: Keep boost factors balanced to avoid bias toward any category
 
     /// Boost factor for person classifications when person detected
-    static let personClassificationBoost: Float = 1.3
+    static let personClassificationBoost: Float = 1.4
 
     /// Boost factor for vehicle classifications when vehicle detected
-    static let vehicleClassificationBoost: Float = 1.3
+    static let vehicleClassificationBoost: Float = 1.4
 
-    /// Boost factor for vehicles in subject detection
-    static let vehicleSubjectBoost: Double = 2.5
+    /// Boost factor for vehicles in subject detection (reduced from 2.5 to prevent vehicle bias)
+    static let vehicleSubjectBoost: Double = 1.5
 
     /// Boost factor for small vehicles with person present
-    static let vehicleWithPersonSmallBoost: Double = 1.5
+    static let vehicleWithPersonSmallBoost: Double = 1.3
+
+    /// Boost factor for animal classifications when animal detected
+    static let animalClassificationBoost: Float = 1.35
+
+    /// Boost factor for food classifications when food detected
+    static let foodClassificationBoost: Float = 1.25
 
     /// Minimum vehicle area ratio to be considered primary subject (0.0-1.0)
     static let vehiclePrimaryAreaThreshold: Double = 0.15
@@ -289,7 +315,7 @@ enum AIAnalysisConstants {
     static let maxCacheEntries = 20
 
     /// Current cache version - increment to invalidate cache
-    static let cacheVersion = "v10"  // Incremented for CoreML integration and constants centralization
+    static let cacheVersion = "v11"  // Incremented for AI accuracy fixes: sharpness, exposure, confidence tiers, activity tagging
 
     // MARK: - Helper Functions
 
