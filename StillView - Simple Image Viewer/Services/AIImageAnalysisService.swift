@@ -19,6 +19,55 @@ final class AIImageAnalysisService: ObservableObject {
     // MARK: - Published Properties
     @Published private(set) var isAnalyzing: Bool = false
     @Published private(set) var analysisProgress: Double = 0.0
+    @Published private(set) var currentAnalysisStage: AnalysisStage = .idle
+
+    // Phase 6.3: Cancellation support
+    private var currentAnalysisTask: Task<ImageAnalysisResult, Error>?
+
+    // Phase 6.4: Cache metrics
+    @Published private(set) var cacheMetrics: CacheMetrics = CacheMetrics()
+
+    // MARK: - Analysis Stage (Phase 7.4: Progress stage indicators)
+    enum AnalysisStage: String, CaseIterable {
+        case idle = "Ready"
+        case classification = "Classifying content"
+        case objectDetection = "Detecting objects"
+        case textRecognition = "Recognizing text"
+        case colorAnalysis = "Analyzing colors"
+        case qualityAssessment = "Assessing quality"
+        case captionGeneration = "Generating caption"
+        case complete = "Complete"
+
+        var icon: String {
+            switch self {
+            case .idle: return "circle"
+            case .classification: return "tag"
+            case .objectDetection: return "viewfinder"
+            case .textRecognition: return "doc.text"
+            case .colorAnalysis: return "paintpalette"
+            case .qualityAssessment: return "checkmark.seal"
+            case .captionGeneration: return "text.bubble"
+            case .complete: return "checkmark.circle.fill"
+            }
+        }
+    }
+
+    // Phase 6.4: Cache metrics struct
+    struct CacheMetrics: Equatable {
+        var hits: Int = 0
+        var misses: Int = 0
+        var evictions: Int = 0
+        var currentSize: Int = 0
+
+        var hitRate: Double {
+            let total = hits + misses
+            return total > 0 ? Double(hits) / Double(total) : 0
+        }
+
+        var summary: String {
+            "Cache: \(currentSize)/\(AIAnalysisConstants.maxCacheEntries) entries, \(String(format: "%.0f%%", hitRate * 100)) hit rate"
+        }
+    }
 
     // MARK: - Private Properties
     private let compatibilityService = MacOS26CompatibilityService.shared
@@ -53,6 +102,23 @@ final class AIImageAnalysisService: ObservableObject {
     /// Clear analysis cache
     func clearCache() {
         cache.clear()
+        cacheMetrics.currentSize = 0
+    }
+
+    /// Phase 6.3: Cancel current analysis
+    func cancelAnalysis() {
+        currentAnalysisTask?.cancel()
+        currentAnalysisTask = nil
+        isAnalyzing = false
+        analysisProgress = 0.0
+        currentAnalysisStage = .idle
+    }
+
+    /// Phase 6.4: Get current cache metrics
+    func getCacheMetrics() -> CacheMetrics {
+        var metrics = cacheMetrics
+        metrics.currentSize = cache.count
+        return metrics
     }
 
     /// Analyze image with enhanced AI features
@@ -91,16 +157,38 @@ final class AIImageAnalysisService: ObservableObject {
 
         // Check cache (LRUCache handles access time updates)
         if let cachedResult = cache.get(cacheKey) {
+            // Phase 6.4: Track cache hit
+            cacheMetrics.hits += 1
+            cacheMetrics.currentSize = cache.count
             return cachedResult
         }
 
+        // Phase 6.4: Track cache miss
+        cacheMetrics.misses += 1
+
         isAnalyzing = true
-        defer { isAnalyzing = false }
+        currentAnalysisStage = .classification
+        defer {
+            isAnalyzing = false
+            currentAnalysisStage = .complete
+        }
+
+        // Phase 6.3: Check for cancellation before starting
+        try Task.checkCancellation()
 
         let result = try await performEnhancedAnalysis(cgImage)
 
+        // Phase 6.3: Check for cancellation before caching
+        try Task.checkCancellation()
+
         // Cache result (LRUCache handles eviction automatically)
+        let previousSize = cache.count
         cache.set(cacheKey, value: result)
+        if cache.count == previousSize {
+            // An eviction occurred
+            cacheMetrics.evictions += 1
+        }
+        cacheMetrics.currentSize = cache.count
 
         return result
     }

@@ -220,6 +220,7 @@ final class SubjectDetector {
     }
 
     /// Score detected objects (medium-high weight, with saliency bonus)
+    /// Phase 3: Enhanced with saliency cross-validation
     private func scoreDetectedObjects(_ objects: [DetectedObject], saliency: SaliencyAnalysis?) -> [(PrimarySubject, Double)] {
         // Filter out people (already scored) and irrelevant objects
         let filteredObjects = objects.filter { object in
@@ -232,16 +233,25 @@ final class SubjectDetector {
         let hasPerson = objects.contains { isPerson($0.identifier) || isFace($0.identifier) }
 
         return filteredObjects.compactMap { object in
-            var score = Double(object.confidence) * SourceWeight.detectedObject
+            // Phase 3: Apply saliency cross-validation to confidence
+            let validatedConfidence = crossValidateWithSaliency(
+                confidence: Double(object.confidence),
+                bbox: object.boundingBox,
+                saliency: saliency
+            )
+
+            var score = validatedConfidence * SourceWeight.detectedObject
 
             // Boost by bounding box size (larger objects are more prominent)
             let size = object.boundingBox.width * object.boundingBox.height
             score *= (1.0 + Double(size) * 0.5)
 
-            // Boost by saliency overlap
+            // Additional saliency overlap bonus (on top of cross-validation)
             if let saliency = saliency {
                 let overlapScore = calculateSaliencyOverlap(bbox: object.boundingBox, saliency: saliency)
-                score *= (1.0 + overlapScore * 0.3)
+                if overlapScore > 0 {  // Only apply positive bonuses here
+                    score *= (1.0 + overlapScore * 0.3)
+                }
             }
 
 
@@ -332,6 +342,7 @@ final class SubjectDetector {
     }
 
     /// Calculate overlap between bounding box and salient regions
+    /// Phase 3: Enhanced with cross-validation penalty for non-salient detections
     private func calculateSaliencyOverlap(bbox: CGRect, saliency: SaliencyAnalysis) -> Double {
         guard !saliency.attentionPoints.isEmpty else {
             // Fallback: center-weighted scoring
@@ -351,7 +362,52 @@ final class SubjectDetector {
 
         guard maxPossibleIntensity > 0 else { return 0 }
 
-        return totalIntensity / maxPossibleIntensity
+        let overlapScore = totalIntensity / maxPossibleIntensity
+
+        // Phase 3: Cross-validation - if object has no saliency overlap, apply penalty
+        // This helps filter out false positive detections that don't match visual attention
+        if overlapScore < 0.1 && pointsInBox.isEmpty {
+            #if DEBUG
+            Logger.ai("  ⚠️ Saliency cross-validation: No attention points in bounding box, applying penalty")
+            #endif
+            return -0.2  // Negative score to penalize non-salient detections
+        }
+
+        return overlapScore
+    }
+
+    /// Phase 3: Cross-validate detection confidence with saliency
+    /// Returns adjusted confidence based on saliency agreement
+    private func crossValidateWithSaliency(
+        confidence: Double,
+        bbox: CGRect?,
+        saliency: SaliencyAnalysis?
+    ) -> Double {
+        guard let bbox = bbox, let saliency = saliency else {
+            return confidence
+        }
+
+        let saliencyScore = calculateSaliencyOverlap(bbox: bbox, saliency: saliency)
+
+        // If saliency strongly agrees (>50% overlap), boost confidence
+        if saliencyScore > 0.5 {
+            let boost = 1.0 + (saliencyScore - 0.5) * 0.3  // Up to 15% boost
+            #if DEBUG
+            Logger.ai("  ✓ Saliency validation boost: \(String(format: "%.2f", confidence)) → \(String(format: "%.2f", confidence * boost))")
+            #endif
+            return min(1.0, confidence * boost)
+        }
+
+        // If saliency disagrees (penalty from calculateSaliencyOverlap), reduce confidence
+        if saliencyScore < 0 {
+            let penalty = 0.8  // 20% reduction
+            #if DEBUG
+            Logger.ai("  ⚠️ Saliency validation penalty: \(String(format: "%.2f", confidence)) → \(String(format: "%.2f", confidence * penalty))")
+            #endif
+            return confidence * penalty
+        }
+
+        return confidence
     }
 
     // MARK: - Helper Methods
