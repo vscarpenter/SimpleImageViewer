@@ -6,46 +6,86 @@ import AppKit
 /// Uses template variations for natural language diversity
 final class NarrativeGenerator {
 
-    // MARK: - Template Variations
+    // MARK: - Template Variations (Phase 4: Expanded for variety)
 
     /// Portrait narrative templates with placeholders: {name}, {subject}, {lighting}, {composition}
+    /// Phase 4: Expanded from 4 to 10 templates
     private let portraitTemplates = [
         "Portrait of {name}{composition}. {lighting}.",
         "A {lighting_adj} portrait capturing {name}{composition}.",
         "{name} photographed{composition}. {lighting}.",
-        "Portrait featuring {name} with {lighting_adj} illumination{composition}."
+        "Portrait featuring {name} with {lighting_adj} illumination{composition}.",
+        // Phase 4: New templates
+        "An expressive portrait of {name}{composition}. The {lighting_adj} quality enhances the subject.",
+        "Intimate capture of {name}{composition}. {lighting}.",
+        "{name} is the focus of this {lighting_adj} portrait{composition}.",
+        "A contemplative view of {name}{composition}. {lighting}.",
+        "Character study featuring {name}{composition}. Shot with {lighting_adj} tones.",
+        "Thoughtfully composed portrait of {name}. {lighting}."
     ]
 
     /// Group photo templates with placeholders: {count}, {names}, {lighting}
+    /// Phase 4: Expanded from 4 to 10 templates
     private let groupTemplates = [
         "Group photograph with {count} people{names}. {lighting}.",
         "A gathering of {count} individuals{names}, captured with {lighting_adj} lighting.",
         "{count} people photographed together{names}. {lighting}.",
-        "Group portrait featuring {count} subjects{names}. {lighting}."
+        "Group portrait featuring {count} subjects{names}. {lighting}.",
+        // Phase 4: New templates
+        "Social moment captured with {count} people{names}. {lighting}.",
+        "Candid group shot featuring {count} individuals{names}. {lighting_adj} atmosphere.",
+        "A memorable gathering of {count}{names}. The {lighting_adj} setting adds warmth.",
+        "Ensemble photograph with {count} people{names}. {lighting}.",
+        "Collective portrait showcasing {count} subjects{names}. Shot in {lighting_adj} conditions.",
+        "Group composition with {count} individuals{names}. {lighting}."
     ]
 
     /// Landscape templates with placeholders: {scene}, {landmark}, {colors}, {time}
+    /// Phase 4: Expanded from 4 to 10 templates
     private let landscapeTemplates = [
         "Landscape photograph of {scene}. {colors} natural scenery{time}.",
         "A {colors_adj} view of {scene}{time}, captured with attention to composition.",
         "{scene} stretches across the frame{time}. {colors}.",
-        "Natural landscape featuring {scene}. {colors}{time}."
+        "Natural landscape featuring {scene}. {colors}{time}.",
+        // Phase 4: New templates
+        "Sweeping vista of {scene}{time}. {colors} atmosphere pervades the scene.",
+        "The grandeur of {scene} is on full display{time}. {colors}.",
+        "Scenic view showcasing {scene}. {colors_adj} tones define the horizon{time}.",
+        "Expansive landscape capturing {scene}{time}. Nature's palette in {colors_adj} hues.",
+        "{scene} unfolds in {colors_adj} splendor{time}. A moment of natural beauty.",
+        "Breathtaking panorama of {scene}. {colors}{time}."
     ]
 
     /// Food templates with placeholders: {item}, {colors}, {presentation}
+    /// Phase 4: Expanded from 4 to 10 templates
     private let foodTemplates = [
         "Food photography showcasing {item}. {presentation} with {colors_adj} tones.",
         "A {colors_adj} presentation of {item}. {presentation}.",
         "{item} photographed with {presentation}. {colors}.",
-        "Culinary image featuring {item}. {colors} {presentation}."
+        "Culinary image featuring {item}. {colors} {presentation}.",
+        // Phase 4: New templates
+        "Appetizing capture of {item}. {presentation} invites enjoyment.",
+        "Gastronomic still life featuring {item}. {colors_adj} lighting enhances the dish.",
+        "{item} presented with care and attention. {presentation}. {colors}.",
+        "Delectable {item} takes center stage. {colors_adj} accents complement the {presentation}.",
+        "A feast for the eyes: {item}. {presentation} with {colors_adj} styling.",
+        "Mouthwatering view of {item}. {colors} {presentation}."
     ]
 
     /// General templates with placeholders: {subject}, {colors}, {composition}
+    /// Phase 4: Expanded from 4 to 10 templates
     private let generalTemplates = [
         "Image showing {subject}. {composition} with {colors_adj} elements.",
         "A {colors_adj} photograph of {subject}. {composition}.",
         "{subject} captured with {composition}. {colors}.",
-        "Visual composition featuring {subject}. {colors}."
+        "Visual composition featuring {subject}. {colors}.",
+        // Phase 4: New templates
+        "Compelling view of {subject}. {composition} creates visual interest. {colors}.",
+        "{subject} forms the focal point of this {colors_adj} image. {composition}.",
+        "An engaging photograph of {subject}. {colors_adj} tones support the {composition}.",
+        "Study of {subject} with {colors_adj} palette. {composition}.",
+        "Clear documentation of {subject}. {composition} with {colors_adj} treatment.",
+        "Observational photograph featuring {subject}. {colors}."
     ]
 
     // MARK: - Public Interface

@@ -338,33 +338,79 @@ final class CaptionStyleFormatter {
     }
     
     // MARK: - Word Count Enforcement
-    
-    /// Enforce word limit for caption
+
+    /// Phase 4: Semantic-aware word limit enforcement
+    /// Truncates at complete sentence boundaries rather than mid-sentence
     private func enforceWordLimit(_ caption: String, maxWords: Int) -> String {
         let words = caption.components(separatedBy: .whitespaces)
             .filter { !$0.isEmpty }
-        
+
         if words.count <= maxWords {
             return caption
         }
-        
+
         logger.debug("Truncating caption from \(words.count) to \(maxWords) words")
-        
-        // Truncate to max words
-        let truncatedWords = Array(words.prefix(maxWords))
-        var truncated = truncatedWords.joined(separator: " ")
-        
-        // Try to end at a sentence boundary
-        if let lastPeriod = truncated.lastIndex(of: ".") {
-            truncated = String(truncated[...lastPeriod])
-        } else {
-            // Add period if not present
-            if !truncated.hasSuffix(".") {
-                truncated += "."
+
+        // Phase 4: Find sentence boundaries and truncate at the last complete sentence
+        let sentences = splitIntoSentences(caption)
+
+        var result = ""
+        var currentWordCount = 0
+
+        for sentence in sentences {
+            let sentenceWords = sentence.components(separatedBy: .whitespaces)
+                .filter { !$0.isEmpty }
+
+            // Check if adding this sentence would exceed the limit
+            if currentWordCount + sentenceWords.count > maxWords {
+                // If we have at least one sentence, stop here
+                if !result.isEmpty {
+                    break
+                }
+                // Otherwise, we need to truncate this first sentence
+                let truncatedWords = Array(sentenceWords.prefix(maxWords))
+                result = truncatedWords.joined(separator: " ")
+                if !result.hasSuffix(".") && !result.hasSuffix("!") && !result.hasSuffix("?") {
+                    result += "."
+                }
+                break
+            }
+
+            // Add the complete sentence
+            if !result.isEmpty {
+                result += " "
+            }
+            result += sentence
+            currentWordCount += sentenceWords.count
+        }
+
+        // Ensure proper ending
+        result = result.trimmingCharacters(in: .whitespaces)
+        if !result.isEmpty && !result.hasSuffix(".") && !result.hasSuffix("!") && !result.hasSuffix("?") {
+            result += "."
+        }
+
+        return result
+    }
+
+    /// Split text into sentences
+    private func splitIntoSentences(_ text: String) -> [String] {
+        // Use linguistic tagger for accurate sentence boundary detection
+        var sentences: [String] = []
+        let range = text.startIndex..<text.endIndex
+
+        text.enumerateSubstrings(in: range, options: .bySentences) { substring, _, _, _ in
+            if let sentence = substring?.trimmingCharacters(in: .whitespaces), !sentence.isEmpty {
+                sentences.append(sentence)
             }
         }
-        
-        return truncated
+
+        // Fallback if no sentences found
+        if sentences.isEmpty && !text.isEmpty {
+            sentences = [text]
+        }
+
+        return sentences
     }
     
     // MARK: - Formatting Helpers
@@ -436,26 +482,29 @@ struct CaptionFormattingContext {
     // Core information
     let subject: String
     let imageContext: ImageContext
-    
+
     // Semantic attributes
     let timeOfDay: String?
     let weather: String?
     let activity: String?
     let emotionalTone: String?
-    
+
     // Spatial and compositional
     let spatialDescription: String?
     let secondaryObjects: [String]?
-    
+
     // Quality and technical
     let qualityMetrics: QualityMetrics?
     let colorDescription: String?
     let photographyType: String?
-    
+
     // Analysis metadata
     let confidence: Float?
     let objectCount: Int?
-    
+
+    // Phase 4: Caption confidence scoring
+    let captionConfidence: CaptionConfidence?
+
     init(
         subject: String,
         imageContext: ImageContext,
@@ -469,7 +518,8 @@ struct CaptionFormattingContext {
         colorDescription: String? = nil,
         photographyType: String? = nil,
         confidence: Float? = nil,
-        objectCount: Int? = nil
+        objectCount: Int? = nil,
+        captionConfidence: CaptionConfidence? = nil
     ) {
         self.subject = subject
         self.imageContext = imageContext
@@ -484,5 +534,53 @@ struct CaptionFormattingContext {
         self.photographyType = photographyType
         self.confidence = confidence
         self.objectCount = objectCount
+        self.captionConfidence = captionConfidence
+    }
+}
+
+// MARK: - Phase 4: Caption Confidence
+
+/// Represents confidence level for generated captions
+struct CaptionConfidence: Equatable {
+    let overall: Float           // 0-1, overall caption confidence
+    let subjectConfidence: Float // 0-1, confidence in subject identification
+    let contextConfidence: Float // 0-1, confidence in context (time, weather, etc.)
+
+    /// Human-readable confidence level
+    var level: ConfidenceLevel {
+        if overall >= 0.8 { return .high }
+        if overall >= 0.5 { return .medium }
+        return .low
+    }
+
+    enum ConfidenceLevel: String {
+        case high = "High"
+        case medium = "Medium"
+        case low = "Low"
+
+        var description: String {
+            switch self {
+            case .high: return "High confidence - subject clearly identified"
+            case .medium: return "Medium confidence - subject likely correct"
+            case .low: return "Low confidence - subject uncertain"
+            }
+        }
+    }
+
+    /// Calculate overall confidence from components
+    static func calculate(
+        subjectConfidence: Float,
+        contextConfidence: Float,
+        hasQualityMetrics: Bool
+    ) -> CaptionConfidence {
+        // Weight: subject 60%, context 30%, quality presence 10%
+        let qualityBonus: Float = hasQualityMetrics ? 0.1 : 0.0
+        let overall = subjectConfidence * 0.6 + contextConfidence * 0.3 + qualityBonus
+
+        return CaptionConfidence(
+            overall: min(1.0, overall),
+            subjectConfidence: subjectConfidence,
+            contextConfidence: contextConfidence
+        )
     }
 }

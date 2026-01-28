@@ -2,11 +2,24 @@ import Foundation
 import CoreGraphics
 
 /// Service for assessing image quality metrics and generating contextual feedback
+/// Phase 2 enhanced: histogram clipping, motion blur, per-purpose weights, artistic effects
 final class QualityAssessmentService {
 
     // MARK: - Private Properties
 
     private let analysisQueue = DispatchQueue(label: "com.vinny.ai.quality", qos: .userInitiated)
+
+    // MARK: - Extended Metrics (Phase 2)
+
+    /// Extended metrics including histogram and motion analysis
+    struct ExtendedMetrics {
+        let highlightClipping: Double  // Percentage of blown highlights (0-1)
+        let shadowClipping: Double     // Percentage of crushed shadows (0-1)
+        let motionBlurScore: Double    // Motion blur detection (0=blur, 1=sharp)
+        let isIntentionalBW: Bool      // Detected as intentional B&W
+        let isIntentionalSilhouette: Bool  // Detected as intentional silhouette
+        let isHighContrast: Bool       // Detected as artistic high contrast
+    }
 
     // MARK: - Public Methods
 
@@ -17,14 +30,16 @@ final class QualityAssessmentService {
     ) async throws -> ImageQualityAssessment {
         let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
 
-        // Run sharpness, exposure, and luminance analysis in parallel
+        // Run all analyses in parallel (Phase 2: expanded)
         async let sharpnessResult = detectSharpness(cgImage)
         async let exposureResult = analyzeExposure(cgImage)
         async let luminanceResult = calculateLuminance(cgImage)
+        async let extendedResult = analyzeExtendedMetrics(cgImage)
 
         let sharpness = try await sharpnessResult
         let exposure = try await exposureResult
         let luminance = try await luminanceResult
+        let extended = try await extendedResult
         let megapixels = Double(cgImage.width * cgImage.height) / 1_000_000.0
 
         let metrics = ImageQualityAssessment.Metrics(
@@ -34,8 +49,22 @@ final class QualityAssessmentService {
             luminance: luminance
         )
 
-        let quality = calculateOverallQuality(metrics, imageSize: imageSize)
-        let issues = generateContextualIssues(metrics: metrics, purpose: purpose, imageSize: imageSize)
+        // Phase 2: Use per-purpose quality calculation
+        let quality = calculateOverallQualityWithPurpose(
+            metrics,
+            imageSize: imageSize,
+            purpose: purpose,
+            extended: extended
+        )
+
+        // Phase 2: Include extended metrics in issue generation
+        let issues = generateContextualIssues(
+            metrics: metrics,
+            purpose: purpose,
+            imageSize: imageSize,
+            extended: extended
+        )
+
         let summary = generateContextualQualitySummary(
             quality: quality,
             metrics: metrics,
@@ -50,6 +79,151 @@ final class QualityAssessmentService {
             metrics: metrics,
             purpose: purpose
         )
+    }
+
+    // MARK: - Phase 2: Extended Metrics Analysis
+
+    /// Analyze extended metrics: histogram clipping, motion blur, artistic effects
+    private func analyzeExtendedMetrics(_ cgImage: CGImage) async throws -> ExtendedMetrics {
+        return try await withCheckedThrowingContinuation { continuation in
+            analysisQueue.async {
+                guard let dataProvider = cgImage.dataProvider,
+                      let data = dataProvider.data,
+                      let bytes = CFDataGetBytePtr(data) else {
+                    // Return safe defaults
+                    continuation.resume(returning: ExtendedMetrics(
+                        highlightClipping: 0,
+                        shadowClipping: 0,
+                        motionBlurScore: 0.5,
+                        isIntentionalBW: false,
+                        isIntentionalSilhouette: false,
+                        isHighContrast: false
+                    ))
+                    return
+                }
+
+                let width = cgImage.width
+                let height = cgImage.height
+                let bytesPerRow = cgImage.bytesPerRow
+                let bytesPerPixel = cgImage.bitsPerPixel / 8
+                let dataLength = CFDataGetLength(data)
+
+                // Build histogram and collect color statistics
+                var histogram = [Int](repeating: 0, count: 256)
+                var saturationSum: Double = 0
+                var brightnessSum: Double = 0
+                var minBrightness: Double = 1.0
+                var maxBrightness: Double = 0.0
+                var sampleCount = 0
+
+                // Motion blur detection: horizontal and vertical gradient analysis
+                var horizontalGradientSum: Double = 0
+                var verticalGradientSum: Double = 0
+                var gradientCount = 0
+
+                // Sample every 4th pixel for performance
+                for y in stride(from: 0, to: height, by: 4) {
+                    for x in stride(from: 0, to: width, by: 4) {
+                        let offset = y * bytesPerRow + x * bytesPerPixel
+                        guard offset + 2 < dataLength else { continue }
+
+                        let r = Double(bytes[offset]) / 255.0
+                        let g = Double(bytes[offset + 1]) / 255.0
+                        let b = Double(bytes[offset + 2]) / 255.0
+
+                        // Calculate brightness using BT.709
+                        let brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+                        // Build histogram (0-255 range)
+                        let histIndex = min(255, Int(brightness * 255))
+                        histogram[histIndex] += 1
+
+                        // Track min/max brightness
+                        minBrightness = min(minBrightness, brightness)
+                        maxBrightness = max(maxBrightness, brightness)
+                        brightnessSum += brightness
+
+                        // Calculate saturation for B&W detection
+                        let maxRGB = max(r, max(g, b))
+                        let minRGB = min(r, min(g, b))
+                        let saturation = maxRGB > 0 ? (maxRGB - minRGB) / maxRGB : 0
+                        saturationSum += saturation
+
+                        sampleCount += 1
+
+                        // Motion blur: compare with neighboring pixels
+                        if x + 4 < width && y + 4 < height {
+                            let rightOffset = y * bytesPerRow + (x + 4) * bytesPerPixel
+                            let bottomOffset = (y + 4) * bytesPerRow + x * bytesPerPixel
+
+                            if rightOffset + 2 < dataLength && bottomOffset + 2 < dataLength {
+                                let rRight = Double(bytes[rightOffset]) / 255.0
+                                let gRight = Double(bytes[rightOffset + 1]) / 255.0
+                                let bRight = Double(bytes[rightOffset + 2]) / 255.0
+                                let brightnessRight = 0.2126 * rRight + 0.7152 * gRight + 0.0722 * bRight
+
+                                let rBottom = Double(bytes[bottomOffset]) / 255.0
+                                let gBottom = Double(bytes[bottomOffset + 1]) / 255.0
+                                let bBottom = Double(bytes[bottomOffset + 2]) / 255.0
+                                let brightnessBottom = 0.2126 * rBottom + 0.7152 * gBottom + 0.0722 * bBottom
+
+                                horizontalGradientSum += abs(brightness - brightnessRight)
+                                verticalGradientSum += abs(brightness - brightnessBottom)
+                                gradientCount += 1
+                            }
+                        }
+                    }
+                }
+
+                guard sampleCount > 0 else {
+                    continuation.resume(returning: ExtendedMetrics(
+                        highlightClipping: 0,
+                        shadowClipping: 0,
+                        motionBlurScore: 0.5,
+                        isIntentionalBW: false,
+                        isIntentionalSilhouette: false,
+                        isHighContrast: false
+                    ))
+                    return
+                }
+
+                // Calculate histogram clipping
+                let totalPixels = Double(sampleCount)
+                let highlightClipping = Double(histogram[254] + histogram[255]) / totalPixels
+                let shadowClipping = Double(histogram[0] + histogram[1]) / totalPixels
+
+                // Motion blur score: if gradients are very different in one direction, indicates motion blur
+                let avgHorizontalGradient = gradientCount > 0 ? horizontalGradientSum / Double(gradientCount) : 0
+                let avgVerticalGradient = gradientCount > 0 ? verticalGradientSum / Double(gradientCount) : 0
+                let gradientRatio = max(avgHorizontalGradient, avgVerticalGradient) > 0.01 ?
+                    min(avgHorizontalGradient, avgVerticalGradient) / max(avgHorizontalGradient, avgVerticalGradient) : 1.0
+                // Low ratio = directional blur; high ratio = uniform sharpness or uniform blur
+                let motionBlurScore = gradientRatio
+
+                // Artistic effect detection
+                let avgSaturation = saturationSum / Double(sampleCount)
+                let avgBrightness = brightnessSum / Double(sampleCount)
+                let contrastRange = maxBrightness - minBrightness
+
+                let isIntentionalBW = avgSaturation < Double(AIAnalysisConstants.blackAndWhiteSaturationThreshold)
+
+                // Silhouette: very dark subject (low avg brightness) with high contrast
+                let isIntentionalSilhouette = avgBrightness < Double(AIAnalysisConstants.silhouetteDarkThreshold) &&
+                                              contrastRange > 0.5
+
+                // High contrast artistic effect
+                let isHighContrast = contrastRange > Double(AIAnalysisConstants.artisticContrastThreshold)
+
+                continuation.resume(returning: ExtendedMetrics(
+                    highlightClipping: highlightClipping,
+                    shadowClipping: shadowClipping,
+                    motionBlurScore: motionBlurScore,
+                    isIntentionalBW: isIntentionalBW,
+                    isIntentionalSilhouette: isIntentionalSilhouette,
+                    isHighContrast: isHighContrast
+                ))
+            }
+        }
     }
 
     // MARK: - Sharpness Detection
@@ -165,33 +339,81 @@ final class QualityAssessmentService {
 
     // MARK: - Overall Quality Calculation
 
-    /// Calculate overall quality from metrics
+    /// Calculate overall quality from metrics (legacy, uses default weights)
     func calculateOverallQuality(_ metrics: ImageQualityAssessment.Metrics, imageSize: CGSize) -> ImageQuality {
+        return calculateOverallQualityWithPurpose(
+            metrics,
+            imageSize: imageSize,
+            purpose: .general,
+            extended: nil
+        )
+    }
+
+    /// Phase 2: Calculate quality with per-purpose weights and extended metrics
+    func calculateOverallQualityWithPurpose(
+        _ metrics: ImageQualityAssessment.Metrics,
+        imageSize: CGSize,
+        purpose: ImagePurpose,
+        extended: ExtendedMetrics?
+    ) -> ImageQuality {
+        // Get per-purpose weights (Phase 2 improvement)
+        let weights = getWeightsForPurpose(purpose)
         var qualityScore: Double = 0.0
 
         // Resolution component
+        let resolutionScore: Double
         if metrics.megapixels >= AIAnalysisConstants.highQualityMinMegapixels &&
            min(imageSize.width, imageSize.height) >= AIAnalysisConstants.highQualityMinDimension {
-            qualityScore += AIAnalysisConstants.qualityResolutionWeight
+            resolutionScore = 1.0
         } else if metrics.megapixels >= AIAnalysisConstants.mediumQualityMinMegapixels &&
                   min(imageSize.width, imageSize.height) >= AIAnalysisConstants.mediumQualityMinDimension {
-            qualityScore += AIAnalysisConstants.qualityResolutionWeight * 0.67
+            resolutionScore = 0.67
         } else if metrics.megapixels >= AIAnalysisConstants.lowQualityMinMegapixels {
-            qualityScore += AIAnalysisConstants.qualityResolutionWeight * 0.33
+            resolutionScore = 0.33
+        } else {
+            resolutionScore = 0.0
         }
+        qualityScore += resolutionScore * weights.resolution
 
-        // Sharpness component
-        qualityScore += metrics.sharpness * AIAnalysisConstants.qualitySharpnessWeight
+        // Sharpness component - consider motion blur if available
+        var effectiveSharpness = metrics.sharpness
+        if let ext = extended {
+            // Motion blur reduces effective sharpness
+            // motionBlurScore < 0.3 indicates significant directional blur
+            if ext.motionBlurScore < AIAnalysisConstants.motionBlurThreshold {
+                effectiveSharpness *= ext.motionBlurScore / AIAnalysisConstants.motionBlurThreshold
+            }
+        }
+        qualityScore += effectiveSharpness * weights.sharpness
 
-        // Exposure component - use gaussian-like curve for smoother falloff
-        // This fixes the asymmetric calculation that rejected legitimately dark/bright images
-        // Previous: 1.0 - abs(deviation) * 2.0 created harsh cutoffs at 0.0 and 1.0 exposure
-        // New: Gaussian curve with tolerance of 0.35 for wider acceptable range
+        // Exposure component with artistic effect consideration
+        var exposureQuality: Double
         let exposureDeviation = abs(metrics.exposure - AIAnalysisConstants.optimalExposure)
-        let exposureTolerance = 0.35  // Wider tolerance than before
-        let normalizedDeviation = exposureDeviation / exposureTolerance
-        let exposureQuality = max(0, 1.0 - pow(normalizedDeviation, 2))
-        qualityScore += exposureQuality * AIAnalysisConstants.qualityExposureWeight
+        let exposureTolerance = 0.35
+
+        // Phase 2: Don't penalize intentional artistic effects
+        if let ext = extended {
+            if ext.isIntentionalBW || ext.isIntentionalSilhouette || ext.isHighContrast {
+                // Artistic images get full exposure score - they're intentional
+                exposureQuality = 0.9
+            } else {
+                let normalizedDeviation = exposureDeviation / exposureTolerance
+                exposureQuality = max(0, 1.0 - pow(normalizedDeviation, 2))
+
+                // Phase 2: Penalize clipping unless it's an artistic effect
+                if ext.highlightClipping > AIAnalysisConstants.highlightClippingThreshold {
+                    exposureQuality *= (1.0 - ext.highlightClipping * 2)
+                }
+                if ext.shadowClipping > AIAnalysisConstants.shadowClippingThreshold {
+                    exposureQuality *= (1.0 - ext.shadowClipping * 2)
+                }
+                exposureQuality = max(0, exposureQuality)
+            }
+        } else {
+            let normalizedDeviation = exposureDeviation / exposureTolerance
+            exposureQuality = max(0, 1.0 - pow(normalizedDeviation, 2))
+        }
+        qualityScore += exposureQuality * weights.exposure
 
         // Determine quality tier
         if qualityScore >= AIAnalysisConstants.highQualityScoreThreshold {
@@ -203,125 +425,240 @@ final class QualityAssessmentService {
         }
     }
 
+    /// Phase 2: Get quality weights based on image purpose
+    private func getWeightsForPurpose(_ purpose: ImagePurpose) -> (resolution: Double, sharpness: Double, exposure: Double) {
+        switch purpose {
+        case .portrait, .groupPhoto:
+            return AIAnalysisConstants.portraitQualityWeights
+        case .landscape, .architecture:
+            return AIAnalysisConstants.landscapeQualityWeights
+        case .document, .screenshot:
+            return AIAnalysisConstants.documentQualityWeights
+        case .productPhoto:
+            return AIAnalysisConstants.productQualityWeights
+        case .food:
+            return AIAnalysisConstants.foodQualityWeights
+        case .wildlife:
+            return AIAnalysisConstants.wildlifeQualityWeights
+        case .general:
+            return (
+                resolution: AIAnalysisConstants.qualityResolutionWeight,
+                sharpness: AIAnalysisConstants.qualitySharpnessWeight,
+                exposure: AIAnalysisConstants.qualityExposureWeight
+            )
+        }
+    }
+
     // MARK: - Contextual Issue Generation
 
     /// Generate contextual quality issues based on image purpose
+    /// Phase 2: Now includes extended metrics for clipping and blur detection
     func generateContextualIssues(
         metrics: ImageQualityAssessment.Metrics,
         purpose: ImagePurpose,
-        imageSize: CGSize
+        imageSize: CGSize,
+        extended: ExtendedMetrics? = nil
     ) -> [ImageQualityAssessment.Issue] {
         var issues: [ImageQualityAssessment.Issue] = []
 
-        switch purpose {
-        case .portrait, .groupPhoto:
-            if metrics.sharpness < AIAnalysisConstants.portraitSharpnessThreshold {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Soft Portrait Focus",
-                    detail: "Facial sharpness at \(Int(metrics.sharpness * 100))% may not be suitable for professional headshots. Ideal sharpness for portraits is 70%+."
-                ))
-            }
-            if metrics.exposure < AIAnalysisConstants.portraitUnderexposedThreshold {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .underexposed,
-                    title: "Dark Portrait Exposure",
-                    detail: "Underexposed by approximately \(String(format: "%.1f", (AIAnalysisConstants.optimalExposure - metrics.exposure) * 2)) stops. Faces may lack detail in shadows. Increase exposure to reveal skin tones."
-                ))
-            } else if metrics.exposure > AIAnalysisConstants.portraitOverexposedThreshold {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .overexposed,
-                    title: "Overexposed Portrait",
-                    detail: "Overexposed by \(String(format: "%.1f", (metrics.exposure - AIAnalysisConstants.optimalExposure) * 2)) stops. Risk of blown highlights on skin. Reduce exposure to preserve facial detail."
-                ))
-            }
+        // Phase 2: Check for histogram clipping and motion blur
+        issues.append(contentsOf: generateClippingAndBlurIssues(extended: extended))
 
-        case .landscape, .architecture:
-            if metrics.sharpness < AIAnalysisConstants.landscapeSharpnessThreshold {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Landscape Sharpness Issue",
-                    detail: "Overall sharpness at \(Int(metrics.sharpness * 100))%. Landscape photos benefit from edge-to-edge sharpness. Consider using smaller aperture (f/8-f/11) or focus stacking."
-                ))
-            }
-            if metrics.megapixels < AIAnalysisConstants.landscapeMinMegapixels {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .lowResolution,
-                    title: "Limited Print Size",
-                    detail: "At \(String(format: "%.1f", metrics.megapixels))MP, maximum quality print size is approximately \(Int(sqrt(metrics.megapixels * 1_000_000) / 300 * 2.54))x\(Int(sqrt(metrics.megapixels * 1_000_000) / 300 * 2.54))cm at 300dpi. Consider higher resolution for large format prints."
-                ))
-            }
+        // Generate purpose-specific issues
+        issues.append(contentsOf: generatePurposeSpecificIssues(metrics: metrics, purpose: purpose))
 
-        case .document, .screenshot:
-            if metrics.sharpness < AIAnalysisConstants.documentSharpnessThreshold {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Text Readability Issue",
-                    detail: "Text sharpness at \(Int(metrics.sharpness * 100))% may affect OCR accuracy. Ensure camera is stable and text is in focus for best recognition."
-                ))
-            }
-            if metrics.exposure < AIAnalysisConstants.documentExposureMin ||
-               metrics.exposure > AIAnalysisConstants.documentExposureMax {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: metrics.exposure < AIAnalysisConstants.documentExposureMin ? .underexposed : .overexposed,
-                    title: "Suboptimal Document Exposure",
-                    detail: "Document contrast is not ideal for text extraction. Aim for even lighting and balanced exposure for maximum OCR accuracy."
-                ))
-            }
+        return issues
+    }
 
-        case .productPhoto:
-            if metrics.sharpness < AIAnalysisConstants.productSharpnessThreshold {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Product Detail Softness",
-                    detail: "Sharpness at \(Int(metrics.sharpness * 100))% may not showcase product details adequately. E-commerce photos require crisp focus on product features."
-                ))
-            }
-            if metrics.megapixels < AIAnalysisConstants.productMinMegapixels {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .lowResolution,
-                    title: "Low Resolution for Commerce",
-                    detail: "At \(String(format: "%.1f", metrics.megapixels))MP, zoom capability is limited. E-commerce platforms recommend 2000x2000px minimum for product detail views."
-                ))
-            }
-
-        case .food:
-            if metrics.exposure < AIAnalysisConstants.foodUnderexposedThreshold {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .underexposed,
-                    title: "Dark Food Photography",
-                    detail: "Underexposed food photos reduce appetite appeal. Increase exposure to showcase colors and textures that make food appetizing."
-                ))
-            }
-
-        case .wildlife:
-            if metrics.sharpness < AIAnalysisConstants.wildlifeSharpnessThreshold {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Wildlife Subject Sharpness",
-                    detail: "Subject sharpness at \(Int(metrics.sharpness * 100))% suggests motion blur or focus miss. Wildlife photography requires fast shutter speeds (1/500s+) to freeze action."
-                ))
-            }
-
-        case .general:
-            if metrics.sharpness < AIAnalysisConstants.generalSharpnessThreshold {
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: .softFocus,
-                    title: "Soft Focus",
-                    detail: "Overall sharpness at \(Int(metrics.sharpness * 100))%. Image may benefit from sharpening or refocusing."
-                ))
-            }
-            if metrics.exposure < AIAnalysisConstants.generalUnderexposedThreshold ||
-               metrics.exposure > AIAnalysisConstants.generalOverexposedThreshold {
-                let isUnder = metrics.exposure < AIAnalysisConstants.generalUnderexposedThreshold
-                issues.append(ImageQualityAssessment.Issue(
-                    kind: isUnder ? .underexposed : .overexposed,
-                    title: isUnder ? "Underexposed" : "Overexposed",
-                    detail: "Exposure is \(isUnder ? "too dark" : "too bright"). Adjust by \(String(format: "%.1f", abs(metrics.exposure - AIAnalysisConstants.optimalExposure) * 2)) stops for balanced histogram."
-                ))
-            }
+    /// Generate issues for histogram clipping and motion blur
+    private func generateClippingAndBlurIssues(extended: ExtendedMetrics?) -> [ImageQualityAssessment.Issue] {
+        guard let ext = extended,
+              !ext.isIntentionalBW && !ext.isIntentionalSilhouette && !ext.isHighContrast else {
+            return []
         }
 
+        var issues: [ImageQualityAssessment.Issue] = []
+
+        if ext.highlightClipping > AIAnalysisConstants.highlightClippingThreshold {
+            let percentage = Int(ext.highlightClipping * 100)
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .overexposed,
+                title: "Blown Highlights",
+                detail: "Approximately \(percentage)% of the image has clipped highlights. Detail in bright areas is lost. Reduce exposure or use highlight recovery."
+            ))
+        }
+
+        if ext.shadowClipping > AIAnalysisConstants.shadowClippingThreshold {
+            let percentage = Int(ext.shadowClipping * 100)
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .underexposed,
+                title: "Crushed Shadows",
+                detail: "Approximately \(percentage)% of the image has crushed shadows. Detail in dark areas is lost. Increase exposure or use shadow recovery."
+            ))
+        }
+
+        if ext.motionBlurScore < AIAnalysisConstants.motionBlurThreshold {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .softFocus,
+                title: "Motion Blur Detected",
+                detail: "Directional blur pattern detected, suggesting camera shake or subject movement. Use faster shutter speed or image stabilization."
+            ))
+        }
+
+        return issues
+    }
+
+    /// Generate purpose-specific quality issues
+    // swiftlint:disable:next cyclomatic_complexity
+    private func generatePurposeSpecificIssues(
+        metrics: ImageQualityAssessment.Metrics,
+        purpose: ImagePurpose
+    ) -> [ImageQualityAssessment.Issue] {
+        switch purpose {
+        case .portrait, .groupPhoto:
+            return generatePortraitIssues(metrics: metrics)
+        case .landscape, .architecture:
+            return generateLandscapeIssues(metrics: metrics)
+        case .document, .screenshot:
+            return generateDocumentIssues(metrics: metrics)
+        case .productPhoto:
+            return generateProductIssues(metrics: metrics)
+        case .food:
+            return generateFoodIssues(metrics: metrics)
+        case .wildlife:
+            return generateWildlifeIssues(metrics: metrics)
+        case .general:
+            return generateGeneralIssues(metrics: metrics)
+        }
+    }
+
+    private func generatePortraitIssues(metrics: ImageQualityAssessment.Metrics) -> [ImageQualityAssessment.Issue] {
+        var issues: [ImageQualityAssessment.Issue] = []
+        if metrics.sharpness < AIAnalysisConstants.portraitSharpnessThreshold {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .softFocus,
+                title: "Soft Portrait Focus",
+                detail: "Facial sharpness at \(Int(metrics.sharpness * 100))% may not be suitable for professional headshots."
+            ))
+        }
+        if metrics.exposure < AIAnalysisConstants.portraitUnderexposedThreshold {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .underexposed,
+                title: "Dark Portrait Exposure",
+                detail: "Underexposed by approximately \(String(format: "%.1f", (AIAnalysisConstants.optimalExposure - metrics.exposure) * 2)) stops. Increase exposure to reveal skin tones."
+            ))
+        } else if metrics.exposure > AIAnalysisConstants.portraitOverexposedThreshold {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .overexposed,
+                title: "Overexposed Portrait",
+                detail: "Overexposed by \(String(format: "%.1f", (metrics.exposure - AIAnalysisConstants.optimalExposure) * 2)) stops. Reduce exposure to preserve facial detail."
+            ))
+        }
+        return issues
+    }
+
+    private func generateLandscapeIssues(metrics: ImageQualityAssessment.Metrics) -> [ImageQualityAssessment.Issue] {
+        var issues: [ImageQualityAssessment.Issue] = []
+        if metrics.sharpness < AIAnalysisConstants.landscapeSharpnessThreshold {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .softFocus,
+                title: "Landscape Sharpness Issue",
+                detail: "Sharpness at \(Int(metrics.sharpness * 100))%. Consider using smaller aperture (f/8-f/11) or focus stacking."
+            ))
+        }
+        if metrics.megapixels < AIAnalysisConstants.landscapeMinMegapixels {
+            let printSize = Int(sqrt(metrics.megapixels * 1_000_000) / 300 * 2.54)
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .lowResolution,
+                title: "Limited Print Size",
+                detail: "At \(String(format: "%.1f", metrics.megapixels))MP, maximum print size is approximately \(printSize)x\(printSize)cm at 300dpi."
+            ))
+        }
+        return issues
+    }
+
+    private func generateDocumentIssues(metrics: ImageQualityAssessment.Metrics) -> [ImageQualityAssessment.Issue] {
+        var issues: [ImageQualityAssessment.Issue] = []
+        if metrics.sharpness < AIAnalysisConstants.documentSharpnessThreshold {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .softFocus,
+                title: "Text Readability Issue",
+                detail: "Text sharpness at \(Int(metrics.sharpness * 100))% may affect OCR accuracy."
+            ))
+        }
+        if metrics.exposure < AIAnalysisConstants.documentExposureMin ||
+           metrics.exposure > AIAnalysisConstants.documentExposureMax {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: metrics.exposure < AIAnalysisConstants.documentExposureMin ? .underexposed : .overexposed,
+                title: "Suboptimal Document Exposure",
+                detail: "Document contrast is not ideal for text extraction. Aim for even lighting."
+            ))
+        }
+        return issues
+    }
+
+    private func generateProductIssues(metrics: ImageQualityAssessment.Metrics) -> [ImageQualityAssessment.Issue] {
+        var issues: [ImageQualityAssessment.Issue] = []
+        if metrics.sharpness < AIAnalysisConstants.productSharpnessThreshold {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .softFocus,
+                title: "Product Detail Softness",
+                detail: "Sharpness at \(Int(metrics.sharpness * 100))% may not showcase product details adequately."
+            ))
+        }
+        if metrics.megapixels < AIAnalysisConstants.productMinMegapixels {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .lowResolution,
+                title: "Low Resolution for Commerce",
+                detail: "At \(String(format: "%.1f", metrics.megapixels))MP, zoom capability is limited. Recommend 2000x2000px minimum."
+            ))
+        }
+        return issues
+    }
+
+    private func generateFoodIssues(metrics: ImageQualityAssessment.Metrics) -> [ImageQualityAssessment.Issue] {
+        var issues: [ImageQualityAssessment.Issue] = []
+        if metrics.exposure < AIAnalysisConstants.foodUnderexposedThreshold {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .underexposed,
+                title: "Dark Food Photography",
+                detail: "Underexposed food photos reduce appetite appeal. Increase exposure to showcase colors and textures."
+            ))
+        }
+        return issues
+    }
+
+    private func generateWildlifeIssues(metrics: ImageQualityAssessment.Metrics) -> [ImageQualityAssessment.Issue] {
+        var issues: [ImageQualityAssessment.Issue] = []
+        if metrics.sharpness < AIAnalysisConstants.wildlifeSharpnessThreshold {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .softFocus,
+                title: "Wildlife Subject Sharpness",
+                detail: "Subject sharpness at \(Int(metrics.sharpness * 100))% suggests motion blur. Use faster shutter speeds (1/500s+)."
+            ))
+        }
+        return issues
+    }
+
+    private func generateGeneralIssues(metrics: ImageQualityAssessment.Metrics) -> [ImageQualityAssessment.Issue] {
+        var issues: [ImageQualityAssessment.Issue] = []
+        if metrics.sharpness < AIAnalysisConstants.generalSharpnessThreshold {
+            issues.append(ImageQualityAssessment.Issue(
+                kind: .softFocus,
+                title: "Soft Focus",
+                detail: "Overall sharpness at \(Int(metrics.sharpness * 100))%. Image may benefit from sharpening."
+            ))
+        }
+        if metrics.exposure < AIAnalysisConstants.generalUnderexposedThreshold ||
+           metrics.exposure > AIAnalysisConstants.generalOverexposedThreshold {
+            let isUnder = metrics.exposure < AIAnalysisConstants.generalUnderexposedThreshold
+            let stops = String(format: "%.1f", abs(metrics.exposure - AIAnalysisConstants.optimalExposure) * 2)
+            issues.append(ImageQualityAssessment.Issue(
+                kind: isUnder ? .underexposed : .overexposed,
+                title: isUnder ? "Underexposed" : "Overexposed",
+                detail: "Exposure is \(isUnder ? "too dark" : "too bright"). Adjust by \(stops) stops for balanced histogram."
+            ))
+        }
         return issues
     }
 
