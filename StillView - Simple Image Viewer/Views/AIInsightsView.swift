@@ -40,9 +40,26 @@ struct AIInsightsView: View {
                             .scaleEffect(0.8)
                     }
 
-                    Text("Analyzing…")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    // Phase 7.4: Show current analysis stage
+                    if let stage = viewModel.currentAnalysisStage {
+                        Text(stage)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Analyzing…")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    // Phase 6.3: Cancel button
+                    Button(action: {
+                        viewModel.cancelAIAnalysis()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Cancel analysis")
                 }
             }
         }
@@ -201,14 +218,52 @@ struct AIInsightsView: View {
             Text("Analyzing image…")
                 .font(.headline)
 
+            // Phase 7.4: Show current stage with icon
+            if let stage = viewModel.currentAnalysisStage {
+                HStack(spacing: 8) {
+                    Image(systemName: stageIcon(for: stage))
+                        .foregroundColor(.accentColor)
+                    Text(stage)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.accentColor.opacity(0.1))
+                )
+            }
+
             Text("Performing comprehensive AI analysis including quality assessment, object detection, and scene understanding.")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
+
+            // Phase 6.3: Cancel button
+            Button("Cancel") {
+                viewModel.cancelAIAnalysis()
+            }
+            .buttonStyle(.bordered)
+            .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
+    }
+
+    // Phase 7.4: Icon mapping for analysis stages
+    private func stageIcon(for stage: String) -> String {
+        switch stage.lowercased() {
+        case let s where s.contains("classif"): return "tag"
+        case let s where s.contains("object"): return "viewfinder"
+        case let s where s.contains("text"): return "doc.text"
+        case let s where s.contains("color"): return "paintpalette"
+        case let s where s.contains("quality"): return "checkmark.seal"
+        case let s where s.contains("caption"): return "text.bubble"
+        case let s where s.contains("complete"): return "checkmark.circle.fill"
+        default: return "brain.head.profile"
+        }
     }
 
     private var noAnalysisView: some View {

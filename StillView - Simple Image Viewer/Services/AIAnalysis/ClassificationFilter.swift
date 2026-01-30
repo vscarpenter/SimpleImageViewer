@@ -47,6 +47,9 @@ final class ClassificationFilter {
         merged = boostSubjectConfidence(merged, hasPersonDetection: hasPersonDetection, hasVehicleDetection: hasVehicleDetection)
         merged = deprioritizeGenericTerms(merged)
 
+        // Phase 3: Remove semantic contradictions
+        merged = removeSemanticContradictions(merged)
+
         Logger.ai("Final processed classifications: \(merged.prefix(5).map { "\($0.identifier)(\(String(format: "%.2f", $0.confidence)))" }.joined(separator: ", "))")
 
         return merged
@@ -216,6 +219,62 @@ final class ClassificationFilter {
                 confidence: boostedConfidence
             )
         }
+    }
+
+    // MARK: - Phase 3: Semantic Contradiction Detection
+
+    /// Define contradictory classification pairs
+    /// When both terms in a pair are present, keep only the one with higher confidence
+    private static let contradictionPairs: [(Set<String>, Set<String>)] = [
+        // Indoor vs Outdoor
+        (["indoor", "inside", "interior", "room"], ["outdoor", "outside", "exterior", "nature"]),
+        // Day vs Night
+        (["daytime", "daylight", "sunny", "bright day"], ["night", "nighttime", "dark", "evening"]),
+        // Urban vs Natural
+        (["urban", "city", "downtown", "street"], ["wilderness", "forest", "rural", "countryside"]),
+        // Hot vs Cold
+        (["beach", "summer", "tropical", "desert"], ["snow", "winter", "arctic", "frozen"]),
+        // Water vs Dry land
+        (["underwater", "swimming", "aquatic"], ["desert", "arid", "dry land"]),
+    ]
+
+    /// Remove semantically contradictory classifications
+    /// Phase 3 improvement: Detects when Vision and ResNet disagree on mutually exclusive attributes
+    func removeSemanticContradictions(_ classifications: [ClassificationResult]) -> [ClassificationResult] {
+        var result = classifications
+
+        for (groupA, groupB) in Self.contradictionPairs {
+            // Find classifications matching each group
+            let matchesA = result.filter { classification in
+                let id = classification.identifier.lowercased()
+                return groupA.contains(where: { id.contains($0) })
+            }
+            let matchesB = result.filter { classification in
+                let id = classification.identifier.lowercased()
+                return groupB.contains(where: { id.contains($0) })
+            }
+
+            // If both groups have matches, we have a contradiction
+            if !matchesA.isEmpty && !matchesB.isEmpty {
+                // Keep the group with higher total confidence
+                let confidenceA = matchesA.map { $0.confidence }.reduce(0, +)
+                let confidenceB = matchesB.map { $0.confidence }.reduce(0, +)
+
+                let removeGroup = confidenceA >= confidenceB ? groupB : groupA
+
+                #if DEBUG
+                Logger.ai("⚠️ Semantic contradiction detected: \(groupA) vs \(groupB)")
+                Logger.ai("   Keeping group with confidence \(String(format: "%.2f", max(confidenceA, confidenceB))), removing \(String(format: "%.2f", min(confidenceA, confidenceB)))")
+                #endif
+
+                result = result.filter { classification in
+                    let id = classification.identifier.lowercased()
+                    return !removeGroup.contains(where: { id.contains($0) })
+                }
+            }
+        }
+
+        return result
     }
 
     // MARK: - Private Helpers

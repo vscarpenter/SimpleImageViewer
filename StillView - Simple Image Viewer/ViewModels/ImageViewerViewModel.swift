@@ -69,6 +69,9 @@ class ImageViewerViewModel: ObservableObject {
     @Published private(set) var isAIInsightsAvailable: Bool = false
     @Published private(set) var aiInsights: [AIInsight] = []
 
+    // Phase 6.3: Analysis stage tracking for UI progress display
+    @Published private(set) var currentAnalysisStage: String?
+
     private let aiBrain = AIBrain.shared
     
     // MARK: - Computed Properties
@@ -171,6 +174,14 @@ class ImageViewerViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 self?.aiAnalysisProgress = $0
+            }
+            .store(in: &cancellables)
+
+        // Phase 6.3: Subscribe to analysis stage changes for UI progress display
+        aiAnalysisService.$currentAnalysisStage
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] stage in
+                self?.currentAnalysisStage = stage.rawValue
             }
             .store(in: &cancellables)
         
@@ -392,6 +403,13 @@ class ImageViewerViewModel: ObservableObject {
     func retryAIAnalysis() {
         guard let image = currentImage else { return }
         scheduleAIAnalysisIfNeeded(image: image, file: currentImageFile)
+    }
+
+    /// Phase 6.3: Cancel the current AI analysis task
+    func cancelAIAnalysis() {
+        analysisTask?.cancel()
+        aiAnalysisService.cancelAnalysis()
+        resetAnalysisState()
     }
     
     // MARK: - AI Insights UI Methods
