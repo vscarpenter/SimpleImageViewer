@@ -77,7 +77,10 @@ final class QualityAssessmentService {
             summary: summary,
             issues: issues,
             metrics: metrics,
-            purpose: purpose
+            purpose: purpose,
+            isArtisticBW: extended?.isIntentionalBW ?? false,
+            isArtisticSilhouette: extended?.isIntentionalSilhouette ?? false,
+            isArtisticHighContrast: extended?.isHighContrast ?? false
         )
     }
 

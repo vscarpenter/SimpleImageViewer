@@ -59,11 +59,8 @@ class AppearanceService: ObservableObject {
         case .normal:
             return accessibilityAnimation
         case .enhanced:
-            // Make animations more dramatic
-            if let spring = accessibilityAnimation as? Animation {
-                return .spring(response: 0.6, dampingFraction: 0.6, blendDuration: 0.0)
-            }
-            return accessibilityAnimation
+            // Make animations more dramatic - use bouncy spring when accessibility allows
+            return AnimationPresets.bouncySpring
         }
     }
     
@@ -78,6 +75,7 @@ class AppearanceService: ObservableObject {
         case .normal:
             return .easeInOut(duration: 0.2)
         case .enhanced:
+            // Responsive spring — slightly bouncier than snappy for hover feedback
             return .spring(response: 0.3, dampingFraction: 0.7, blendDuration: 0.0)
         }
     }

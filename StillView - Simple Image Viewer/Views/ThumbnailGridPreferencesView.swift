@@ -34,7 +34,7 @@ struct ThumbnailGridPreferencesView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Toggle("Responsive Layout", isOn: $isResponsiveLayoutEnabled)
                     .toggleStyle(SwitchToggleStyle())
-                    .onChange(of: isResponsiveLayoutEnabled) { newValue in
+                    .onChange(of: isResponsiveLayoutEnabled) { _, newValue in
                         layoutManager.setResponsiveLayoutEnabled(newValue)
                     }
                 

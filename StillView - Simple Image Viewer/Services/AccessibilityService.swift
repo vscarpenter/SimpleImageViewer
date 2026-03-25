@@ -100,12 +100,16 @@ class AccessibilityService: ObservableObject {
     ///   - newValue: New value of the setting
     func announcePreferenceChange(setting: String, newValue: String) {
         guard isVoiceOverEnabled else { return }
-        
-        let message = "\(setting) changed to \(newValue)"
+
         DispatchQueue.main.async {
+            let userInfo: [NSAccessibility.NotificationUserInfoKey: Any] = [
+                .announcement: "\(setting) changed to \(newValue)",
+                .priority: NSAccessibilityPriorityLevel.high.rawValue
+            ]
             NSAccessibility.post(
                 element: NSApp.mainWindow as Any,
-                notification: .announcementRequested
+                notification: .announcementRequested,
+                userInfo: userInfo
             )
         }
     }

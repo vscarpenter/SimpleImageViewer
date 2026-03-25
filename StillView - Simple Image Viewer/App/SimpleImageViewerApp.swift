@@ -179,16 +179,11 @@ struct SimpleImageViewerApp: App {
         
         // Delay security-scoped bookmark restoration to prevent startup crashes
         // This allows the app to fully initialize before accessing system resources
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            Task { @MainActor in
-                do {
-                    Logger.start("Starting bookmark restoration...")
-                    SecurityScopedBookmarkManager.shared.restoreBookmarksOnLaunch()
-                    Logger.complete("Bookmark restoration completed")
-                } catch {
-                    Logger.fail("Bookmark restoration failed", error: error)
-                }
-            }
+        let bookmarkRestorationDelay: TimeInterval = 2.0
+        DispatchQueue.main.asyncAfter(deadline: .now() + bookmarkRestorationDelay) {
+            Logger.start("Starting bookmark restoration...")
+            SecurityScopedBookmarkManager.shared.restoreBookmarksOnLaunch()
+            Logger.complete("Bookmark restoration completed")
         }
     }
     

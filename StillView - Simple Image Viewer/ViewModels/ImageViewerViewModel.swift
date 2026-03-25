@@ -568,53 +568,24 @@ class ImageViewerViewModel: ObservableObject {
 
     /// Handle AI analysis preference change notification
     private func handleAIAnalysisPreferenceChange(_ notification: Notification) {
-        do {
-            // Extract the new preference value from the notification
-            let newValue: Bool
-            
-            // Safely extract the preference value with fallback
-            if let notificationValue = notification.object as? Bool {
-                newValue = notificationValue
-            } else {
-                // Fallback to reading directly from preferences service
-                newValue = preferencesService.enableAIAnalysis
-                Logger.warning("Preference notification missing value, using fallback", context: "AIInsights")
-            }
-            
-            // Update the local state
-            updateAIAnalysisEnabled(newValue)
-            
-            // If AI analysis is disabled, ensure panel state persistence is also reset
-            if !newValue {
-                Logger.info("AI analysis disabled - AI Insights panel state will be reset", context: "AIInsights")
-            }
-            
-        } catch let error as AIAnalysisError {
-            // Handle AI-specific preference synchronization failure
-            Logger.error("AI-specific preference sync error: \(error.localizedDescription)", context: "AIInsights")
-            
-            switch error {
-            case .preferenceSyncFailed:
-                errorHandlingService.handlePreferenceSyncFailure(error) { [weak self] in
-                    Task { @MainActor in
-                        self?.fallbackPreferenceSync()
-                    }
-                }
-            case .notificationSystemFailed:
-                // Setup fallback notification system
-                setupFallbackNotificationSystem()
-            default:
-                // For other AI errors, attempt fallback sync
-                fallbackPreferenceSync()
-            }
-        } catch {
-            // Handle generic preference synchronization failure
-            Logger.error("Failed to handle AI analysis preference change: \(error.localizedDescription)", context: "AIInsights")
-            errorHandlingService.handlePreferenceSyncFailure(error) { [weak self] in
-                Task { @MainActor in
-                    self?.fallbackPreferenceSync()
-                }
-            }
+        // Extract the new preference value from the notification
+        let newValue: Bool
+
+        // Safely extract the preference value with fallback
+        if let notificationValue = notification.object as? Bool {
+            newValue = notificationValue
+        } else {
+            // Fallback to reading directly from preferences service
+            newValue = preferencesService.enableAIAnalysis
+            Logger.warning("Preference notification missing value, using fallback", context: "AIInsights")
+        }
+
+        // Update the local state
+        updateAIAnalysisEnabled(newValue)
+
+        // If AI analysis is disabled, ensure panel state persistence is also reset
+        if !newValue {
+            Logger.info("AI analysis disabled - AI Insights panel state will be reset", context: "AIInsights")
         }
     }
     
@@ -633,7 +604,7 @@ class ImageViewerViewModel: ObservableObject {
 
         isEnhancedProcessingEnabled = newValue
 
-        guard let imageFile = currentImageFile else { return }
+        guard currentImageFile != nil else { return }
         loadCurrentImage()
     }
     
@@ -667,117 +638,37 @@ class ImageViewerViewModel: ObservableObject {
     
     /// Synchronize AI Insights state with current preferences
     private func syncAIInsightsWithPreferences() {
-        do {
-            let enabled = preferencesService.enableAIAnalysis
-            updateAIAnalysisEnabled(enabled)
-            Logger.info("AI Insights preferences synchronized successfully", context: "AIInsights")
-        } catch let error as AIAnalysisError {
-            Logger.error("AI-specific preference sync error: \(error.localizedDescription)", context: "AIInsights")
-            
-            switch error {
-            case .preferenceSyncFailed:
-                errorHandlingService.handlePreferenceSyncFailure(error) { [weak self] in
-                    Task { @MainActor in
-                        self?.fallbackPreferenceSync()
-                    }
-                }
-            case .systemResourcesUnavailable:
-                // Set to safe default state
-                isAIAnalysisEnabled = false
-                updateAIInsightsAvailability()
-                Logger.warning("AI system resources unavailable, disabling AI analysis", context: "AIInsights")
-            default:
-                // For other AI errors, attempt fallback
-                fallbackPreferenceSync()
-            }
-        } catch {
-            Logger.error("Failed to sync AI Insights with preferences: \(error.localizedDescription)", context: "AIInsights")
-            errorHandlingService.handlePreferenceSyncFailure(error) { [weak self] in
-                Task { @MainActor in
-                    self?.fallbackPreferenceSync()
-                }
-            }
-        }
+        let enabled = preferencesService.enableAIAnalysis
+        updateAIAnalysisEnabled(enabled)
+        Logger.info("AI Insights preferences synchronized successfully", context: "AIInsights")
     }
     
-    /// Fallback mechanism for preference synchronization failures
+    /// Fallback mechanism for preference synchronization failures.
+    /// Already runs on @MainActor — no need for DispatchQueue.main.async.
     private func fallbackPreferenceSync() {
         Logger.info("Attempting fallback preference synchronization", context: "AIInsights")
-        
-        // Use a simple polling mechanism as fallback with exponential backoff
-        var retryCount = 0
-        let maxRetries = 3
-        
-        func attemptSync() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(1 << retryCount)) { [weak self] in
-                guard let self = self else { return }
-                
-                do {
-                    // Re-read preferences directly with error handling
-                    let currentEnabled = self.preferencesService.enableAIAnalysis
-                    
-                    // Update state if different
-                    if self.isAIAnalysisEnabled != currentEnabled {
-                        self.updateAIAnalysisEnabled(currentEnabled)
-                        Logger.info("Fallback preference sync successful after \(retryCount + 1) attempts", context: "AIInsights")
-                        return
-                    }
-                    
-                    let currentEnhancements = self.preferencesService.enableImageEnhancements
-                    if self.isEnhancedProcessingEnabled != currentEnhancements {
-                        self.isEnhancedProcessingEnabled = currentEnhancements
-                        if let imageFile = self.currentImageFile {
-                            self.loadCurrentImage()
-                        }
-                        Logger.info("Fallback enhancement sync completed", context: "ImageEnhancements")
-                        return
-                    }
 
-                    Logger.info("Fallback preference sync completed - no changes needed", context: "AIInsights")
-                    
-                } catch let error as AIAnalysisError {
-                    Logger.error("Fallback preference sync failed (attempt \(retryCount + 1)): \(error.localizedDescription)", context: "AIInsights")
-                    
-                    retryCount += 1
-                    if retryCount < maxRetries {
-                        // Retry with exponential backoff
-                        attemptSync()
-                    } else {
-                        // Final fallback - set to safe default state
-                        Logger.error("All fallback attempts failed, setting safe defaults", context: "AIInsights")
-                        self.isAIAnalysisEnabled = false
-                        self.updateAIInsightsAvailability()
-                        
-                        // Notify user of persistent issue
-                        self.errorHandlingService.showNotification(
-                            "AI preferences sync failed - restart app if issues persist",
-                            type: .warning
-                        )
-                    }
-                } catch {
-                    Logger.error("Fallback preference sync failed (attempt \(retryCount + 1)): \(error.localizedDescription)", context: "AIInsights")
-                    
-                    retryCount += 1
-                    if retryCount < maxRetries {
-                        // Retry with exponential backoff
-                        attemptSync()
-                    } else {
-                        // Final fallback - set to safe default state
-                        Logger.error("All fallback attempts failed, setting safe defaults", context: "AIInsights")
-                        self.isAIAnalysisEnabled = false
-                        self.updateAIInsightsAvailability()
-                        
-                        // Notify user of persistent issue
-                        self.errorHandlingService.showNotification(
-                            "AI preferences sync failed - restart app if issues persist",
-                            type: .warning
-                        )
-                    }
-                }
-            }
+        // Re-read preferences directly
+        let currentEnabled = preferencesService.enableAIAnalysis
+
+        // Update state if different
+        if isAIAnalysisEnabled != currentEnabled {
+            updateAIAnalysisEnabled(currentEnabled)
+            Logger.info("Fallback preference sync successful", context: "AIInsights")
+            return
         }
-        
-        attemptSync()
+
+        let currentEnhancements = preferencesService.enableImageEnhancements
+        if isEnhancedProcessingEnabled != currentEnhancements {
+            isEnhancedProcessingEnabled = currentEnhancements
+            if currentImageFile != nil {
+                loadCurrentImage()
+            }
+            Logger.info("Fallback enhancement sync completed", context: "ImageEnhancements")
+            return
+        }
+
+        Logger.info("Fallback preference sync completed - no changes needed", context: "AIInsights")
     }
     
     /// Initialize AI Insights state on app launch based on preferences and system availability
@@ -1348,10 +1239,9 @@ class ImageViewerViewModel: ObservableObject {
     }
     
     /// Get available sharing services for the current image
+    @available(macOS, deprecated: 13.0, message: "No replacement API exists for programmatic service enumeration")
     var availableSharingServices: [NSSharingService] {
         guard let currentImageFile = currentImageFile else { return [] }
-        // Use NSSharingService.sharingServices but suppress the deprecation warning
-        // This is still the correct way to get available sharing services programmatically
         return NSSharingService.sharingServices(forItems: [currentImageFile.url])
     }
     

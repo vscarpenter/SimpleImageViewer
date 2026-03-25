@@ -166,14 +166,14 @@ final class PerformanceOptimizationService: ObservableObject {
         Logger.performance("Starting performance optimization (aggressive: \(aggressive))")
         
         // Optimize image loading
-        await optimizeImageLoading(aggressive: aggressive)
-        
+        optimizeImageLoading(aggressive: aggressive)
+
         // Optimize thumbnail generation
-        await optimizeThumbnailGeneration(aggressive: aggressive)
-        
+        optimizeThumbnailGeneration(aggressive: aggressive)
+
         // Optimize UI operations
-        await optimizeUIOperations(aggressive: aggressive)
-        
+        optimizeUIOperations(aggressive: aggressive)
+
         // Optimize memory usage
         await optimizeMemoryUsage(aggressive: aggressive)
         
@@ -472,7 +472,7 @@ final class PerformanceOptimizationService: ObservableObject {
         return Array(Set(recommendations))
     }
     
-    private func optimizeImageLoading(aggressive: Bool) async {
+    private func optimizeImageLoading(aggressive: Bool) {
         Logger.performance("Optimizing image loading")
         
         // Adjust image quality based on performance
@@ -495,7 +495,7 @@ final class PerformanceOptimizationService: ObservableObject {
         }
     }
     
-    private func optimizeThumbnailGeneration(aggressive: Bool) async {
+    private func optimizeThumbnailGeneration(aggressive: Bool) {
         Logger.performance("Optimizing thumbnail generation")
         
         // Adjust thumbnail quality based on performance
@@ -515,7 +515,7 @@ final class PerformanceOptimizationService: ObservableObject {
         }
     }
     
-    private func optimizeUIOperations(aggressive: Bool) async {
+    private func optimizeUIOperations(aggressive: Bool) {
         Logger.performance("Optimizing UI operations")
         
         // Reduce animation complexity if performance is poor

@@ -110,6 +110,15 @@ final class ImageCaptionGenerator {
             #endif
         }
 
+        // Ensure person/face detections are reflected in subjects.
+        // Object detectors (face/person) are more reliable for identifying people
+        // than classification models, which may prioritize background objects like laptops.
+        effectiveSubjects = ensurePersonSubjectIfDetected(
+            subjects: effectiveSubjects,
+            objects: objects,
+            recognizedPeople: recognizedPeople
+        )
+
         // Build short caption using template-based approach
         let shortCaption = buildShortCaption(
             subjects: effectiveSubjects,
@@ -228,21 +237,34 @@ final class ImageCaptionGenerator {
             colorText = getDominantColorForSubject(filteredSubjects[1], colors: colors, image: image)
         }
 
-        // Combine color + subject
-        if let color = colorText {
-            parts.append("\(color) \(subjectText)")
-        } else {
+        // Select caption template based on what information is available
+        let activity = enhancedVision?.bodyPose?.detectedActivity
+        let hasActivity = activity != nil && activity != "sitting"
+        let location = getLocationContext(scenes: scenes)
+
+        if hasActivity, let activity = activity {
+            // Template: [SUBJECT] [ACTIVITY] [LOCATION] — action-focused, drop color
             parts.append(subjectText)
-        }
-
-        // 3. Activity (optional) - from body pose or action detection
-        if let activity = enhancedVision?.bodyPose?.detectedActivity, activity != "sitting" {
             parts.append(activity)
-        }
-
-        // 4. Location (optional) - indoor/outdoor context
-        if let location = getLocationContext(scenes: scenes) {
-            parts.append(location)
+            if let location = location {
+                parts.append(location)
+            }
+        } else if filteredSubjects.count >= 2 {
+            // Template: [SUBJECT1] and [SUBJECT2] [LOCATION] — multi-subject, drop color
+            parts.append(subjectText)
+            if let location = location {
+                parts.append(location)
+            }
+        } else {
+            // Default template: [COLOR] [SUBJECT] [LOCATION]
+            if let color = colorText {
+                parts.append("\(color) \(subjectText)")
+            } else {
+                parts.append(subjectText)
+            }
+            if let location = location {
+                parts.append(location)
+            }
         }
 
         let caption = parts.joined(separator: " ")
@@ -307,8 +329,17 @@ final class ImageCaptionGenerator {
         // Add quality assessment if notable
         var detailedParts: [String] = [shortCaption.trimmingCharacters(in: CharacterSet(charactersIn: "."))]
 
-        // Add scene if available and not already implied
-        if let scene = scenes.first {
+        // Add scene if available, relevant, and not contradicted by detected subjects
+        let hasPerson = subjects.contains { isPerson($0) }
+        let personIrrelevantScenes: Set<String> = ["food", "dish", "meal", "cuisine", "dessert"]
+        if let scene = scenes.first(where: { scene in
+            let sceneID = scene.identifier.lowercased()
+            // Skip scenes that contradict the primary subject (e.g., "food" for a person)
+            if hasPerson && personIrrelevantScenes.contains(where: { sceneID.contains($0) }) {
+                return false
+            }
+            return scene.confidence > 0.3
+        }) {
             let sceneText = scene.identifier.replacingOccurrences(of: "_", with: " ")
             if !sceneText.isEmpty {
                 detailedParts.append("Scene: \(sceneText)")
@@ -675,68 +706,6 @@ final class ImageCaptionGenerator {
     }
     
     /// Determine spatial relationship between two bounding boxes
-    private func determineSpatialRelationship(bbox1: CGRect, bbox2: CGRect) -> String {
-        let bbox1Center = CGPoint(x: bbox1.midX, y: bbox1.midY)
-        let bbox2Center = CGPoint(x: bbox2.midX, y: bbox2.midY)
-        
-        // Calculate overlap to determine if objects are close together
-        let overlapX = max(0, min(bbox1.maxX, bbox2.maxX) - max(bbox1.minX, bbox2.minX))
-        let overlapY = max(0, min(bbox1.maxY, bbox2.maxY) - max(bbox1.minY, bbox2.minY))
-        let overlapArea = overlapX * overlapY
-        let bbox1Area = bbox1.width * bbox1.height
-        let bbox2Area = bbox2.width * bbox2.height
-        let minArea = min(bbox1Area, bbox2Area)
-        let overlapRatio = minArea > 0 ? overlapArea / minArea : 0
-        
-        // If there's significant overlap, they're close together
-        if overlapRatio > 0.1 {
-            // Determine which is in front based on size (larger = closer to camera)
-            if bbox1Area > bbox2Area * 1.5 {
-                return "in front of"
-            } else if bbox2Area > bbox1Area * 1.5 {
-                return "behind"
-            } else {
-                return "next to"
-            }
-        }
-        
-        // No significant overlap - determine spatial relationship
-        let deltaX = bbox1Center.x - bbox2Center.x
-        let deltaY = bbox1Center.y - bbox2Center.y
-        
-        // If bbox1 is significantly lower in the frame, it's likely in front
-        if deltaY < -0.15 {
-            return "in front of"
-        }
-        // If bbox1 is significantly higher, it's behind
-        else if deltaY > 0.15 {
-            return "behind"
-        }
-        // If roughly at same level, check horizontal position
-        else if abs(deltaX) > 0.2 {
-            return "next to"
-        }
-        
-        // Default to "with" for very close objects
-        return "with"
-    }
-    
-    /// Check if subject is a person
-    private func isPerson(_ subject: PrimarySubject) -> Bool {
-        let label = subject.label.lowercased()
-        return label.contains("person") || label.contains("people") || 
-               label.contains("portrait") || subject.source == .face
-    }
-    
-    /// Check if subject is a vehicle
-    private func isVehicle(_ subject: PrimarySubject) -> Bool {
-        let label = subject.label.lowercased()
-        return label.contains("car") || label.contains("vehicle") || 
-               label.contains("automobile") || label.contains("truck") ||
-               label.contains("bus") || label.contains("motorcycle") ||
-               label.contains("bicycle")
-    }
-    
     /// Extract dominant color from a specific region of the image
     /// Samples the center 50% of the bounding box to avoid background bleeding
     private func extractColorFromRegion(
@@ -1223,13 +1192,26 @@ final class ImageCaptionGenerator {
         // Build caption from aggregated signals
         let sentenceBody: String
         if parts.isEmpty {
-            // Fall back to color description if no meaningful signals
+            // Fall back to color + mood description when no subject detected
             if !colors.isEmpty {
                 let colorDesc = describeColors(colors).lowercased()
-                sentenceBody = "\(colorDesc) image"
+                // Add scene context even for weak signals
+                if let scene = scenes.first {
+                    let sceneText = scene.identifier.replacingOccurrences(of: "_", with: " ").lowercased()
+                    sentenceBody = "\(colorDesc) image in a \(sceneText) setting"
+                } else {
+                    sentenceBody = "\(colorDesc) image"
+                }
+            } else if let scene = scenes.first {
+                let sceneText = scene.identifier.replacingOccurrences(of: "_", with: " ").lowercased()
+                sentenceBody = "image in a \(sceneText) setting"
             } else {
                 sentenceBody = "image"
             }
+        } else if !colors.isEmpty && parts.count == 1 && !parts[0].contains("in a") {
+            // Single subject with no scene context: prepend color mood
+            let colorDesc = describeColors(colors).lowercased()
+            sentenceBody = "\(colorDesc) \(parts[0])"
         } else {
             sentenceBody = parts.joined(separator: " ")
         }
@@ -1416,4 +1398,96 @@ private func hasFaceIdentifier(_ identifier: String) -> Bool {
 
 private func hasPersonIdentifier(_ identifier: String) -> Bool {
     identifier.lowercased().contains("person")
+}
+
+// MARK: - Subject Detection Extension
+
+extension ImageCaptionGenerator {
+
+    /// Check if subject is a person
+    func isPerson(_ subject: PrimarySubject) -> Bool {
+        let label = subject.label.lowercased()
+        return label.contains("person") || label.contains("people") ||
+               label.contains("portrait") || subject.source == .face
+    }
+
+    /// Check if subject is a vehicle
+    func isVehicle(_ subject: PrimarySubject) -> Bool {
+        let label = subject.label.lowercased()
+        return label.contains("car") || label.contains("vehicle") ||
+               label.contains("automobile") || label.contains("truck") ||
+               label.contains("bus") || label.contains("motorcycle") ||
+               label.contains("bicycle")
+    }
+
+    /// Determine spatial relationship between two bounding boxes
+    func determineSpatialRelationship(bbox1: CGRect, bbox2: CGRect) -> String {
+        let bbox1Center = CGPoint(x: bbox1.midX, y: bbox1.midY)
+        let bbox2Center = CGPoint(x: bbox2.midX, y: bbox2.midY)
+
+        let overlapX = max(0, min(bbox1.maxX, bbox2.maxX) - max(bbox1.minX, bbox2.minX))
+        let overlapY = max(0, min(bbox1.maxY, bbox2.maxY) - max(bbox1.minY, bbox2.minY))
+        let overlapArea = overlapX * overlapY
+        let bbox1Area = bbox1.width * bbox1.height
+        let bbox2Area = bbox2.width * bbox2.height
+        let minArea = min(bbox1Area, bbox2Area)
+        let overlapRatio = minArea > 0 ? overlapArea / minArea : 0
+
+        if overlapRatio > 0.1 {
+            if bbox1Area > bbox2Area * 1.5 { return "in front of" }
+            else if bbox2Area > bbox1Area * 1.5 { return "behind" }
+            else { return "next to" }
+        }
+
+        let deltaX = bbox1Center.x - bbox2Center.x
+        let deltaY = bbox1Center.y - bbox2Center.y
+
+        if deltaY < -0.15 { return "in front of" }
+        else if deltaY > 0.15 { return "behind" }
+        else if abs(deltaX) > 0.2 { return "next to" }
+
+        return "with"
+    }
+
+    /// Ensure person/face detections are represented in subjects.
+    /// Object detectors (VNDetectHumanRectanglesRequest, VNDetectFaceRectanglesRequest)
+    /// are purpose-built for people and more reliable than classification models,
+    /// which may rank background objects (laptops, furniture) higher by specificity.
+    func ensurePersonSubjectIfDetected(
+        subjects: [PrimarySubject],
+        objects: [DetectedObject],
+        recognizedPeople: [RecognizedPerson]
+    ) -> [PrimarySubject] {
+        let faceDetected = objects.contains { $0.identifier.lowercased() == "face" }
+        let personDetected = objects.contains { $0.identifier.lowercased() == "person" }
+        guard faceDetected || personDetected else { return subjects }
+
+        let alreadyHasPerson = subjects.contains { isPerson($0) }
+        guard !alreadyHasPerson else { return subjects }
+
+        let personLabel: String
+        let personConfidence: Double
+        if let recognized = recognizedPeople.first {
+            personLabel = recognized.name
+            personConfidence = recognized.confidence
+        } else {
+            let bestPersonObject = objects
+                .filter { $0.identifier.lowercased() == "face" || $0.identifier.lowercased() == "person" }
+                .max(by: { $0.confidence < $1.confidence })
+            personLabel = "Person"
+            personConfidence = Double(bestPersonObject?.confidence ?? 0.75)
+        }
+
+        let personSubject = PrimarySubject(
+            label: personLabel,
+            confidence: personConfidence,
+            source: faceDetected ? .face : .object,
+            detail: "Detected by Vision framework object detector",
+            boundingBox: objects.first(where: { $0.identifier.lowercased() == "person" })?.boundingBox
+        )
+
+        var updated = [personSubject]
+        updated.append(contentsOf: subjects.prefix(2))
+        return updated
+    }
 }

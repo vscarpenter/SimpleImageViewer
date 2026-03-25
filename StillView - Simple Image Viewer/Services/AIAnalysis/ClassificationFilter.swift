@@ -5,10 +5,16 @@ import Foundation
 /// Prioritizes relevant subjects over generic/background classifications
 final class ClassificationFilter {
 
+    // MARK: - Concept Mapping
+
+    /// Shared concept map from AIAnalysisConstants — single source of truth
+    /// for mapping specific ResNet identifiers to broader Vision categories.
+    private static var conceptMap: [String: String] { AIAnalysisConstants.conceptMap }
+
     // MARK: - Public Interface
 
     /// Merge classifications from multiple sources (Vision + ResNet)
-    /// Now includes background filtering, prioritization, and confidence boosting
+    /// Now includes concept-aware merging, background filtering, prioritization, and confidence boosting
     func mergeClassifications(
         visionResults: [ClassificationResult],
         resnetResults: [ClassificationResult],
@@ -34,6 +40,9 @@ final class ClassificationFilter {
                 mergedDict[result.identifier] = result
             }
         }
+
+        // Note: Concept-agreement confidence boosting is handled by SignalCorrelator
+        // (which runs after merging) to avoid double-boosting
 
         // Convert back to array and sort by confidence
         var merged = Array(mergedDict.values)

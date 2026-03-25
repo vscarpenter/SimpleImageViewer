@@ -234,7 +234,7 @@ class ErrorHandlingService: ObservableObject {
             
         case .invalidImage, .unsupportedImageFormat:
             showNotification(
-                error.localizedDescription ?? "Image format not supported for AI analysis",
+                error.localizedDescription,
                 type: .warning
             )
             
@@ -295,7 +295,7 @@ class ErrorHandlingService: ObservableObject {
                 ])
             } else {
                 showNotification(
-                    error.localizedDescription ?? "AI analysis failed",
+                    error.localizedDescription,
                     type: .error
                 )
             }

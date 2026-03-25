@@ -183,8 +183,80 @@ final class ConfidenceEvaluator {
         return selectedTerms
     }
     
+    // MARK: - Purpose-Aware Term Selection
+
+    /// Select the best term with confidence thresholds adjusted by image purpose.
+    /// When the classification aligns with the detected purpose (e.g., "pizza" in a food photo),
+    /// thresholds are lowered because the purpose detection corroborates the classification.
+    func selectTerm(
+        from candidates: [ClassificationResult],
+        purpose: ImagePurpose
+    ) -> String {
+        guard !candidates.isEmpty, let topCandidate = candidates.first else {
+            return "image"
+        }
+
+        // Calculate purpose-adjusted thresholds (lowered when classification aligns with purpose)
+        let purposeAligned = isPurposeAligned(topCandidate.identifier, purpose: purpose)
+        let effectiveHighThreshold = purposeAligned ? AIAnalysisConstants.purposeAlignedHighThreshold : highConfidenceThreshold
+        let effectiveMediumThreshold = purposeAligned ? AIAnalysisConstants.purposeAlignedMediumThreshold : mediumConfidenceThreshold
+        let effectiveLowThreshold = purposeAligned ? AIAnalysisConstants.purposeAlignedLowThreshold : lowConfidenceThreshold
+
+        if topCandidate.confidence >= effectiveHighThreshold {
+            return topCandidate.identifier
+        }
+
+        if topCandidate.confidence >= effectiveMediumThreshold {
+            let closeMatches = detectCloseMatches(candidates)
+            if closeMatches.count > 2 {
+                return findCommonCategory(closeMatches)
+            }
+            return topCandidate.identifier
+        }
+
+        if topCandidate.confidence >= effectiveLowThreshold {
+            return purposeAligned ? topCandidate.identifier : getGenericTerm(topCandidate.identifier)
+        }
+
+        return "image"
+    }
+
+    /// Check if a classification term aligns with the detected image purpose
+    private func isPurposeAligned(_ identifier: String, purpose: ImagePurpose) -> Bool {
+        let id = identifier.lowercased()
+        switch purpose {
+        case .food:
+            return id.contains("food") || id.contains("dish") || id.contains("meal") ||
+                   id.contains("pizza") || id.contains("burger") || id.contains("salad") ||
+                   id.contains("sushi") || id.contains("cake") || id.contains("fruit") ||
+                   id.contains("vegetable") || id.contains("drink") || id.contains("coffee") ||
+                   id.contains("dessert") || id.contains("bread") || id.contains("soup")
+        case .portrait, .groupPhoto:
+            return id.contains("person") || id.contains("face") || id.contains("portrait") ||
+                   id.contains("man") || id.contains("woman") || id.contains("child")
+        case .landscape:
+            return id.contains("mountain") || id.contains("lake") || id.contains("ocean") ||
+                   id.contains("forest") || id.contains("beach") || id.contains("river") ||
+                   id.contains("landscape") || id.contains("sunset") || id.contains("sunrise")
+        case .wildlife:
+            return id.contains("dog") || id.contains("cat") || id.contains("bird") ||
+                   id.contains("animal") || id.contains("horse") || id.contains("fish")
+        case .architecture:
+            return id.contains("building") || id.contains("house") || id.contains("tower") ||
+                   id.contains("bridge") || id.contains("architecture") || id.contains("church")
+        case .document, .screenshot:
+            return id.contains("document") || id.contains("text") || id.contains("screen") ||
+                   id.contains("paper") || id.contains("page")
+        case .productPhoto:
+            return id.contains("product") || id.contains("bottle") || id.contains("device") ||
+                   id.contains("phone") || id.contains("laptop")
+        case .general:
+            return false
+        }
+    }
+
     // MARK: - Private Methods
-    
+
     /// Detect candidates with confidence scores close to the top candidate
     private func detectCloseMatches(_ candidates: [ClassificationResult]) -> [ClassificationResult] {
         guard let topCandidate = candidates.first else {

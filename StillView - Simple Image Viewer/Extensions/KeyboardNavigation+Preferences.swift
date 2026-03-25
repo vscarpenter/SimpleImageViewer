@@ -201,7 +201,7 @@ struct KeyboardAccessibleControl<Content: View>: View {
     var body: some View {
         content
             .focused($isFocused)
-            .onChange(of: isFocused) { focused in
+            .onChange(of: isFocused) { _, focused in
                 if focused {
                     focusManager.setFocus(to: id)
                     onFocus()
@@ -212,7 +212,7 @@ struct KeyboardAccessibleControl<Content: View>: View {
                     onBlur()
                 }
             }
-            .onChange(of: focusManager.focusedControl) { focusedControl in
+            .onChange(of: focusManager.focusedControl) { _, focusedControl in
                 isFocused = (focusedControl == id)
             }
     }

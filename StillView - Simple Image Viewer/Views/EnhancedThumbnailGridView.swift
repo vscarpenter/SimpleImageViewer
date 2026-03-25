@@ -82,7 +82,7 @@ struct EnhancedThumbnailGridView: View {
                 layoutManager.updateWindowSize(geometry.size)
                 preloadVisibleThumbnails()
             }
-            .onChange(of: geometry.size) { newSize in
+            .onChange(of: geometry.size) { _, newSize in
                 if layoutManager.shouldUpdateLayout(for: newSize) {
                     layoutManager.updateWindowSize(newSize)
                 }
@@ -100,7 +100,7 @@ struct EnhancedThumbnailGridView: View {
             return
         }
         
-        loadingThumbnails.insert(imageFile.url)
+        _ = loadingThumbnails.insert(imageFile.url)
         
         thumbnailGenerator.generateThumbnail(from: imageFile.url, quality: thumbnailQuality)
             .receive(on: DispatchQueue.main)
