@@ -1,7 +1,7 @@
 import Foundation
 import CoreML
-import Vision
-import VisionKit
+@preconcurrency import Vision
+@preconcurrency import VisionKit
 import AppKit
 import Combine
 import NaturalLanguage
@@ -83,6 +83,7 @@ final class AIImageAnalysisService: ObservableObject {
     private let purposeDetector = ImagePurposeDetector()
     private let enhancedVisionAnalyzer = EnhancedVisionAnalyzer()
     private let qualityAssessmentService = QualityAssessmentService()
+    private let signalCorrelator = SignalCorrelator()
     private let cache = LRUCache<String, ImageAnalysisResult>(capacity: AIAnalysisConstants.maxCacheEntries)
 
     // Cache version - increment this to invalidate all cached analysis when algorithm changes
@@ -342,19 +343,35 @@ final class AIImageAnalysisService: ObservableObject {
                 scenes: scenes,
                 text: text
             )
-            
-            updateProgress(0.95)
-            
-            // Priority 3: Generate intelligent narrative
-            let recognizedPeople = detectRecognizedPeople(
+
+            updateProgress(0.93)
+
+            // Cross-signal correlation: combine independent analysis results
+            // to boost confidence when multiple sources agree and infer context
+            let correlated = signalCorrelator.correlateSignals(
                 classifications: classifications,
+                objects: objects,
+                scenes: scenes,
+                colors: colors,
+                text: text,
+                enhancedVision: enhancedVisionResult,
+                qualityMetrics: qualityAssessment.metrics
+            )
+            // Use correlated classifications for all downstream consumers
+            let correlatedClassifications = correlated.boostedClassifications
+
+            updateProgress(0.95)
+
+            // Detect recognized people for narrative personalization
+            let recognizedPeople = detectRecognizedPeople(
+                classifications: correlatedClassifications,
                 text: text,
                 objects: objects
             )
 
             // Priority 3: Generate intelligent narrative
             let narrative = narrativeGenerator.generateNarrative(
-                classifications: classifications,
+                classifications: correlatedClassifications,
                 objects: objects,
                 scenes: scenes,
                 text: text,
@@ -367,7 +384,7 @@ final class AIImageAnalysisService: ObservableObject {
             
             // Hierarchical smart tags
             let purpose = purposeDetector.detectPurpose(
-                classifications: classifications,
+                classifications: correlatedClassifications,
                 objects: objects,
                 scenes: scenes,
                 text: text,
@@ -375,7 +392,7 @@ final class AIImageAnalysisService: ObservableObject {
             )
 
             let smartTags = tagGenerator.generateSmartTags(
-                classifications: classifications,
+                classifications: correlatedClassifications,
                 objects: objects,
                 scenes: scenes,
                 text: text,
@@ -390,7 +407,7 @@ final class AIImageAnalysisService: ObservableObject {
 
             // Derive primary subjects with spatial context (supports multiple subjects)
             let primarySubjects = subjectDetector.determinePrimarySubjects(
-                classifications: classifications,
+                classifications: correlatedClassifications,
                 objects: objects,
                 saliency: saliency,
                 recognizedPeople: recognizedPeople
@@ -410,8 +427,8 @@ final class AIImageAnalysisService: ObservableObject {
             
             // Backward compatibility: keep primarySubject as first subject
             // Generate comprehensive image captions with enhanced Vision data
-            var caption = captionGenerator.generateCaption(
-                classifications: classifications,
+            let caption = captionGenerator.generateCaption(
+                classifications: correlatedClassifications,
                 objects: objects,
                 scenes: scenes,
                 text: text,
@@ -421,7 +438,9 @@ final class AIImageAnalysisService: ObservableObject {
                 qualityAssessment: qualityAssessment,
                 primarySubjects: primarySubjects,
                 enhancedVision: enhancedVisionResult,
-                image: cgImage
+                image: cgImage,
+                purpose: purpose,
+                inferredContext: correlated.inferredContext
             )
 
             // Optional: If a specialized captioning model is available, prefer its short caption when confident
@@ -449,7 +468,7 @@ final class AIImageAnalysisService: ObservableObject {
             updateProgress(1.0)
 
             return ImageAnalysisResult(
-                classifications: classifications,
+                classifications: correlatedClassifications,
                 objects: objects,
                 scenes: scenes,
                 text: text,
@@ -470,7 +489,9 @@ final class AIImageAnalysisService: ObservableObject {
                 horizon: horizon,
                 recognizedPeople: recognizedPeople,
                 visionKitResult: visionKitResult,
-                enhancedVisionResult: enhancedVisionResult
+                enhancedVisionResult: enhancedVisionResult,
+                agreementScore: correlated.agreementScore,
+                inferredContext: correlated.inferredContext
             )
         }
     }
@@ -609,11 +630,6 @@ final class AIImageAnalysisService: ObservableObject {
     /// Perform comprehensive VisionKit analysis (subject lifting, visual lookup, enhanced Live Text)
     @available(macOS 13.0, *)
     private func performVisionKitAnalysis(_ cgImage: CGImage) async -> VisionKitAnalysisResult? {
-        // VisionKit's ImageAnalyzer requires macOS 13+
-        guard #available(macOS 13.0, *) else {
-            return nil
-        }
-
         // Note: VisionKit ImageAnalyzer API is primarily for UI interaction
         // For now, return nil to use existing Vision framework analysis
         // Future enhancement: Integrate VisionKit when full API access is available
@@ -816,9 +832,6 @@ final class AIImageAnalysisService: ObservableObject {
     private func performAdvancedColorAnalysis(_ cgImage: CGImage) async throws -> [DominantColor] {
         return try await withCheckedThrowingContinuation { continuation in
             analysisQueue.async {
-                let width = cgImage.width
-                let height = cgImage.height
-
                 guard let colorSpace = cgImage.colorSpace,
                       let context = CGContext(
                         data: nil,
@@ -1537,6 +1550,8 @@ struct ImageAnalysisResult: Equatable {
     let recognizedPeople: [RecognizedPerson]
     let visionKitResult: VisionKitAnalysisResult?
     let enhancedVisionResult: EnhancedVisionResult?  // New field for enhanced Vision analysis
+    let agreementScore: Double  // How well multiple analysis sources agree (0.0 to 1.0)
+    let inferredContext: [InferredContext]  // Contextual inferences from cross-signal correlation
 
     init(
         classifications: [ClassificationResult],
@@ -1560,7 +1575,9 @@ struct ImageAnalysisResult: Equatable {
         horizon: HorizonDetection? = nil,
         recognizedPeople: [RecognizedPerson] = [],
         visionKitResult: VisionKitAnalysisResult? = nil,
-        enhancedVisionResult: EnhancedVisionResult? = nil
+        enhancedVisionResult: EnhancedVisionResult? = nil,
+        agreementScore: Double = 0.0,
+        inferredContext: [InferredContext] = []
     ) {
         self.classifications = classifications
         self.objects = objects
@@ -1584,6 +1601,8 @@ struct ImageAnalysisResult: Equatable {
         self.recognizedPeople = recognizedPeople
         self.visionKitResult = visionKitResult
         self.enhancedVisionResult = enhancedVisionResult
+        self.agreementScore = agreementScore
+        self.inferredContext = inferredContext
     }
     
     static func == (lhs: ImageAnalysisResult, rhs: ImageAnalysisResult) -> Bool {
@@ -1794,13 +1813,25 @@ struct ImageQualityAssessment: Equatable {
     let issues: [Issue]
     let metrics: Metrics
     let purpose: ImagePurpose
+    let isArtisticBW: Bool
+    let isArtisticSilhouette: Bool
+    let isArtisticHighContrast: Bool
 
-    init(quality: ImageQuality, summary: String, issues: [Issue], metrics: Metrics, purpose: ImagePurpose = .general) {
+    /// Whether any artistic effect was detected (convenience accessor)
+    var hasArtisticEffect: Bool {
+        isArtisticBW || isArtisticSilhouette || isArtisticHighContrast
+    }
+
+    init(quality: ImageQuality, summary: String, issues: [Issue], metrics: Metrics, purpose: ImagePurpose = .general,
+         isArtisticBW: Bool = false, isArtisticSilhouette: Bool = false, isArtisticHighContrast: Bool = false) {
         self.quality = quality
         self.summary = summary
         self.issues = issues
         self.metrics = metrics
         self.purpose = purpose
+        self.isArtisticBW = isArtisticBW
+        self.isArtisticSilhouette = isArtisticSilhouette
+        self.isArtisticHighContrast = isArtisticHighContrast
     }
 
     static func == (lhs: ImageQualityAssessment, rhs: ImageQualityAssessment) -> Bool {

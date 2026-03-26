@@ -158,39 +158,47 @@ final class SubjectDetector {
     // MARK: - Scoring Methods
 
     /// Score recognized people (highest weight)
+    /// Uses generic "Person" label to avoid false identification from OCR-derived names.
+    /// The original name is preserved in the detail field as metadata.
     private func scoreRecognizedPeople(_ people: [RecognizedPerson]) -> [(PrimarySubject, Double)] {
+        // Only use OCR-derived names as metadata, never as the visible subject label.
+        // A sign reading "John Smith" should not become the caption subject.
+        let isTextSource = people.allSatisfy { $0.source == .text }
+
         return people.map { person in
+            let visibleLabel = isTextSource ? "Person" : person.name
             let subject = PrimarySubject(
-                label: person.name,
+                label: visibleLabel,
                 confidence: person.confidence,
                 source: .face,
-                detail: "Recognized person",
+                detail: isTextSource ? "Recognized person (OCR name: \(person.name))" : "Recognized person",
                 boundingBox: nil
             )
             let score = person.confidence * SourceWeight.recognizedPerson
 
             #if DEBUG
-            Logger.ai("  📝 Scoring recognized person '\(person.name)': \(String(format: "%.3f", score))")
+            Logger.ai("  📝 Scoring recognized person '\(person.name)' (label: \(visibleLabel)): \(String(format: "%.3f", score))")
             #endif
 
             return (subject, score)
         }
     }
 
-    /// Score detected people/faces (high weight)
+    /// Minimum bounding box area (as fraction of frame) for a person to be considered prominent
+    private static let personProminenceAreaThreshold: CGFloat = 0.08
+
+    /// Score detected people/faces (high weight, conditional on prominence)
+    /// People are only promoted as primary subjects when they are prominent in the frame.
+    /// Background or incidental people get a reduced weight so they don't override
+    /// the true foreground subject (cars, products, pets, architecture, etc.).
     private func scoreDetectedPeople(_ objects: [DetectedObject]) -> [(PrimarySubject, Double)] {
-        // Separate faces and bodies
         let faceObjects = objects.filter { isFace($0.identifier) }
         let bodyObjects = objects.filter { isPerson($0.identifier) }
-
-        // Use count of whichever is higher (they might detect the same people)
         let peopleCount = max(faceObjects.count, bodyObjects.count)
 
         guard peopleCount > 0 else { return [] }
 
-        // Get the best detection (highest confidence)
         let bestDetection = (bodyObjects + faceObjects).max(by: { $0.confidence < $1.confidence })
-
         guard let detection = bestDetection else { return [] }
 
         let label: String
@@ -202,18 +210,33 @@ final class SubjectDetector {
 
         let avgConfidence = (bodyObjects + faceObjects).map { $0.confidence }.reduce(0, +) / Float(bodyObjects.count + faceObjects.count)
 
+        // Determine prominence: is the person actually a significant part of the frame?
+        let maxPersonArea = bodyObjects.map { $0.boundingBox.width * $0.boundingBox.height }.max() ?? 0
+        let maxFaceArea = faceObjects.map { $0.boundingBox.width * $0.boundingBox.height }.max() ?? 0
+        let bestArea = max(maxPersonArea, maxFaceArea)
+        let isProminent = bestArea >= Self.personProminenceAreaThreshold
+            || peopleCount >= 2  // Multiple people suggest they are the subject
+
+        let effectiveWeight: Double
+        if isProminent {
+            effectiveWeight = SourceWeight.detectedPerson  // Full 3.5x
+        } else {
+            effectiveWeight = SourceWeight.classification  // Demoted to 1.0x (background person)
+        }
+
         let subject = PrimarySubject(
             label: label,
             confidence: Double(avgConfidence),
             source: .object,
-            detail: peopleCount == 1 ? "Single person detected" : "Multiple people detected",
+            detail: isProminent ? (peopleCount == 1 ? "Prominent person detected" : "Multiple people detected")
+                                : "Background person detected",
             boundingBox: peopleCount == 1 ? detection.boundingBox : nil
         )
 
-        let score = Double(avgConfidence) * SourceWeight.detectedPerson
+        let score = Double(avgConfidence) * effectiveWeight
 
         #if DEBUG
-        Logger.ai("  👤 Scoring people detection '\(label)': \(String(format: "%.3f", score)) (faces: \(faceObjects.count), bodies: \(bodyObjects.count))")
+        Logger.ai("  👤 Scoring people detection '\(label)': \(String(format: "%.3f", score)) (prominent: \(isProminent), area: \(String(format: "%.1f%%", bestArea * 100)), faces: \(faceObjects.count), bodies: \(bodyObjects.count))")
         #endif
 
         return [(subject, score)]

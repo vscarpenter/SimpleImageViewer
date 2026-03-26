@@ -75,14 +75,14 @@ final class SubjectDetectorTests: XCTestCase {
         XCTAssertEqual(subjects[0].source, .object)
     }
     
-    func testDetectRecognizedPerson() {
-        // Given
+    func testDetectRecognizedPersonFromClassification() {
+        // Given: person recognized via classification (not OCR text)
         let recognizedPerson = RecognizedPerson(
             name: "John Doe",
             confidence: 0.92,
             source: .classification
         )
-        
+
         // When
         let subjects = sut.determinePrimarySubjects(
             classifications: [],
@@ -90,12 +90,34 @@ final class SubjectDetectorTests: XCTestCase {
             saliency: nil,
             recognizedPeople: [recognizedPerson]
         )
-        
-        // Then
+
+        // Then: classification-sourced names are used as-is
         XCTAssertEqual(subjects.count, 1)
         XCTAssertEqual(subjects[0].label, "John Doe")
         XCTAssertEqual(subjects[0].confidence, 0.92, accuracy: 0.01)
         XCTAssertEqual(subjects[0].source, .face)
+    }
+
+    func testOCRDerivedNameUsesGenericLabel() {
+        // Given: person "recognized" from OCR text on a sign
+        let recognizedPerson = RecognizedPerson(
+            name: "John Smith",
+            confidence: 0.85,
+            source: .text
+        )
+
+        // When
+        let subjects = sut.determinePrimarySubjects(
+            classifications: [],
+            objects: [],
+            saliency: nil,
+            recognizedPeople: [recognizedPerson]
+        )
+
+        // Then: OCR-derived names should use generic "Person" label
+        XCTAssertEqual(subjects.count, 1)
+        XCTAssertEqual(subjects[0].label, "Person")
+        XCTAssertTrue(subjects[0].detail?.contains("OCR name: John Smith") == true)
     }
     
     // MARK: - Vehicle Detection Tests

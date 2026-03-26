@@ -416,13 +416,128 @@ enum AIAnalysisConstants {
         "easter", "flowers blooming", "garden", "planting"
     ]
 
+    // MARK: - Cross-Model Concept Map
+
+    /// Maps specific ResNet50 identifiers to their broader Vision-framework equivalents.
+    /// Shared across ClassificationFilter and SignalCorrelator to avoid duplication and drift.
+    /// When both specific + general terms appear, the specific term gets a confidence boost.
+    static let conceptMap: [String: String] = [
+        // Dog breeds → dog
+        "golden_retriever": "dog", "labrador_retriever": "dog", "german_shepherd": "dog",
+        "french_bulldog": "dog", "poodle": "dog", "beagle": "dog", "rottweiler": "dog",
+        "boxer": "dog", "dalmatian": "dog", "chihuahua": "dog", "husky": "dog",
+        "collie": "dog", "corgi": "dog", "pug": "dog", "dachshund": "dog",
+        "doberman": "dog", "great_dane": "dog", "shih-tzu": "dog", "yorkshire_terrier": "dog",
+        "cocker_spaniel": "dog", "border_collie": "dog", "bulldog": "dog",
+        "australian_shepherd": "dog", "bernese_mountain_dog": "dog",
+        // Cat breeds → cat
+        "siamese_cat": "cat", "persian_cat": "cat", "tabby": "cat", "egyptian_cat": "cat",
+        "tiger_cat": "cat", "maine_coon": "cat",
+        // Birds → bird
+        "robin": "bird", "jay": "bird", "magpie": "bird", "hummingbird": "bird",
+        "flamingo": "bird", "pelican": "bird", "eagle": "bird", "owl": "bird",
+        "parrot": "bird", "penguin": "bird", "peacock": "bird",
+        // Vehicles → car/vehicle
+        "sports_car": "car", "convertible": "car", "racer": "car", "cab": "car",
+        "limousine": "car", "minivan": "car", "jeep": "car", "beach_wagon": "car",
+        "pickup": "truck", "trailer_truck": "truck", "tow_truck": "truck",
+        "mountain_bike": "bicycle", "moped": "motorcycle",
+        // Food specifics → food category
+        "espresso": "coffee", "cappuccino": "coffee", "latte": "coffee",
+        "pizza": "food", "hamburger": "food", "hotdog": "food", "burrito": "food",
+        "cheeseburger": "food", "taco": "food", "sushi": "food",
+        "ice_cream": "dessert", "chocolate_cake": "dessert",
+        "banana": "fruit", "strawberry": "fruit", "orange": "fruit", "pineapple": "fruit",
+        "broccoli": "vegetable", "cauliflower": "vegetable",
+        // Furniture
+        "rocking_chair": "chair", "folding_chair": "chair", "barber_chair": "chair",
+        "dining_table": "table", "desk": "table",
+        // Electronics
+        "laptop": "computer", "notebook": "computer", "desktop_computer": "computer",
+        "cellular_telephone": "phone", "iPod": "phone",
+        "television": "monitor", "screen": "monitor",
+    ]
+
+    // MARK: - Signal Correlation Thresholds
+
+    /// Confidence boost when ResNet specific + Vision general terms agree
+    static let conceptAgreementBoost: Float = 0.12
+
+    /// Confidence boost when general concept is confirmed by specific agreement
+    static let reverseConceptAgreementBoost: Float = 0.08
+
+    /// Confidence boost when object detection confirms classification
+    static let detectionAgreementBoost: Float = 0.10
+
+    /// Confidence boost when person detection confirms person classification
+    static let personDetectionBoost: Float = 0.08
+
+    /// Golden hour: minimum warm color ratio to trigger
+    static let goldenHourWarmRatio: Double = 0.4
+
+    /// Golden hour: luminance range
+    static let goldenHourLuminanceRange: ClosedRange<Double> = 0.3...0.65
+
+    /// Sunset: minimum warm color ratio
+    static let sunsetWarmRatio: Double = 0.5
+
+    /// Sunset: luminance range
+    static let sunsetLuminanceRange: ClosedRange<Double> = 0.15...0.5
+
+    /// Night scene: maximum luminance
+    static let nightSceneMaxLuminance: Double = 0.15
+
+    /// Night scene: default confidence
+    static let nightSceneConfidence: Double = 0.75
+
+    /// Meeting: minimum text regions and total text length
+    static let meetingMinTextRegions: Int = 3
+    static let meetingMinTextLength: Int = 50
+    static let meetingConfidence: Double = 0.65
+
+    /// Pet portrait: default confidence
+    static let petPortraitConfidence: Double = 0.70
+
+    /// Dining context: confidence for indoor vs outdoor
+    static let diningIndoorConfidence: Double = 0.80
+    static let diningOutdoorConfidence: Double = 0.65
+
+    /// Color temperature hue boundaries (as fractions of 360°)
+    static let warmHueUpperBound: CGFloat = 60.0 / 360.0    // Reds/oranges/yellows: 0-60°
+    static let warmHueLowerBound: CGFloat = 300.0 / 360.0   // Also warm: 300-360°
+    static let coolHueLowerBound: CGFloat = 120.0 / 360.0   // Blues/cyans: 120-240°
+    static let coolHueUpperBound: CGFloat = 240.0 / 360.0
+
+    /// Minimum megapixels for print quality tag
+    static let printQualityMinMegapixels: Double = 5.0
+
+    // MARK: - Bokeh Detection
+
+    /// Sharpness range indicating likely bokeh in portrait mode (Double to match Metrics.sharpness)
+    static let bokehSharpnessRange: ClosedRange<Double> = 0.3...0.5
+
+    // MARK: - Exposure Thresholds (Enhancement)
+
+    /// Exposure below this suggests underexposure (Double to match Metrics.exposure)
+    static let underexposedThreshold: Double = 0.3
+
+    /// Exposure above this suggests overexposure (Double to match Metrics.exposure)
+    static let overexposedThreshold: Double = 0.8
+
+    // MARK: - Purpose-Aware Confidence Thresholds
+
+    /// Lowered thresholds when classification aligns with detected purpose
+    static let purposeAlignedHighThreshold: Float = 0.55
+    static let purposeAlignedMediumThreshold: Float = 0.35
+    static let purposeAlignedLowThreshold: Float = 0.20
+
     // MARK: - Cache Settings
 
     /// Maximum number of cached analysis results
     static let maxCacheEntries = 20
 
     /// Current cache version - increment to invalidate cache
-    static let cacheVersion = "v13"  // Phase 1-4: expanded templates, semantic contradiction detection, saliency cross-validation, improved screenshot detection, caption confidence
+    static let cacheVersion = "v16"  // v16: Caption prioritizes person/face over background objects, scene contradiction filtering
 
     // MARK: - Helper Functions
 

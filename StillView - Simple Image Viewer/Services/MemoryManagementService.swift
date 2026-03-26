@@ -89,21 +89,21 @@ final class MemoryManagementService: ObservableObject {
         Logger.performance("Starting memory optimization (aggressive: \(aggressive))")
         
         // Clear image caches
-        await clearImageCaches(aggressive: aggressive)
-        
+        clearImageCaches(aggressive: aggressive)
+
         // Clear thumbnail caches
-        await clearThumbnailCaches(aggressive: aggressive)
-        
+        clearThumbnailCaches(aggressive: aggressive)
+
         // Clear preview caches
-        await clearPreviewCaches(aggressive: aggressive)
-        
+        clearPreviewCaches(aggressive: aggressive)
+
         // Force garbage collection if aggressive
         if aggressive {
-            await forceGarbageCollection()
+            forceGarbageCollection()
         }
         
         // Update memory stats
-        await updateMemoryStats()
+        updateMemoryStats()
         
         isOptimizing = false
         Logger.performance("Memory optimization completed")
@@ -251,7 +251,7 @@ final class MemoryManagementService: ObservableObject {
         }
     }
     
-    private func clearImageCaches(aggressive: Bool) async {
+    private func clearImageCaches(aggressive: Bool) {
         // Note: ImageCache and ImageMemoryManager instances should be injected
         // For now, we'll post notifications to clear caches
         NotificationCenter.default.post(name: .memoryWarning, object: nil)
@@ -262,7 +262,7 @@ final class MemoryManagementService: ObservableObject {
         }
     }
     
-    private func clearThumbnailCaches(aggressive: Bool) async {
+    private func clearThumbnailCaches(aggressive: Bool) {
         // Note: EnhancedThumbnailGenerator instances should be injected
         // For now, we'll post notifications to clear caches
         NotificationCenter.default.post(name: .memoryWarning, object: nil)
@@ -273,7 +273,7 @@ final class MemoryManagementService: ObservableObject {
         }
     }
     
-    private func clearPreviewCaches(aggressive: Bool) async {
+    private func clearPreviewCaches(aggressive: Bool) {
         // Note: PreviewGeneratorService instances should be injected
         // For now, we'll post notifications to clear caches
         NotificationCenter.default.post(name: .memoryWarning, object: nil)
@@ -284,7 +284,7 @@ final class MemoryManagementService: ObservableObject {
         }
     }
     
-    private func forceGarbageCollection() async {
+    private func forceGarbageCollection() {
         // Force garbage collection (if available)
         #if DEBUG
         Logger.performance("Forcing garbage collection")

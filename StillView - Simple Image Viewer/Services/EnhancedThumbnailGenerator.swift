@@ -88,19 +88,15 @@ final class EnhancedThumbnailGenerator: EnhancedThumbnailGeneratorProtocol {
         
         return Future<NSImage, Error> { [weak self] promise in
             self?.thumbnailQueue.async {
-                do {
-                    guard let thumbnail = self?.generateThumbnailSync(from: url, quality: quality) else {
-                        promise(.failure(ThumbnailGeneratorError.generationFailed))
-                        return
-                    }
-                    
-                    // Cache the generated thumbnail
-                    self?.thumbnailCache.setObject(thumbnail, forKey: cacheKey as NSString)
-                    
-                    promise(.success(thumbnail))
-                } catch {
-                    promise(.failure(error))
+                guard let thumbnail = self?.generateThumbnailSync(from: url, quality: quality) else {
+                    promise(.failure(ThumbnailGeneratorError.generationFailed))
+                    return
                 }
+
+                // Cache the generated thumbnail
+                self?.thumbnailCache.setObject(thumbnail, forKey: cacheKey as NSString)
+
+                promise(.success(thumbnail))
             }
         }
         .eraseToAnyPublisher()

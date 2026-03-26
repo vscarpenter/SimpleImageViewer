@@ -317,16 +317,10 @@ final class UnifiedErrorHandlingService: ObservableObject {
             return (.memory, .high)
         case .scanningFailed:
             return (.fileSystem, .medium)
-        case .folderNotFound:
-            return (.fileSystem, .medium)
-        case .folderScanningFailed:
-            return (.fileSystem, .medium)
         case .bookmarkResolutionFailed:
             return (.security, .high)
         case .imageLoadingFailed:
             return (.fileSystem, .medium)
-        default:
-            return (.unknown, .medium)
         }
     }
     

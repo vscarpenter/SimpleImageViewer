@@ -276,11 +276,7 @@ final class EnhancedImageProcessingService: ObservableObject {
         
         // Apply smart scaling with quality preservation
         let scale = min(size.width / ciImage.extent.width, size.height / ciImage.extent.height)
-        let scaledSize = CGSize(
-            width: ciImage.extent.width * scale,
-            height: ciImage.extent.height * scale
-        )
-        
+
         guard let scaleFilter = CIFilter(name: "CILanczosScaleTransform") else {
             throw ProcessingError.processingFailed
         }

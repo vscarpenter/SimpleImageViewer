@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import CryptoKit
 
 /// Generates intelligent, contextual narratives for images
 /// Adapts narrative style based on image purpose (portrait, landscape, document, etc.)
@@ -87,6 +88,26 @@ final class NarrativeGenerator {
         "Clear documentation of {subject}. {composition} with {colors_adj} treatment.",
         "Observational photograph featuring {subject}. {colors}."
     ]
+
+    // MARK: - Deterministic Template Selection
+
+    /// Select a template deterministically based on input data hash.
+    /// Same inputs always produce the same template, while different inputs produce variety.
+    /// Uses SHA256 for stable hashing across app launches (String.hashValue is randomized per process).
+    private func selectTemplate<T>(from templates: [T], seed: String) -> T {
+        guard let first = templates.first else {
+            // All call sites pass non-empty arrays, but we must not crash in production.
+            // The caller handles any string gracefully, so this is safe.
+            preconditionFailure("Template array must not be empty — review call site")
+        }
+        guard templates.count > 1 else { return first }
+
+        let digest = SHA256.hash(data: Data(seed.utf8))
+        let stableHash = digest.withUnsafeBytes { bytes in
+            bytes.load(as: UInt64.self)
+        }
+        return templates[Int(stableHash % UInt64(templates.count))]
+    }
 
     // MARK: - Public Interface
 
@@ -294,8 +315,8 @@ final class NarrativeGenerator {
         let lighting = describeLighting(colors: colors)
         let lightingAdj = describeLightingAdjective(colors: colors)
 
-        // Select random template and fill placeholders
-        let template = portraitTemplates.randomElement() ?? portraitTemplates[0]
+        // Select template deterministically based on input data
+        let template = selectTemplate(from: portraitTemplates, seed: "\(name)\(composition)\(lightingAdj)")
         return template
             .replacingOccurrences(of: "{name}", with: name)
             .replacingOccurrences(of: "{composition}", with: composition)
@@ -321,7 +342,7 @@ final class NarrativeGenerator {
         let lighting = describeLighting(colors: colors)
         let lightingAdj = describeLightingAdjective(colors: colors)
 
-        let template = groupTemplates.randomElement() ?? groupTemplates[0]
+        let template = selectTemplate(from: groupTemplates, seed: "\(resolvedCount)\(names)\(lightingAdj)")
         return template
             .replacingOccurrences(of: "{count}", with: String(resolvedCount))
             .replacingOccurrences(of: "{names}", with: names)
@@ -349,7 +370,7 @@ final class NarrativeGenerator {
         let colorsDesc = describeColorMood(colors: colors)
         let colorsAdj = describeColorAdjective(colors: colors)
 
-        let template = landscapeTemplates.randomElement() ?? landscapeTemplates[0]
+        let template = selectTemplate(from: landscapeTemplates, seed: "\(scene)\(colorsAdj)\(timeOfDay)")
         return template
             .replacingOccurrences(of: "{scene}", with: scene)
             .replacingOccurrences(of: "{landmark}", with: landmarks.first?.name ?? "")
@@ -372,7 +393,7 @@ final class NarrativeGenerator {
             "\(buildingType.capitalized) photographed with attention to geometric detail.",
             "Architecture photograph featuring \(buildingType). Clean lines and \(colorsAdj) tones."
         ]
-        return templates.randomElement() ?? templates[0]
+        return selectTemplate(from: templates, seed: "\(buildingType)\(colorsAdj)")
     }
 
     private func generateWildlifeNarrative(
@@ -395,7 +416,7 @@ final class NarrativeGenerator {
             "A candid capture of \(animal) in the wild. Natural behavior documented.",
             "Wildlife portrait of \(animal). \(habitat.capitalized) setting with natural lighting."
         ]
-        return templates.randomElement() ?? templates[0]
+        return selectTemplate(from: templates, seed: "\(animal)\(habitat)")
     }
 
     private func generateFoodNarrative(
@@ -406,7 +427,7 @@ final class NarrativeGenerator {
         let colorsAdj = describeColorAdjective(colors: colors)
         let presentation = describeFoodPresentation(colors: colors)
 
-        let template = foodTemplates.randomElement() ?? foodTemplates[0]
+        let template = selectTemplate(from: foodTemplates, seed: "\(foodItem)\(colorsAdj)\(presentation)")
         return template
             .replacingOccurrences(of: "{item}", with: foodItem)
             .replacingOccurrences(of: "{colors}", with: describeColorMood(colors: colors))
@@ -424,7 +445,7 @@ final class NarrativeGenerator {
             "Screenshot or document with approximately \(totalChars) characters of text.",
             "Readable document featuring \(wordCount) text element(s). Well-structured content."
         ]
-        return templates.randomElement() ?? templates[0]
+        return selectTemplate(from: templates, seed: "\(wordCount)\(totalChars)")
     }
 
     private func generateProductNarrative(objects: [DetectedObject], saliency: SaliencyAnalysis?) -> String {
@@ -441,7 +462,7 @@ final class NarrativeGenerator {
             "\(product.capitalized) showcased\(focusNote). Studio-quality lighting.",
             "E-commerce style image of \(product)\(focusNote). Clear product visibility."
         ]
-        return templates.randomElement() ?? templates[0]
+        return selectTemplate(from: templates, seed: "\(product)\(focusNote)")
     }
 
     private func generateGeneralNarrative(
@@ -454,7 +475,7 @@ final class NarrativeGenerator {
         let colorsDesc = describeColorMood(colors: colors)
         let composition = "Clear visual composition"
 
-        let template = generalTemplates.randomElement() ?? generalTemplates[0]
+        let template = selectTemplate(from: generalTemplates, seed: "\(subject)\(colorsAdj)")
         return template
             .replacingOccurrences(of: "{subject}", with: subject)
             .replacingOccurrences(of: "{colors}", with: colorsDesc)

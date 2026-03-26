@@ -27,7 +27,7 @@ final class SpecificityEnhancer {
         
         // Add animal-specific terms (highest specificity)
         if let animals = animals, let animal = animals.first {
-            if let breed = animal.breed {
+            if animal.breed != nil {
                 // Breed is most specific (level 3)
                 candidates.append(SpecificityCandidate(
                     term: animal.displayName,
@@ -77,7 +77,7 @@ final class SpecificityEnhancer {
         // Add animal-specific terms
         if let animals = animals {
             for animal in animals.prefix(2) {
-                if let breed = animal.breed {
+                if animal.breed != nil {
                     candidates.append(SpecificityCandidate(
                         term: animal.displayName,
                         confidence: animal.confidence,
@@ -117,10 +117,14 @@ final class SpecificityEnhancer {
     
     // MARK: - Private Methods
     
-    /// Determine specificity level for a classification term
+    /// Determine specificity level for a classification term.
+    /// Uses a heuristic + keyword override approach to handle the long tail of
+    /// ResNet50/Vision classifications beyond the hardcoded keyword lists.
     private func determineSpecificityLevel(_ term: String) -> Int {
         let lowercaseTerm = term.lowercased()
-        
+
+        // Override: Check explicit keyword lists first (known edge cases)
+
         // Level 3: Very specific (breeds, models, specific items)
         let verySpecificKeywords = [
             "golden retriever", "labrador", "siamese", "persian",
@@ -128,31 +132,20 @@ final class SpecificityEnhancer {
             "oak tree", "maple tree", "rose", "tulip",
             "cappuccino", "espresso", "croissant", "baguette"
         ]
-        
         for keyword in verySpecificKeywords {
-            if lowercaseTerm.contains(keyword) {
-                return 3
-            }
+            if lowercaseTerm.contains(keyword) { return 3 }
         }
-        
-        // Level 2: Specific (species, categories, types)
-        let specificKeywords = [
-            "dog", "cat", "bird", "fish", "horse", "cow",
-            "car", "truck", "bicycle", "motorcycle",
-            "tree", "flower", "plant", "grass",
-            "building", "house", "bridge", "tower",
-            "food", "drink", "meal", "dish",
-            "person", "man", "woman", "child",
-            "mountain", "lake", "ocean", "river",
-            "phone", "computer", "laptop", "tablet"
+
+        // Level 2: Known specific single-word terms that the length heuristic would misclassify
+        // These are short but specific — "cat" is more specific than "animal"
+        let specificShortTerms: Set<String> = [
+            "dog", "cat", "car", "bus", "bee", "cow", "pig", "van", "cup", "pen",
+            "bat", "ant", "elk", "emu", "fox", "hen", "jay", "owl", "ram", "yak",
+            "axe", "bow", "fan", "gun", "hat", "jar", "key", "map", "net", "pot",
+            "rug", "saw", "toy", "urn", "wig"
         ]
-        
-        for keyword in specificKeywords {
-            if lowercaseTerm == keyword || lowercaseTerm.contains(" \(keyword)") || lowercaseTerm.contains("\(keyword) ") {
-                return 2
-            }
-        }
-        
+        if specificShortTerms.contains(lowercaseTerm) { return 2 }
+
         // Level 1: Generic (broad categories)
         let genericKeywords = [
             "animal", "mammal", "creature",
@@ -162,14 +155,23 @@ final class SpecificityEnhancer {
             "structure", "architecture",
             "scene", "view", "image"
         ]
-        
         for keyword in genericKeywords {
-            if lowercaseTerm.contains(keyword) {
-                return 1
-            }
+            if lowercaseTerm.contains(keyword) { return 1 }
         }
-        
-        // Default to level 2 for unknown terms
+
+        // Heuristic: multi-word terms are more specific
+        // "golden retriever" > "dog" > "animal"
+        let normalizedTerm = lowercaseTerm.replacingOccurrences(of: "_", with: " ")
+        let wordCount = normalizedTerm.split(separator: " ").count
+        if wordCount >= 3 { return 3 }
+        if wordCount == 2 { return 2 }  // Two-word terms are moderately specific, not highly
+
+        // Very short unknown terms are usually generic
+        if lowercaseTerm.count < 4 {
+            return 1
+        }
+
+        // Default to level 2 for unknown single-word terms
         return 2
     }
     

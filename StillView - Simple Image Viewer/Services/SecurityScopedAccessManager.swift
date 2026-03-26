@@ -41,12 +41,6 @@ class SecurityScopedAccessManager: ObservableObject {
     /// - Returns: True if access was registered successfully
     func startAccess(for url: URL) -> Bool {
         return accessQueue.sync {
-            // Check if this URL is a favorite folder or contains favorite folders
-            let isFavoriteFolder = favoriteFolderURLs.contains(url) || 
-                favoriteFolderURLs.contains { favoriteURL in
-                    url.path.hasPrefix(favoriteURL.path)
-                }
-            
             // CRITICAL FIX: Never stop access to favorite folders
             // Only stop existing access if it's for a different URL AND it's not a favorite folder
             if let currentURL = currentAccessURL, currentURL != url {
@@ -185,8 +179,14 @@ class SecurityScopedAccessManager: ObservableObject {
     }
     
     deinit {
-        Task { @MainActor in
-            stopCurrentAccess()
+        // Directly stop access without capturing self in a closure
+        // This avoids Swift 6 error: "Capture of 'self' in closure that outlives deinit"
+        if let url = currentAccessURL {
+            url.stopAccessingSecurityScopedResource()
         }
+        // Note: favoriteFolderURLs and activeAccessURLs are released with the object.
+        // We intentionally do NOT stop access for favorite folders here because
+        // they may still be referenced by other parts of the app (bookmarks persist).
+        // currentAccessURL is set to nil implicitly when the object is deallocated.
     }
 }

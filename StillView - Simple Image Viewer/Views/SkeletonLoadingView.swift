@@ -244,7 +244,7 @@ struct ProgressiveLoadingView: View {
                                 .shadow(color: .black.opacity(0.1), radius: 4)
                         )
                     )
-                    .onChange(of: loadingProgress) { progress in
+                    .onChange(of: loadingProgress) { _, progress in
                         updateProgressiveEffects(progress: progress)
                     }
                     .accessibilityLabel("Loading high resolution image")

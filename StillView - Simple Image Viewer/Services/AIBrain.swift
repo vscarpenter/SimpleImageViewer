@@ -1,4 +1,3 @@
-
 //
 //  AIBrain.swift
 //  StillView
@@ -60,23 +59,43 @@ class AIBrain: ObservableObject {
     
     private func generateQualityInsights(from result: ImageAnalysisResult) -> [AIInsight] {
         var insights: [AIInsight] = []
-        
-        for issue in result.qualityAssessment.issues {
+        let assessment = result.qualityAssessment
+
+        for issue in assessment.issues {
+            // Suppress misleading quality warnings for artistic images
+            if assessment.hasArtisticEffect {
+                // Don't suggest "brighten" for intentional silhouettes
+                if assessment.isArtisticSilhouette && (issue.kind == .underexposed) { continue }
+                // Don't suggest "reduce contrast" for intentional high-contrast
+                if assessment.isArtisticHighContrast && (issue.kind == .overexposed) { continue }
+                // Don't suggest "sharpen" for intentional B&W (often soft-focus artistic choice)
+                if assessment.isArtisticBW && issue.kind == .softFocus { continue }
+            }
+
+            // Suppress "sharpen" for portraits with moderate softness (likely bokeh)
+            if issue.kind == .softFocus && isLikelyBokeh(assessment) {
+                continue
+            }
+
             let insight: AIInsight?
             switch issue.kind {
             case .softFocus:
-                insight = AIInsight(type: .quality, title: "Sharpness Enhancement", description: issue.detail, confidence: 0.9, action: .enhance, priority: .high)
+                // Derive confidence from actual sharpness metric
+                let confidence = Double(1.0 - assessment.metrics.sharpness)
+                insight = AIInsight(type: .quality, title: "Sharpness Enhancement", description: issue.detail, confidence: confidence, action: .enhance, priority: .high)
             case .underexposed, .overexposed:
-                insight = AIInsight(type: .quality, title: "Exposure Adjustment", description: issue.detail, confidence: 0.85, action: .enhance, priority: .high)
+                // Derive confidence from how far exposure is from optimal
+                let confidence = min(1.0, Double(abs(assessment.metrics.exposure - 0.5) * 2.0))
+                insight = AIInsight(type: .quality, title: "Exposure Adjustment", description: issue.detail, confidence: confidence, action: .enhance, priority: .high)
             case .lowResolution:
-                insight = AIInsight(type: .quality, title: "Resolution Notice", description: issue.detail, confidence: 1.0, action: .none, priority: .medium)
+                insight = AIInsight(type: .quality, title: "Resolution Notice", description: issue.detail, confidence: 1.0, action: AIInsight.InsightAction.none, priority: .medium)
             }
-            
+
             if let insight = insight {
                 insights.append(insight)
             }
         }
-        
+
         return insights
     }
     
@@ -92,7 +111,7 @@ class AIBrain: ObservableObject {
                     title: "What's in this image",
                     description: descriptionText,
                     confidence: max(0.6, caption.confidence),
-                    action: .none
+                    action: AIInsight.InsightAction.none
                 )
                 insights.append(insight)
             }
@@ -104,7 +123,7 @@ class AIBrain: ObservableObject {
                     title: "What's in this image",
                     description: narrative,
                     confidence: max(0.55, result.primaryContentConfidence),
-                    action: .none
+                    action: AIInsight.InsightAction.none
                 )
                 insights.append(insight)
             }
@@ -113,11 +132,6 @@ class AIBrain: ObservableObject {
         // Text extraction insight
         let totalCharacterCount = result.text.reduce(0) { $0 + $1.text.count }
         if totalCharacterCount >= 30 {
-            let sampleSnippet = result.text
-                .map { $0.text }
-                .joined(separator: " ")
-                .prefix(60)
-            
             let insight = AIInsight(type: .content, title: "Text Content Detected", description: "Detected readable text across \(result.text.count) regions. Extract for editing or copying.", confidence: min(0.95, Double(totalCharacterCount) / 120.0), action: .copy, priority: .medium)
             insights.append(insight)
         }
@@ -239,7 +253,7 @@ class AIBrain: ObservableObject {
                 title: "Faces Detected",
                 description: "Image contains \(faceCount) \(faceCount == 1 ? "face" : "faces"). Consider privacy before sharing publicly",
                 confidence: 0.95,
-                action: .none,
+                action: AIInsight.InsightAction.none,
                 priority: .critical,
                 category: "Privacy",
                 metadata: ["faceCount": "\(faceCount)"],
@@ -301,65 +315,128 @@ class AIBrain: ObservableObject {
     }
     
     /// Generate enhancement insights (specific editing recommendations)
+    /// Skips issues already covered by quality insights to avoid duplication
     private func generateEnhancementInsights(from result: ImageAnalysisResult) -> [AIInsight] {
+        let assessment = result.qualityAssessment
+
+        // Skip all enhancement insights if artistic effect detected
+        // (quality insights already handle suppression; enhancement would just duplicate)
+        guard !assessment.hasArtisticEffect else { return [] }
+
         var insights: [AIInsight] = []
-        
-        // Specific enhancement based on quality metrics
-        let metrics = result.qualityAssessment.metrics
-        
-        if metrics.sharpness < 0.5 {
-            insights.append(AIInsight(
-                type: .enhancement,
-                title: "Sharpness Enhancement",
-                description: "Apply sharpening to improve image clarity and detail",
-                confidence: Double(1.0 - metrics.sharpness),
-                action: .enhance,
-                priority: .high
-            ))
+        let metrics = assessment.metrics
+
+        // Only suggest sharpening if quality insights didn't already cover it
+        let qualityAlreadyCoversSharpness = assessment.issues.contains { $0.kind == .softFocus }
+        if !qualityAlreadyCoversSharpness && metrics.sharpness < 0.5 {
+            // Skip for portraits with moderate softness (likely intentional bokeh)
+            if !isLikelyBokeh(assessment) {
+                insights.append(AIInsight(
+                    type: .enhancement,
+                    title: "Sharpness Enhancement",
+                    description: "Apply sharpening to improve image clarity and detail",
+                    confidence: Double(1.0 - metrics.sharpness),
+                    action: .enhance,
+                    priority: .medium
+                ))
+            }
         }
-        
-        if metrics.exposure < 0.3 {
-            insights.append(AIInsight(
-                type: .enhancement,
-                title: "Brighten Image",
-                description: "Increase exposure to reveal more detail in shadows",
-                confidence: Double(0.3 - metrics.exposure) / 0.3,
-                action: .enhance,
-                priority: .high
-            ))
-        } else if metrics.exposure > 0.8 {
-            insights.append(AIInsight(
-                type: .enhancement,
-                title: "Reduce Exposure",
-                description: "Decrease exposure to recover highlight detail",
-                confidence: Double(metrics.exposure - 0.8) / 0.2,
-                action: .enhance,
-                priority: .high
-            ))
+
+        // Only suggest exposure adjustment if quality insights didn't already cover it
+        let qualityAlreadyCoversExposure = assessment.issues.contains {
+            $0.kind == .underexposed || $0.kind == .overexposed
         }
-        
+        if !qualityAlreadyCoversExposure {
+            let underThreshold = AIAnalysisConstants.underexposedThreshold
+            let overThreshold = AIAnalysisConstants.overexposedThreshold
+            if metrics.exposure < underThreshold {
+                insights.append(AIInsight(
+                    type: .enhancement,
+                    title: "Brighten Image",
+                    description: "Increase exposure to reveal more detail in shadows",
+                    confidence: (underThreshold - metrics.exposure) / underThreshold,
+                    action: .enhance,
+                    priority: .medium
+                ))
+            } else if metrics.exposure > overThreshold {
+                insights.append(AIInsight(
+                    type: .enhancement,
+                    title: "Reduce Exposure",
+                    description: "Decrease exposure to recover highlight detail",
+                    confidence: (metrics.exposure - overThreshold) / (1.0 - overThreshold),
+                    action: .enhance,
+                    priority: .medium
+                ))
+            }
+        }
+
         return insights
     }
     
     /// Generate context insights (time, location, scene characteristics)
     private func generateContextInsights(from result: ImageAnalysisResult) -> [AIInsight] {
         var insights: [AIInsight] = []
-        
-        // Scene context
-        if let primaryScene = result.scenes.first(where: { $0.confidence > 0.7 }) {
+
+        // Scene context — lowered threshold from 0.7 to 0.5, using agreement score for phrasing
+        if let primaryScene = result.scenes.first(where: { $0.confidence > 0.5 }) {
             let sceneName = primaryScene.identifier.replacingOccurrences(of: "_", with: " ").capitalized
+            let highAgreement = result.agreementScore >= 0.5
+            let phrasing = (primaryScene.confidence >= 0.7 || highAgreement)
+                ? "Captured in a \(sceneName.lowercased()) setting"
+                : "Likely captured in a \(sceneName.lowercased()) setting"
+
             insights.append(AIInsight(
                 type: .context,
                 title: "Scene Type",
-description: "Captured in a \(sceneName.lowercased()) setting",
+                description: phrasing,
                 confidence: Double(primaryScene.confidence),
-                action: .none,
+                action: AIInsight.InsightAction.none,
                 priority: .low,
                 category: "Context",
                 metadata: ["scene": sceneName]
             ))
         }
-        
+
+        // Inferred context from cross-signal correlation
+        for context in result.inferredContext where context.confidence >= 0.6 {
+            let title: String
+            let icon: String
+            switch context.type {
+            case .goldenHour:
+                title = "Golden Hour Lighting"
+                icon = "sun.and.horizon"
+            case .sunset:
+                title = "Sunset Conditions"
+                icon = "sunset"
+            case .nightScene:
+                title = "Night Scene"
+                icon = "moon.stars"
+            case .dining:
+                title = "Dining Scene"
+                icon = "fork.knife"
+            case .meeting:
+                title = "Meeting or Presentation"
+                icon = "person.3"
+            case .petPortrait:
+                title = "Pet Portrait"
+                icon = "pawprint"
+            case .activeScene:
+                title = "Active Scene"
+                icon = "figure.run"
+            }
+
+            insights.append(AIInsight(
+                type: .context,
+                title: title,
+                description: context.description,
+                confidence: context.confidence,
+                action: AIInsight.InsightAction.none,
+                priority: .low,
+                category: "Context",
+                icon: icon
+            ))
+        }
+
         return insights
     }
     
@@ -432,16 +509,79 @@ description: "Captured in a \(sceneName.lowercased()) setting",
         return insights
     }
     
+    /// Check if quality metrics suggest intentional bokeh (portrait with moderate softness)
+    private func isLikelyBokeh(_ assessment: ImageQualityAssessment) -> Bool {
+        assessment.purpose == .portrait &&
+        AIAnalysisConstants.bokehSharpnessRange.contains(assessment.metrics.sharpness)
+    }
+
     private func prioritizeAndFilter(_ insights: [AIInsight]) -> [AIInsight] {
+        // Deduplicate overlapping insights before sorting
+        let deduplicated = deduplicateInsights(insights)
+
         // Sort by priority first, then confidence
-        let sortedInsights = insights.sorted { lhs, rhs in
+        let sortedInsights = deduplicated.sorted { lhs, rhs in
             if lhs.priority != rhs.priority {
                 return lhs.priority > rhs.priority
             }
             return lhs.confidence > rhs.confidence
         }
-        
-        // Limit to top 12 insights (increased from 5 for richer results)
+
+        // Limit to top 12 insights
         return Array(sortedInsights.prefix(12))
+    }
+
+    /// Remove duplicate insights that share the same root cause across overlapping categories.
+    /// For example, quality and enhancement insights about "sharpness" are deduplicated.
+    private func deduplicateInsights(_ insights: [AIInsight]) -> [AIInsight] {
+        var result: [AIInsight] = []
+        var coveredTopics: Set<String> = []
+
+        // Overlapping type pairs where deduplication should apply
+        let overlapPairs: [(AIInsight.InsightType, AIInsight.InsightType)] = [
+            (.quality, .enhancement),
+            (.content, .context),
+        ]
+
+        // Sort by priority descending so higher-priority insights claim the topic first
+        let sorted = insights.sorted { lhs, rhs in
+            if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
+            return lhs.confidence > rhs.confidence
+        }
+
+        for insight in sorted {
+            let topic = extractTopic(from: insight)
+
+            // Check if this insight overlaps with an already-accepted one
+            let isOverlapping = overlapPairs.contains { pair in
+                (insight.type == pair.0 || insight.type == pair.1) && coveredTopics.contains(topic)
+            }
+
+            if isOverlapping {
+                continue
+            }
+
+            result.append(insight)
+            coveredTopics.insert(topic)
+        }
+
+        return result
+    }
+
+    /// Extract a topic key from an insight for deduplication purposes.
+    /// Insights about the same topic (sharpness, exposure, etc.) get the same key.
+    private func extractTopic(from insight: AIInsight) -> String {
+        let desc = insight.description.lowercased()
+        if desc.contains("sharp") || desc.contains("blur") || desc.contains("focus") {
+            return "sharpness"
+        }
+        if desc.contains("expos") || desc.contains("bright") || desc.contains("dark") {
+            return "exposure"
+        }
+        if desc.contains("resolution") || desc.contains("megapixel") || desc.contains("print") {
+            return "resolution"
+        }
+        // Default: use type + title as unique key
+        return "\(insight.type)_\(insight.title)"
     }
 }

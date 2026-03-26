@@ -396,7 +396,7 @@ final class SmartSearchService: ObservableObject {
         
         let range = query.startIndex..<query.endIndex
         tagger.enumerateTags(in: range, unit: .word, scheme: .nameType) { tag, tokenRange in
-            if let tag = tag {
+            if tag != nil {
                 let keyword = String(query[tokenRange])
                 suggestions.append(SmartSearchSuggestion(
                     text: keyword,
