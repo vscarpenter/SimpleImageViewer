@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		09B84EFA9F62B4D11BF4AA3E /* AIInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAC5473C90B36A96FF45C0B9 /* AIInsight.swift */; };
-		386E4B7894D73F75D4193651 /* AIBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD33494F82AEA5994EBD0F86 /* AIBrain.swift */; };
 		59D3D383620F460098093623A380D155 /* AIAnalysis/CaptionLanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 433B1C30D2BC44EAB50FFD4C4064E859 /* AIAnalysis/CaptionLanguageManager.swift */; };
 		5EC905040A8A480D836440911C7636FA /* AIAnalysis/SpecificityEnhancer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7766A14594C74449B003836B6E29BF97 /* AIAnalysis/SpecificityEnhancer.swift */; };
 		7483B21508284D579119A59A463C276B /* AIAnalysis/CaptionStyleFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 083FB6CBBC2E4B3FB804C5D611AE589D /* AIAnalysis/CaptionStyleFormatter.swift */; };
@@ -740,8 +738,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				C0C0C0C0C0C0C0C0C0C0C0D1 /* SmokeTests.swift in Sources */,
-				386E4B7894D73F75D4193651 /* AIBrain.swift in Sources */,
-				09B84EFA9F62B4D11BF4AA3E /* AIInsight.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
