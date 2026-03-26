@@ -222,7 +222,7 @@ final class ConfidenceEvaluator {
     }
 
     /// Check if a classification term aligns with the detected image purpose
-    private func isPurposeAligned(_ identifier: String, purpose: ImagePurpose) -> Bool {
+    func isPurposeAligned(_ identifier: String, purpose: ImagePurpose) -> Bool {
         let id = identifier.lowercased()
         switch purpose {
         case .food:

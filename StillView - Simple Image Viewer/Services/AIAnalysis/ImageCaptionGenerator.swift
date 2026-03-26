@@ -37,7 +37,9 @@ final class ImageCaptionGenerator {
         primarySubjects: [PrimarySubject],
         enhancedVision: EnhancedVisionResult? = nil,
         image: CGImage? = nil,
-        style: CaptionStyle = .detailed
+        style: CaptionStyle = .detailed,
+        purpose: ImagePurpose = .general,
+        inferredContext: [InferredContext] = []
     ) -> ImageCaption {
         let context = CaptionContext(
             classifications: classifications,
@@ -110,9 +112,9 @@ final class ImageCaptionGenerator {
             #endif
         }
 
-        // Ensure person/face detections are reflected in subjects.
-        // Object detectors (face/person) are more reliable for identifying people
-        // than classification models, which may prioritize background objects like laptops.
+        // Person promotion is now handled by SubjectDetector's unified ranking with
+        // prominence-gating. Only add a person as secondary subject if prominent and
+        // not already represented, to avoid overriding SubjectDetector's ranking.
         effectiveSubjects = ensurePersonSubjectIfDetected(
             subjects: effectiveSubjects,
             objects: objects,
@@ -125,9 +127,10 @@ final class ImageCaptionGenerator {
             colors: colors,
             scenes: scenes,
             enhancedVision: enhancedVision,
-            image: image
+            image: image,
+            purpose: purpose
         )
-        
+
         // Build detailed caption with more context
         let detailedCaption = buildDetailedCaption(
             subjects: effectiveSubjects,
@@ -136,7 +139,8 @@ final class ImageCaptionGenerator {
             colors: colors,
             qualityAssessment: qualityAssessment,
             enhancedVision: enhancedVision,
-            image: image
+            image: image,
+            inferredContext: inferredContext
         )
 
         // Build accessibility caption (always descriptive, not style-dependent)
@@ -193,19 +197,21 @@ final class ImageCaptionGenerator {
         colors: [DominantColor],
         scenes: [SceneClassification],
         enhancedVision: EnhancedVisionResult?,
-        image: CGImage?
+        image: CGImage?,
+        purpose: ImagePurpose = .general
     ) -> String {
         #if DEBUG
-        Logger.ai("📝 ImageCaptionGenerator: Building template-based caption with \(subjects.count) subject(s)")
+        Logger.ai("📝 ImageCaptionGenerator: Building template-based caption with \(subjects.count) subject(s), purpose: \(purpose)")
         #endif
 
-        // Use adaptive threshold: lower for high-specificity subjects
+        // Use purpose-aware thresholds: lower when the subject aligns with detected image purpose
         let filteredSubjects = subjects.filter { subject in
             let specificity = AIAnalysisConstants.getSpecificity(subject.label)
-            // High-specificity subjects (>= 4): use 0.25 threshold
-            // Medium-specificity subjects (>= 2): use 0.35 threshold
-            // Low-specificity subjects: use 0.5 threshold
-            let threshold: Double = specificity >= 4 ? 0.25 : (specificity >= 2 ? 0.35 : 0.5)
+            let isPurposeAligned = confidenceEvaluator.isPurposeAligned(subject.label, purpose: purpose)
+
+            let baseThreshold: Double = specificity >= 4 ? 0.25 : (specificity >= 2 ? 0.35 : 0.5)
+            // Lower threshold by 30% when subject aligns with image purpose
+            let threshold = isPurposeAligned ? baseThreshold * 0.7 : baseThreshold
             return subject.confidence > threshold
         }
 
@@ -307,7 +313,7 @@ final class ImageCaptionGenerator {
         }
     }
     
-    /// Build detailed caption with more context
+    /// Build detailed caption with more context, preferring inferred context over raw scenes
     private func buildDetailedCaption(
         subjects: [PrimarySubject],
         classifications: [ClassificationResult],
@@ -315,7 +321,8 @@ final class ImageCaptionGenerator {
         colors: [DominantColor],
         qualityAssessment: ImageQualityAssessment,
         enhancedVision: EnhancedVisionResult?,
-        image: CGImage?
+        image: CGImage?,
+        inferredContext: [InferredContext] = []
     ) -> String {
         // Build base caption
         let shortCaption = buildShortCaption(
@@ -326,23 +333,31 @@ final class ImageCaptionGenerator {
             image: image
         )
 
-        // Add quality assessment if notable
         var detailedParts: [String] = [shortCaption.trimmingCharacters(in: CharacterSet(charactersIn: "."))]
 
-        // Add scene if available, relevant, and not contradicted by detected subjects
-        let hasPerson = subjects.contains { isPerson($0) }
-        let personIrrelevantScenes: Set<String> = ["food", "dish", "meal", "cuisine", "dessert"]
-        if let scene = scenes.first(where: { scene in
-            let sceneID = scene.identifier.lowercased()
-            // Skip scenes that contradict the primary subject (e.g., "food" for a person)
-            if hasPerson && personIrrelevantScenes.contains(where: { sceneID.contains($0) }) {
-                return false
+        // Prefer inferred context over raw scene classifications when available,
+        // since inferred context is validated across multiple signals
+        if let bestContext = inferredContext.max(by: { $0.confidence < $1.confidence }),
+           bestContext.confidence > 0.5 {
+            let contextText = formatInferredContext(bestContext)
+            if !contextText.isEmpty {
+                detailedParts.append(contextText)
             }
-            return scene.confidence > 0.3
-        }) {
-            let sceneText = scene.identifier.replacingOccurrences(of: "_", with: " ")
-            if !sceneText.isEmpty {
-                detailedParts.append("Scene: \(sceneText)")
+        } else {
+            // Fall back to raw scene classification
+            let hasPerson = subjects.contains { isPerson($0) }
+            let personIrrelevantScenes: Set<String> = ["food", "dish", "meal", "cuisine", "dessert"]
+            if let scene = scenes.first(where: { scene in
+                let sceneID = scene.identifier.lowercased()
+                if hasPerson && personIrrelevantScenes.contains(where: { sceneID.contains($0) }) {
+                    return false
+                }
+                return scene.confidence > 0.3
+            }) {
+                let sceneText = scene.identifier.replacingOccurrences(of: "_", with: " ")
+                if !sceneText.isEmpty {
+                    detailedParts.append("Scene: \(sceneText)")
+                }
             }
         }
 
@@ -360,7 +375,7 @@ final class ImageCaptionGenerator {
 
         return detailedParts.joined(separator: ". ") + "."
     }
-    
+
     /// Build fallback caption when no subjects detected - now smarter about scene content
     private func buildFallbackCaption(
         colors: [DominantColor],
@@ -1404,6 +1419,26 @@ private func hasPersonIdentifier(_ identifier: String) -> Bool {
 
 extension ImageCaptionGenerator {
 
+    /// Format inferred context into human-readable caption text
+    func formatInferredContext(_ context: InferredContext) -> String {
+        switch context.type {
+        case .goldenHour:
+            return "Captured in golden hour lighting"
+        case .sunset:
+            return "Sunset scene"
+        case .nightScene:
+            return "Night scene"
+        case .dining:
+            return "Dining setting"
+        case .meeting:
+            return "Meeting or presentation setting"
+        case .petPortrait:
+            return "Pet portrait"
+        case .activeScene:
+            return "Active outdoor scene"
+        }
+    }
+
     /// Check if subject is a person
     func isPerson(_ subject: PrimarySubject) -> Bool {
         let label = subject.label.lowercased()
@@ -1449,31 +1484,43 @@ extension ImageCaptionGenerator {
         return "with"
     }
 
-    /// Ensure person/face detections are represented in subjects.
-    /// Object detectors (VNDetectHumanRectanglesRequest, VNDetectFaceRectanglesRequest)
-    /// are purpose-built for people and more reliable than classification models,
-    /// which may rank background objects (laptops, furniture) higher by specificity.
+    /// Minimum bounding box area (as fraction of frame) for a person to be considered prominent
+    private static let personProminenceAreaThreshold: CGFloat = 0.08
+
+    /// Ensure person/face detections are represented in subjects, but only when prominent.
+    /// A background face in a car photo or a tiny person in a landscape should not
+    /// override the true foreground subject.
     func ensurePersonSubjectIfDetected(
         subjects: [PrimarySubject],
         objects: [DetectedObject],
         recognizedPeople: [RecognizedPerson]
     ) -> [PrimarySubject] {
-        let faceDetected = objects.contains { $0.identifier.lowercased() == "face" }
-        let personDetected = objects.contains { $0.identifier.lowercased() == "person" }
-        guard faceDetected || personDetected else { return subjects }
+        let personObjects = objects.filter {
+            $0.identifier.lowercased() == "face" || $0.identifier.lowercased() == "person"
+        }
+        guard !personObjects.isEmpty else { return subjects }
 
         let alreadyHasPerson = subjects.contains { isPerson($0) }
         guard !alreadyHasPerson else { return subjects }
 
+        // Check prominence: only promote person if they occupy significant frame area
+        let maxPersonArea = personObjects.map { $0.boundingBox.width * $0.boundingBox.height }.max() ?? 0
+        let faceDetected = personObjects.contains { $0.identifier.lowercased() == "face" }
+
+        guard maxPersonArea >= Self.personProminenceAreaThreshold else {
+            #if DEBUG
+            Logger.ai("📝 Person detected but not prominent (area: \(String(format: "%.1f%%", maxPersonArea * 100))), keeping original subjects")
+            #endif
+            return subjects
+        }
+
         let personLabel: String
         let personConfidence: Double
         if let recognized = recognizedPeople.first {
-            personLabel = recognized.name
+            personLabel = recognized.source == .text ? "Person" : recognized.name
             personConfidence = recognized.confidence
         } else {
-            let bestPersonObject = objects
-                .filter { $0.identifier.lowercased() == "face" || $0.identifier.lowercased() == "person" }
-                .max(by: { $0.confidence < $1.confidence })
+            let bestPersonObject = personObjects.max(by: { $0.confidence < $1.confidence })
             personLabel = "Person"
             personConfidence = Double(bestPersonObject?.confidence ?? 0.75)
         }
@@ -1482,12 +1529,16 @@ extension ImageCaptionGenerator {
             label: personLabel,
             confidence: personConfidence,
             source: faceDetected ? .face : .object,
-            detail: "Detected by Vision framework object detector",
+            detail: "Prominent person detected by Vision framework",
             boundingBox: objects.first(where: { $0.identifier.lowercased() == "person" })?.boundingBox
         )
 
-        var updated = [personSubject]
-        updated.append(contentsOf: subjects.prefix(2))
+        // Add person as secondary subject instead of forcibly overriding SubjectDetector's
+        // ranking. SubjectDetector's unified scoring already considers person prominence,
+        // so this is a fallback for edge cases where the detector missed promoting a
+        // prominent person.
+        var updated = Array(subjects.prefix(1))
+        updated.append(personSubject)
         return updated
     }
 }

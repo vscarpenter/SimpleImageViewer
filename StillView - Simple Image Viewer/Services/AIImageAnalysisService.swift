@@ -438,7 +438,9 @@ final class AIImageAnalysisService: ObservableObject {
                 qualityAssessment: qualityAssessment,
                 primarySubjects: primarySubjects,
                 enhancedVision: enhancedVisionResult,
-                image: cgImage
+                image: cgImage,
+                purpose: purpose,
+                inferredContext: correlated.inferredContext
             )
 
             // Optional: If a specialized captioning model is available, prefer its short caption when confident
