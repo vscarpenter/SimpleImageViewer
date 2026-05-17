@@ -60,16 +60,13 @@ View all your images with crystal-clear quality:
 - Universal Binary (Intel + Apple Silicon)
 - **Comprehensive Help System** with searchable documentation
 
-### 🧠 **Intelligent Image Analysis (macOS 26+)**
-- **Powered by On-Device AI** - Industry-standard ResNet50 Core ML model for deep learning classification
-- **Hybrid Intelligence** - Intelligently merges ResNet50 with Apple's Vision framework as a reliable fallback
-- **Object Detection** - Identifies people, objects, and faces with confidence scoring
-- **Scene Classification** - Understands image context and lighting conditions
-- **Text Recognition** - OCR capabilities for extracting text from images
-- **Quality Assessment** - Automated evaluation of sharpness, exposure, and technical quality
-- **Smart Tags** - Automatically generated tags organized by category
-- **Enhancement Suggestions** - Context-aware recommendations for image improvement
-- **Complete Privacy** - All AI processing performed locally on your device
+### 🧠 **AI Insights (macOS 26+)**
+- **Apple Intelligence** - Uses Apple's Foundation Models framework when available
+- **On-device generation** - Images, metadata, prompts, and results stay on this Mac
+- **Metadata grounded** - Insights are based on local file metadata and available system signals
+- **Manual by design** - Open the inspector and choose Generate Insight for the current image
+- **Transparent limits** - Results include limitations and avoid claiming unsupported image details
+- **No bundled AI models** - StillView does not ship custom Core ML models for AI Insights
 
 ### 🔒 **Privacy & Security**
 - **No internet required** - works completely offline

@@ -11,7 +11,7 @@ final class PreferencesServiceTests: XCTestCase {
         }
     }
     
-    func testEnableAIAnalysisDefaultsToTrueAndPersists() {
+    func testEnableAIAnalysisDefaultsToFalseAndPersists() {
         guard let defaults = UserDefaults(suiteName: suiteName) else {
             XCTFail("Failed to create user defaults suite")
             return
@@ -19,11 +19,11 @@ final class PreferencesServiceTests: XCTestCase {
         defaults.removePersistentDomain(forName: suiteName)
         
         let service = DefaultPreferencesService(userDefaults: defaults)
-        XCTAssertTrue(service.enableAIAnalysis, "AI analysis should be enabled by default")
+        XCTAssertFalse(service.enableAIAnalysis, "AI Insights should be disabled by default")
         
-        service.enableAIAnalysis = false
-        XCTAssertFalse(service.enableAIAnalysis, "AI analysis preference should persist changes")
-        XCTAssertFalse(defaults.bool(forKey: "enableAIAnalysis"))
+        service.enableAIAnalysis = true
+        XCTAssertTrue(service.enableAIAnalysis, "AI Insights preference should persist changes")
+        XCTAssertTrue(defaults.bool(forKey: "enableAIAnalysis"))
     }
     
     func testEnableImageEnhancementsDefaultsToFalse() {

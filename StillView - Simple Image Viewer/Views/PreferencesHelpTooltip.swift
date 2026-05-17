@@ -274,11 +274,11 @@ extension PreferencesHelpTooltip {
         )
     }
 
-    /// Help tooltip for AI analysis preference
+    /// Help tooltip for AI Insights preference
     static func aiAnalysis() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
-            title: "On-Device AI",
-            content: "Image analysis runs locally to surface tags, text, and objects. Disable this if you prefer to browse without automatic insights.",
+            title: "AI Insights",
+            content: "Uses Apple Intelligence on this Mac when available to generate short notes from local image metadata and available system signals.",
             type: .information
         )
     }

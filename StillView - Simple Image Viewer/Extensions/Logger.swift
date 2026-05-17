@@ -137,7 +137,7 @@ struct Logger {
         debug(message, category: performance, file: file, function: function, line: line)
     }
     
-    /// Log AI analysis-related information
+    /// Log AI Insights-related information
     static func ai(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         debug(message, category: ai, file: file, function: function, line: line)
     }

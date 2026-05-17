@@ -177,9 +177,10 @@ class PreferencesValidator {
         }
 
         if viewModel.enableAIAnalysis && !MacOS26CompatibilityService.shared.isFeatureAvailable(.aiImageAnalysis) {
+            let featureInfo = MacOS26CompatibilityService.shared.getFeatureInfo(.aiImageAnalysis)
             results.append(.warning(
-                "AI analysis requires macOS 26 or newer hardware",
-                suggestion: "Disable AI analysis or update macOS to access these features"
+                featureInfo.unavailableMessage,
+                suggestion: "Disable AI Insights or enable Apple Intelligence on a supported Mac."
             ))
         }
 

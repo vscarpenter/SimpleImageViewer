@@ -1,9 +1,8 @@
 import Foundation
 import AppKit
 import Combine
-import NaturalLanguage
 
-/// Enhanced accessibility service with AI-powered image descriptions
+/// Enhanced accessibility service with local image descriptions.
 @MainActor
 final class EnhancedAccessibilityService: ObservableObject {
     
@@ -26,7 +25,6 @@ final class EnhancedAccessibilityService: ObservableObject {
     
     // MARK: - Private Properties
     
-    private let aiAnalysisService = AIImageAnalysisService.shared
     private let compatibilityService = MacOS26CompatibilityService.shared
     private var cancellables = Set<AnyCancellable>()
     private let descriptionQueue = DispatchQueue(label: "com.vinny.accessibility.description", qos: .userInitiated)
@@ -63,13 +61,7 @@ final class EnhancedAccessibilityService: ObservableObject {
             throw AccessibilityError.invalidImage
         }
         
-        let description: AccessibilityDescription
-        
-        if compatibilityService.isFeatureAvailable(.aiImageAnalysis) {
-            description = try await generateAIDescription(image, imageFile: imageFile)
-        } else {
-            description = generateBasicDescription(image, imageFile: imageFile)
-        }
+        let description = generateBasicDescription(image, imageFile: imageFile)
         
         // Cache the description
         await MainActor.run {
@@ -99,10 +91,7 @@ final class EnhancedAccessibilityService: ObservableObject {
             }
         }
         
-        // Generate collection-level insights
-        if compatibilityService.isFeatureAvailable(.aiImageAnalysis) {
-            collectionInsights = try await generateCollectionInsights(descriptions)
-        }
+        collectionInsights = try await generateCollectionInsights(descriptions)
         
         return CollectionAccessibilityDescription(
             imageDescriptions: descriptions,
@@ -123,24 +112,21 @@ final class EnhancedAccessibilityService: ObservableObject {
         // Basic navigation info
         hints.append("Image \(currentIndex + 1) of \(collection.count)")
         
-        // Content-based hints
-        if compatibilityService.isFeatureAvailable(.aiImageAnalysis) {
-            let description = try await generateAccessibilityDescription(for: imageFile)
-            hints.append("Content: \(description.primaryDescription)")
-            
-            // Add context from adjacent images
-            if currentIndex > 0 {
-                let previousDescription = try? await generateAccessibilityDescription(for: collection[currentIndex - 1])
-                if let prev = previousDescription {
-                    hints.append("Previous: \(prev.primaryDescription)")
-                }
+        let description = try await generateAccessibilityDescription(for: imageFile)
+        hints.append("Content: \(description.primaryDescription)")
+
+        // Add context from adjacent images
+        if currentIndex > 0 {
+            let previousDescription = try? await generateAccessibilityDescription(for: collection[currentIndex - 1])
+            if let prev = previousDescription {
+                hints.append("Previous: \(prev.primaryDescription)")
             }
-            
-            if currentIndex < collection.count - 1 {
-                let nextDescription = try? await generateAccessibilityDescription(for: collection[currentIndex + 1])
-                if let next = nextDescription {
-                    hints.append("Next: \(next.primaryDescription)")
-                }
+        }
+
+        if currentIndex < collection.count - 1 {
+            let nextDescription = try? await generateAccessibilityDescription(for: collection[currentIndex + 1])
+            if let next = nextDescription {
+                hints.append("Next: \(next.primaryDescription)")
             }
         }
         
@@ -209,11 +195,7 @@ final class EnhancedAccessibilityService: ObservableObject {
             category: .interaction
         ))
         
-        // Content-specific help
-        if compatibilityService.isFeatureAvailable(.aiImageAnalysis) {
-            let contentHelp = generateContentSpecificHelp(description, context: context)
-            helpItems.append(contentsOf: contentHelp)
-        }
+        helpItems.append(contentsOf: generateContentSpecificHelp(description, context: context))
         
         return ContextualHelp(
             imageFile: imageFile,
@@ -234,7 +216,7 @@ final class EnhancedAccessibilityService: ObservableObject {
     private func isFeatureSupported(_ feature: AccessibilityFeature) -> Bool {
         switch feature {
         case .aiDescriptions:
-            return compatibilityService.isFeatureAvailable(.aiImageAnalysis)
+            return false
         case .voiceOverOptimization:
             return true
         case .multiLanguageSupport:
@@ -242,7 +224,7 @@ final class EnhancedAccessibilityService: ObservableObject {
         case .contextualHelp:
             return true
         case .smartNavigation:
-            return compatibilityService.isFeatureAvailable(.aiImageAnalysis)
+            return true
         case .pronunciationHints:
             return true
         }
@@ -266,11 +248,6 @@ final class EnhancedAccessibilityService: ObservableObject {
         settings.isHighContrastEnabled = false // Fallback value
     }
     
-    private func generateAIDescription(_ image: NSImage, imageFile: ImageFile) async throws -> AccessibilityDescription {
-        let analysis = try await aiAnalysisService.analyzeImage(image, url: imageFile.url)
-        return generateDescriptionFromAnalysis(analysis, imageFile: imageFile)
-    }
-    
     private func generateBasicDescription(_ image: NSImage, imageFile: ImageFile) -> AccessibilityDescription {
         let size = image.size
         let aspectRatio = size.width / size.height
@@ -283,12 +260,17 @@ final class EnhancedAccessibilityService: ObservableObject {
         }
         
         // Add aspect ratio information
+        var keywords = [imageFile.formatDescription, "image"]
+
         if aspectRatio > 1.5 {
             description += ", landscape orientation"
+            keywords.append("landscape")
         } else if aspectRatio < 0.67 {
             description += ", portrait orientation"
+            keywords.append("portrait")
         } else {
             description += ", square format"
+            keywords.append("square")
         }
         
         // Add file information
@@ -297,104 +279,8 @@ final class EnhancedAccessibilityService: ObservableObject {
         return AccessibilityDescription(
             primaryDescription: description,
             detailedDescription: "Image file: \(imageFile.displayName), size: \(imageFile.formattedSize)",
-            keywords: [imageFile.formatDescription, "image"]
-        )
-    }
-    
-    private func generateDescriptionFromAnalysis(_ analysis: ImageAnalysisResult, imageFile: ImageFile) -> AccessibilityDescription {
-        var primaryDescription = "Image"
-        
-        // Add primary classification
-        if let primaryClassification = analysis.classifications.first {
-            primaryDescription += " of \(primaryClassification.identifier)"
-        }
-        
-        // Add object information
-        if !analysis.objects.isEmpty {
-            let objectNames = analysis.objects.map { $0.identifier }.joined(separator: ", ")
-            primaryDescription += " containing \(objectNames)"
-        }
-        
-        // Add scene information
-        if !analysis.scenes.isEmpty {
-            let sceneNames = analysis.scenes.map { $0.identifier }.joined(separator: ", ")
-            primaryDescription += " in a \(sceneNames) setting"
-        }
-        
-        // Add quality information
-        switch analysis.quality {
-        case .high:
-            primaryDescription += " (high quality)"
-        case .medium:
-            primaryDescription += " (medium quality)"
-        case .low:
-            primaryDescription += " (low quality)"
-        case .unknown:
-            break
-        }
-        
-        // Generate detailed description
-        let detailedDescription = generateDetailedDescription(analysis, imageFile: imageFile)
-        
-        // Extract keywords
-        let keywords = extractKeywords(from: analysis, imageFile: imageFile)
-        
-        return AccessibilityDescription(
-            primaryDescription: primaryDescription,
-            detailedDescription: detailedDescription,
             keywords: keywords
         )
-    }
-    
-    private func generateDetailedDescription(_ analysis: ImageAnalysisResult, imageFile: ImageFile) -> String {
-        var details: [String] = []
-        
-        // Add file information
-        details.append("File: \(imageFile.displayName) (\(imageFile.formattedSize))")
-        
-        // Add classification details
-        for classification in analysis.classifications.prefix(3) {
-            details.append("\(classification.identifier) (\(Int(classification.confidence * 100))% confidence)")
-        }
-        
-        // Add object details
-        for object in analysis.objects.prefix(3) {
-            details.append("Contains \(object.identifier)")
-        }
-        
-        // Add color information
-        if !analysis.colors.isEmpty {
-            let colorNames = analysis.colors.map { "\($0.color)" }.joined(separator: ", ")
-            details.append("Dominant colors: \(colorNames)")
-        }
-        
-        // Add text information
-        if !analysis.text.isEmpty {
-            let textContent = analysis.text.map { $0.text }.joined(separator: ", ")
-            details.append("Text content: \(textContent)")
-        }
-        
-        return details.joined(separator: ". ")
-    }
-    
-    private func extractKeywords(from analysis: ImageAnalysisResult, imageFile: ImageFile) -> [String] {
-        var keywords: [String] = []
-        
-        // Add file format
-        keywords.append(imageFile.formatDescription)
-        
-        // Add high-confidence classifications
-        keywords.append(contentsOf: analysis.classifications
-            .filter { $0.confidence > 0.7 }
-            .map { $0.identifier })
-        
-        // Add detected objects
-        keywords.append(contentsOf: analysis.objects.map { $0.identifier })
-        
-        // Add scene information
-        keywords.append(contentsOf: analysis.scenes.map { $0.identifier })
-        
-        return Array(Set(keywords)) // Remove duplicates
     }
     
     private func generateCollectionInsights(_ descriptions: [ImageFile: AccessibilityDescription]) async throws -> [String] {
@@ -560,6 +446,13 @@ enum DescriptionLength {
             return 50
         }
     }
+}
+
+/// Local accessibility description assembled from file and image metadata.
+struct AccessibilityDescription {
+    let primaryDescription: String
+    let detailedDescription: String
+    let keywords: [String]
 }
 
 /// Collection accessibility description

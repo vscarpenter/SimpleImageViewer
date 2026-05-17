@@ -52,15 +52,15 @@ final class PerformanceOptimizationService: ObservableObject {
         var networkIOCount: Int = 0
         var cacheHitRate: Double = 0.0
         var operationCounts: [String: Int] = [:]
-        var aiAnalysisLatency: CFTimeInterval = 0.0
-        var aiAnalysisCacheHitRate: Double = 0.0
-        var aiAnalysisMemoryFootprint: UInt64 = 0
+        var imageInsightLatency: CFTimeInterval = 0.0
+        var imageInsightCacheHitRate: Double = 0.0
+        var imageInsightMemoryFootprint: UInt64 = 0
         
         var isOptimal: Bool {
             let baseOptimal = fps >= 50.0 && averageFrameTime < 0.025 && memoryUsage < 2 * 1024 * 1024 * 1024
-            let aiLatencyHealthy = aiAnalysisLatency == 0.0 || aiAnalysisLatency < 1.2
-            let aiMemoryHealthy = aiAnalysisMemoryFootprint == 0 || aiAnalysisMemoryFootprint < 512 * 1024 * 1024
-            return baseOptimal && aiLatencyHealthy && aiMemoryHealthy
+            let insightLatencyHealthy = imageInsightLatency == 0.0 || imageInsightLatency < 1.2
+            let insightMemoryHealthy = imageInsightMemoryFootprint == 0 || imageInsightMemoryFootprint < 512 * 1024 * 1024
+            return baseOptimal && insightLatencyHealthy && insightMemoryHealthy
         }
         
         var performanceScore: Int {
@@ -72,9 +72,9 @@ final class PerformanceOptimizationService: ObservableObject {
             if averageFrameTime > 0.033 { score -= 15 }
             if memoryUsage > 2 * 1024 * 1024 * 1024 { score -= 10 }
             if memoryUsage > 4 * 1024 * 1024 * 1024 { score -= 10 }
-            if aiAnalysisLatency > 1.5 { score -= 10 }
-            if aiAnalysisCacheHitRate < 0.3 { score -= 5 }
-            if aiAnalysisMemoryFootprint > 1_000_000_000 { score -= 5 }
+            if imageInsightLatency > 1.5 { score -= 10 }
+            if imageInsightCacheHitRate < 0.3 { score -= 5 }
+            if imageInsightMemoryFootprint > 1_000_000_000 { score -= 5 }
             
             return max(0, score)
         }
@@ -236,17 +236,17 @@ final class PerformanceOptimizationService: ObservableObject {
     ///   - latency: Time taken to complete the analysis
     ///   - cacheHitRate: Fraction of cache hits vs total analysis requests
     ///   - memoryFootprint: Current process resident memory usage
-    func recordAIMetrics(latency: CFTimeInterval, cacheHitRate: Double, memoryFootprint: UInt64) {
-        currentMetrics.aiAnalysisLatency = latency
-        currentMetrics.aiAnalysisCacheHitRate = cacheHitRate
-        currentMetrics.aiAnalysisMemoryFootprint = memoryFootprint
+    func recordImageInsightMetrics(latency: CFTimeInterval, cacheHitRate: Double, memoryFootprint: UInt64) {
+        currentMetrics.imageInsightLatency = latency
+        currentMetrics.imageInsightCacheHitRate = cacheHitRate
+        currentMetrics.imageInsightMemoryFootprint = memoryFootprint
         currentMetrics.cacheHitRate = cacheHitRate
 
         let latencyString = String(format: "%.2f", latency)
         let hitRatePercent = max(0, min(100, Int(cacheHitRate * 100)))
         let memoryString = ByteCountFormatter.string(fromByteCount: Int64(memoryFootprint), countStyle: .memory)
         Logger.performance(
-            "AI analysis metrics — latency: \(latencyString)s, cache hit rate: \(hitRatePercent)%, resident memory: \(memoryString)"
+            "AI Insights metrics - latency: \(latencyString)s, cache hit rate: \(hitRatePercent)%, resident memory: \(memoryString)"
         )
     }
 

@@ -2,6 +2,9 @@ import Foundation
 import SwiftUI
 import AppKit
 import Combine
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
 /// Service for managing macOS 26 compatibility and feature availability
 @MainActor
@@ -40,7 +43,16 @@ final class MacOS26CompatibilityService: ObservableObject {
     
     /// Check if a specific feature is available
     func isFeatureAvailable(_ feature: MacOS26Feature) -> Bool {
+        if feature == .aiImageAnalysis {
+            return featureStatuses[feature]?.isOperational == true
+        }
         return availableFeatures.contains(feature)
+    }
+
+    /// Re-evaluate OS and Apple Intelligence readiness after settings or system state changes.
+    func refreshFeatureAvailability() {
+        setupVersionDetection()
+        detectAvailableFeatures()
     }
     
     /// Check if we're running on macOS 26 or later
@@ -86,40 +98,87 @@ final class MacOS26CompatibilityService: ObservableObject {
     
     private func detectAvailableFeatures() {
         var features: Set<MacOS26Feature> = []
+        var statuses: [MacOS26Feature: FeatureOperationalStatus] = [:]
         
         // Check each feature's availability
         for feature in MacOS26Feature.allCases {
-            if isFeatureSupported(feature) {
+            let status = operationalStatus(for: feature)
+            statuses[feature] = status
+            if status.isOperational {
                 features.insert(feature)
             }
         }
         
+        featureStatuses = statuses
         availableFeatures = features
     }
     
-    private func isFeatureSupported(_ feature: MacOS26Feature) -> Bool {
+    private func operationalStatus(for feature: MacOS26Feature) -> FeatureOperationalStatus {
         switch feature {
         case .advancedSwiftUINavigation:
-            return isMacOS15OrLater
+            return versionStatus(for: feature, isSupported: isMacOS15OrLater)
         case .enhancedImageProcessing:
-            return isMacOS15OrLater
+            return versionStatus(for: feature, isSupported: isMacOS15OrLater)
         case .aiImageAnalysis:
-            return isMacOS26OrLater
+            return appleIntelligenceStatus()
         case .hardwareAcceleration:
-            return isMacOS15OrLater
+            return versionStatus(for: feature, isSupported: isMacOS15OrLater)
         case .advancedSecurity:
-            return isMacOS15OrLater
+            return versionStatus(for: feature, isSupported: isMacOS15OrLater)
         case .enhancedAccessibility:
-            return isMacOS15OrLater
+            return versionStatus(for: feature, isSupported: isMacOS15OrLater)
         case .nextGenImageFormats:
-            return isMacOS15OrLater
+            return versionStatus(for: feature, isSupported: isMacOS15OrLater)
         case .advancedWindowManagement:
-            return isMacOS15OrLater
+            return versionStatus(for: feature, isSupported: isMacOS15OrLater)
         case .predictiveLoading:
-            return isMacOS26OrLater
+            return versionStatus(for: feature, isSupported: isMacOS26OrLater)
         case .enhancedGestures:
-            return isMacOS15OrLater
+            return versionStatus(for: feature, isSupported: isMacOS15OrLater)
         }
+    }
+
+    private func versionStatus(for feature: MacOS26Feature, isSupported: Bool) -> FeatureOperationalStatus {
+        if isSupported {
+            return .available
+        }
+
+        return .unavailable(
+            reason: "\(feature.displayName) requires macOS \(feature.requiredVersion.displayString) or later."
+        )
+    }
+
+    private func appleIntelligenceStatus() -> FeatureOperationalStatus {
+        guard isMacOS26OrLater else {
+            return .unavailable(reason: "AI Insights require macOS 26 or later.")
+        }
+
+        #if canImport(FoundationModels)
+        if #available(macOS 26.0, *) {
+            switch SystemLanguageModel.default.availability {
+            case .available:
+                return .available
+            case .unavailable(.appleIntelligenceNotEnabled):
+                return .unavailable(
+                    reason: "Turn on Apple Intelligence in System Settings to use AI Insights."
+                )
+            case .unavailable(.deviceNotEligible):
+                return .unavailable(
+                    reason: "This Mac does not support Apple Intelligence."
+                )
+            case .unavailable(.modelNotReady):
+                return .limited(
+                    reason: "Apple Intelligence is downloading or preparing its on-device model. Try again later."
+                )
+            @unknown default:
+                return .unavailable(reason: "Apple Intelligence is not available right now.")
+            }
+        }
+        #endif
+
+        return .unavailable(
+            reason: "AI Insights require a macOS 26 SDK with the Foundation Models framework."
+        )
     }
     
     private func setupFeatureMonitoring() {
@@ -182,7 +241,7 @@ enum MacOS26Feature: String, CaseIterable {
         case .enhancedImageProcessing:
             return "Enhanced Image Processing"
         case .aiImageAnalysis:
-            return "AI Image Analysis"
+            return "AI Insights"
         case .hardwareAcceleration:
             return "Hardware Acceleration"
         case .advancedSecurity:
@@ -239,9 +298,12 @@ struct FeatureAvailabilityInfo {
     var versionGap: String {
         if isAvailable {
             return "Available"
-        } else {
-            return "Requires macOS \(requiredVersion.displayString) or later"
         }
+        return status.userFacingMessage ?? "Requires macOS \(requiredVersion.displayString) or later"
+    }
+
+    var unavailableMessage: String {
+        status.userFacingMessage ?? versionGap
     }
 }
 
@@ -251,6 +313,24 @@ enum FeatureOperationalStatus: Equatable {
     case limited(reason: String)
     case unavailable(reason: String)
     case unknown
+
+    var isOperational: Bool {
+        if case .available = self {
+            return true
+        }
+        return false
+    }
+
+    var userFacingMessage: String? {
+        switch self {
+        case .available:
+            return nil
+        case .limited(let reason), .unavailable(let reason):
+            return reason
+        case .unknown:
+            return "Feature availability is unknown."
+        }
+    }
 }
 
 // MARK: - SwiftUI Integration

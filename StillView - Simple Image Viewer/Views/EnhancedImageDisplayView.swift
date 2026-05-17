@@ -97,9 +97,6 @@ struct EnhancedImageDisplayView: View {
     private func enhancedImageContent(_ image: NSImage, geometry: GeometryProxy) -> some View {
         // macOS 26 specific enhancements
         imageContent(image, geometry: geometry)
-            .withFeature(.aiImageAnalysis) {
-                aiEnhancedImageContent(image, geometry: geometry)
-            }
             .withFeature(.predictiveLoading) {
                 predictiveImageContent(image, geometry: geometry)
             }
@@ -115,24 +112,6 @@ struct EnhancedImageDisplayView: View {
             .withFeature(.hardwareAcceleration) {
                 hardwareAcceleratedImageContent(image, geometry: geometry)
             }
-    }
-    
-    @ViewBuilder
-    private func aiEnhancedImageContent(_ image: NSImage, geometry: GeometryProxy) -> some View {
-        // AI-enhanced image display
-        ZStack {
-            imageContent(image, geometry: geometry)
-            
-            // AI analysis overlay
-            VStack {
-                HStack {
-                    Spacer()
-                    aiAnalysisOverlay
-                }
-                Spacer()
-            }
-            .padding()
-        }
     }
     
     @ViewBuilder
@@ -219,74 +198,12 @@ struct EnhancedImageDisplayView: View {
     }
     
     @ViewBuilder
-    private var aiAnalysisOverlay: some View {
-        VStack(alignment: .trailing, spacing: 12) {
-            HStack(spacing: 6) {
-                Image(systemName: "brain.head.profile")
-                    .foregroundColor(.accentColor)
-                Text("AI Insights")
-                    .font(.caption)
-                    .foregroundColor(.accentColor)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(.regularMaterial, in: Capsule())
-
-            if viewModel.isAnalyzingAI {
-                VStack(alignment: .trailing, spacing: 6) {
-                    ProgressView(value: viewModel.aiAnalysisProgress)
-                        .frame(width: 160)
-                    Text("Analyzing…")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-            } else if let error = viewModel.analysisError {
-                Text(error.localizedDescription)
-                    .font(.caption2)
-                    .foregroundColor(.orange)
-                    .multilineTextAlignment(.trailing)
-            } else if !viewModel.isAIAnalysisEnabled {
-                Text("AI analysis disabled")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            } else if let analysis = viewModel.currentAnalysis {
-                VStack(alignment: .trailing, spacing: 4) {
-                    if let primary = analysis.classifications.first {
-                        Text(primary.identifier)
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                    }
-                    
-                    if !viewModel.analysisTags.isEmpty {
-                        Text(viewModel.analysisTags.prefix(3).joined(separator: ", "))
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            } else {
-                Text("AI ready")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-    }
-    
-    @ViewBuilder
     private var processingContextMenu: some View {
         Group {
             Button("Enhance Image") {
                 enhanceCurrentImage()
             }
             .disabled(!compatibilityService.isFeatureAvailable(.enhancedImageProcessing))
-            
-            Button("AI Analysis") {
-                analyzeCurrentImage()
-            }
-            .disabled(!compatibilityService.isFeatureAvailable(.aiImageAnalysis))
             
             Divider()
             
@@ -349,19 +266,6 @@ struct EnhancedImageDisplayView: View {
                 await MainActor.run {
                     viewModel.currentImage = processedImage.currentImage
                 }
-            } catch {
-                // Handle error
-            }
-        }
-    }
-    
-    private func analyzeCurrentImage() {
-        guard let image = viewModel.currentImage else { return }
-        
-        Task {
-            do {
-                _ = try await enhancedProcessing.analyzeImage(image)
-                // Analysis completed - result handled by the service
             } catch {
                 // Handle error
             }

@@ -7,18 +7,18 @@
       "type": "newFeatures",
       "items": [
         {
-          "title": "AI-Powered Image Analysis (macOS 26+)",
-          "description": "Revolutionary on-device AI analyzes your images to identify objects, scenes, text, colors, and quality—all processed locally with complete privacy. Smart tags, search, and organization powered by Vision and Core ML.",
+          "title": "AI Insights with Apple Intelligence (macOS 26+)",
+          "description": "Generate concise, metadata-grounded image notes with Apple's on-device Foundation Models framework when Apple Intelligence is available on this Mac.",
           "isHighlighted": true
         },
         {
-          "title": "Smart Search & Organization",
-          "description": "Find images instantly with AI-powered search by detected content, text, colors, and scenes. Automatic categorization into smart collections makes organizing thousands of images effortless.",
+          "title": "Simple Inspector Workflow",
+          "description": "Open the AI Insights panel and choose Generate Insight for the current image. Results include a short summary, useful details, tags, and clear limitations.",
           "isHighlighted": true
         },
         {
-          "title": "Enhanced Accessibility with AI",
-          "description": "AI-generated image descriptions provide rich, detailed VoiceOver experiences. Multi-language support and context-aware descriptions make images accessible to everyone.",
+          "title": "Privacy-First AI",
+          "description": "Images, metadata, prompts, generated text, and results stay on this Mac. StillView does not add network AI APIs, telemetry, analytics, or bundled Core ML models for AI Insights.",
           "isHighlighted": true
         },
         {
@@ -48,18 +48,18 @@
       "type": "improvements",
       "items": [
         {
-          "title": "Major AI Accuracy Improvements",
-          "description": "Completely overhauled AI analysis engine with 9 critical fixes: improved sharpness detection using proper luminance calculation, balanced confidence scoring, enhanced time-of-day detection with color temperature analysis, and smarter activity/event recognition. Expect significantly more accurate captions, tags, and quality assessments.",
+          "title": "Smaller, More Honest AI Results",
+          "description": "The old AI analysis pipeline has been replaced with a focused Apple Intelligence service that uses local metadata and avoids unsupported claims about image contents.",
           "isHighlighted": true
         },
         {
-          "title": "AI Features with Complete Privacy",
-          "description": "All AI processing happens entirely on your Mac using Apple's Vision and Core ML. No cloud services, no data collection, no tracking. Your images never leave your device.",
+          "title": "Clear Availability Messages",
+          "description": "StillView now explains when AI Insights are unavailable because of macOS version, Apple Intelligence compatibility, disabled settings, model readiness, or missing image input.",
           "isHighlighted": true
         },
         {
-          "title": "Lightning-Fast AI Analysis",
-          "description": "Optimized AI pipeline analyzes images in 1-2 seconds with intelligent caching. Background processing ensures smooth browsing while AI works. Results appear progressively as analysis completes.",
+          "title": "Removed Legacy AI Pipeline",
+          "description": "Removed custom Core ML model loading, ResNet classification, heuristic scoring, caption generation, smart AI tags, and result-merging logic from AI Insights.",
           "isHighlighted": true
         },
         {

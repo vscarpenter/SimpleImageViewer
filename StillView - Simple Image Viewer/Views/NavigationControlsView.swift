@@ -487,7 +487,7 @@ struct NavigationControlsView: View {
         .buttonStyle(ToolbarButtonStyle())
         .help(viewModel.showAIInsights ? "Hide AI Insights" : "Show AI Insights")
         .accessibilityLabel(viewModel.showAIInsights ? "Hide AI Insights" : "Show AI Insights")
-        .accessibilityHint("Toggle AI-powered image analysis panel")
+        .accessibilityHint("Toggle the AI Insights panel")
     }
     
     // MARK: - Slideshow Toggle Button
@@ -755,4 +755,3 @@ struct NavigationControlsView: View {
     }
     .frame(width: 800, height: 600)
 }
-

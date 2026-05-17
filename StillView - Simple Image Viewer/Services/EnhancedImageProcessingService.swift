@@ -1,7 +1,6 @@
 import Foundation
 import AppKit
 import CoreImage
-import CoreML
 import Vision
 import Combine
 import Metal
@@ -112,15 +111,6 @@ final class EnhancedImageProcessingService: ObservableObject {
         }
     }
     
-    /// AI-powered image analysis
-    func analyzeImage(_ image: NSImage) async throws -> ProcessingAnalysisResult {
-        guard compatibilityService.isFeatureAvailable(.aiImageAnalysis) else {
-            throw ProcessingError.featureNotAvailable
-        }
-        
-        return try await performAIAnalysis(image)
-    }
-    
     // MARK: - Private Methods
     
     private func setupFeatureDetection() {
@@ -137,8 +127,6 @@ final class EnhancedImageProcessingService: ObservableObject {
             return compatibilityService.isMacOS15OrLater
         case .colorEnhancement:
             return compatibilityService.isMacOS15OrLater
-        case .aiAnalysis:
-            return compatibilityService.isFeatureAvailable(.aiImageAnalysis)
         case .hardwareAcceleration:
             return compatibilityService.isFeatureAvailable(.hardwareAcceleration) && metalDevice != nil
         case .predictiveEnhancement:
@@ -157,8 +145,6 @@ final class EnhancedImageProcessingService: ObservableObject {
             return try await applyNoiseReduction(to: processedImage)
         case .colorEnhancement:
             return try await applyColorEnhancement(to: processedImage)
-        case .aiAnalysis:
-            return try await applyAIAnalysis(to: processedImage)
         case .hardwareAcceleration:
             return try await applyHardwareAcceleration(to: processedImage)
         case .predictiveEnhancement:
@@ -238,15 +224,6 @@ final class EnhancedImageProcessingService: ObservableObject {
         return ProcessedImage(originalImage: processedImage.originalImage, currentImage: processedNSImage)
     }
     
-    private func applyAIAnalysis(to processedImage: ProcessedImage) async throws -> ProcessedImage {
-        let analysisResult = try await performAIAnalysis(processedImage.currentImage)
-        return ProcessedImage(
-            originalImage: processedImage.originalImage,
-            currentImage: processedImage.currentImage,
-            analysisResult: analysisResult
-        )
-    }
-    
     private func applyHardwareAcceleration(to processedImage: ProcessedImage) async throws -> ProcessedImage {
         guard metalDevice != nil else {
             throw ProcessingError.hardwareNotAvailable
@@ -307,35 +284,6 @@ final class EnhancedImageProcessingService: ObservableObject {
         return thumbnail
     }
     
-    private func performAIAnalysis(_ image: NSImage) async throws -> ProcessingAnalysisResult {
-        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            throw ProcessingError.invalidImage
-        }
-        
-        let request = VNClassifyImageRequest()
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-        
-        try handler.perform([request])
-        
-        let classifications = request.results?.map { observation in
-            ProcessingClassificationResult(
-                identifier: observation.identifier,
-                confidence: observation.confidence
-            )
-        } ?? []
-        
-        let qualityScore = calculateQualityScore(image)
-        let dominantColors = extractDominantColors(from: image)
-        let suggestions = generateSuggestedEnhancements(classifications)
-        
-        return ProcessingAnalysisResult(
-            classifications: classifications,
-            dominantColors: dominantColors,
-            qualityScore: qualityScore,
-            suggestedEnhancements: suggestions
-        )
-    }
-    
     private func cropImageBasedOnSaliency(
         _ image: NSImage,
         saliencyMap: CVPixelBuffer
@@ -343,46 +291,6 @@ final class EnhancedImageProcessingService: ObservableObject {
         // Implement smart cropping based on saliency map
         // This is a simplified implementation
         return image
-    }
-    
-    private func extractDominantColors(from image: NSImage) -> [NSColor] {
-        // Extract dominant colors using Core Image
-        return []
-    }
-    
-    private func calculateQualityScore(_ image: NSImage) -> Double {
-        // Calculate image quality score
-        return 0.8
-    }
-    
-    private func generateSuggestedEnhancements(_ classifications: [ProcessingClassificationResult]) -> [ProcessingEnhancementSuggestion] {
-        // Generate enhancement suggestions based on image content
-        var suggestions = classifications.map { classification -> ProcessingEnhancementSuggestion in
-            if classification.identifier.contains("portrait") {
-                return ProcessingEnhancementSuggestion(
-                    type: .brightness,
-                    description: "Portrait detected - adjust brightness for better skin tones",
-                    confidence: min(Double(classification.confidence), 1.0)
-                )
-            }
-            return ProcessingEnhancementSuggestion(
-                type: .sharpness,
-                description: "Apply gentle sharpening to enhance detail",
-                confidence: 0.4
-            )
-        }
-
-        if suggestions.isEmpty {
-            suggestions.append(
-                ProcessingEnhancementSuggestion(
-                    type: .contrast,
-                    description: "Balance contrast to improve overall clarity",
-                    confidence: 0.5
-                )
-            )
-        }
-
-        return suggestions
     }
 }
 
@@ -393,7 +301,6 @@ enum ProcessingFeature: String, CaseIterable {
     case smartCropping = "smart_cropping"
     case noiseReduction = "noise_reduction"
     case colorEnhancement = "color_enhancement"
-    case aiAnalysis = "ai_analysis"
     case hardwareAcceleration = "hardware_acceleration"
     case predictiveEnhancement = "predictive_enhancement"
     
@@ -405,8 +312,6 @@ enum ProcessingFeature: String, CaseIterable {
             return "Noise Reduction"
         case .colorEnhancement:
             return "Color Enhancement"
-        case .aiAnalysis:
-            return "AI Analysis"
         case .hardwareAcceleration:
             return "Hardware Acceleration"
         case .predictiveEnhancement:
@@ -419,42 +324,11 @@ enum ProcessingFeature: String, CaseIterable {
 struct ProcessedImage {
     let originalImage: NSImage
     var currentImage: NSImage
-    var analysisResult: ProcessingAnalysisResult?
     
-    init(originalImage: NSImage, currentImage: NSImage? = nil, analysisResult: ProcessingAnalysisResult? = nil) {
+    init(originalImage: NSImage, currentImage: NSImage? = nil) {
         self.originalImage = originalImage
         self.currentImage = currentImage ?? originalImage
-        self.analysisResult = analysisResult
     }
-}
-
-/// Image analysis result produced during enhanced processing
-struct ProcessingAnalysisResult {
-    let classifications: [ProcessingClassificationResult]
-    let dominantColors: [NSColor]
-    let qualityScore: Double
-    let suggestedEnhancements: [ProcessingEnhancementSuggestion]
-}
-
-/// Classification result
-struct ProcessingClassificationResult {
-    let identifier: String
-    let confidence: Float
-}
-
-/// Enhancement suggestion
-struct ProcessingEnhancementSuggestion {
-    let type: ProcessingEnhancementType
-    let description: String
-    let confidence: Double
-}
-
-enum ProcessingEnhancementType {
-    case brightness
-    case contrast
-    case saturation
-    case sharpness
-    case noiseReduction
 }
 
 /// Processing errors

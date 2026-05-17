@@ -15,14 +15,8 @@ class PreferencesViewModel: ObservableObject {
     @Published var rememberLastFolder: Bool = true
     @Published var defaultZoomLevel: Preferences.ZoomLevel = .fitToWindow
     @Published var loopSlideshow: Bool = true
-    @Published var enableAIAnalysis: Bool = true
+    @Published var enableAIAnalysis: Bool = false
     @Published var enableImageEnhancements: Bool = false
-    
-    // AI Caption preferences
-    @Published var captionStyle: CaptionStyle = .detailed
-    @Published var captionLanguage: String = "en"
-    @Published var enableEnhancedVision: Bool = true
-    @Published var enableSemanticEnhancement: Bool = true
     
     // Appearance preferences (to be extended)
     @Published var toolbarStyle: Preferences.ToolbarStyle = .floating
@@ -92,14 +86,8 @@ class PreferencesViewModel: ObservableObject {
                 rememberLastFolder = true
                 defaultZoomLevel = .fitToWindow
                 loopSlideshow = true
-                enableAIAnalysis = true
+                enableAIAnalysis = false
                 enableImageEnhancements = false
-
-                // Reset AI caption preferences
-                captionStyle = .detailed
-                captionLanguage = "en"
-                enableEnhancedVision = true
-                enableSemanticEnhancement = true
 
                 toolbarStyle = .floating
                 enableGlassEffects = true
@@ -125,12 +113,6 @@ class PreferencesViewModel: ObservableObject {
         }
     }
 
-    /// Clear the AI analysis cache to force fresh analysis
-    func clearAICache() {
-        AIImageAnalysisService.shared.clearCache()
-        Logger.info("AI analysis cache cleared by user")
-    }
-    
     /// Recover from corrupted preferences
     func recoverFromCorruption() {
         Task {
@@ -182,13 +164,6 @@ class PreferencesViewModel: ObservableObject {
         enableAIAnalysis = preferencesService.enableAIAnalysis
         enableImageEnhancements = preferencesService.enableImageEnhancements
         
-        // Load AI caption preferences
-        let aiCaptionPrefs = preferencesService.aiCaptionPreferences
-        captionStyle = aiCaptionPrefs.captionStyle
-        captionLanguage = aiCaptionPrefs.preferredLanguage
-        enableEnhancedVision = aiCaptionPrefs.enableEnhancedVision
-        enableSemanticEnhancement = aiCaptionPrefs.enableSemanticEnhancement
-        
         // Load thumbnail size from existing service
         switch preferencesService.defaultThumbnailGridSize {
         case .small:
@@ -216,13 +191,6 @@ class PreferencesViewModel: ObservableObject {
         slideshowInterval = preferencesService.slideshowInterval
         enableAIAnalysis = preferencesService.enableAIAnalysis
         enableImageEnhancements = preferencesService.enableImageEnhancements
-        
-        // Load AI caption preferences
-        let aiCaptionPrefs = preferencesService.aiCaptionPreferences
-        captionStyle = aiCaptionPrefs.captionStyle
-        captionLanguage = aiCaptionPrefs.preferredLanguage
-        enableEnhancedVision = aiCaptionPrefs.enableEnhancedVision
-        enableSemanticEnhancement = aiCaptionPrefs.enableSemanticEnhancement
         
         // Validate slideshow interval
         if slideshowInterval < 1.0 || slideshowInterval > 30.0 {
@@ -372,26 +340,6 @@ class PreferencesViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
-        // Bind AI caption preferences
-        Publishers.CombineLatest4(
-            $captionStyle,
-            $captionLanguage,
-            $enableEnhancedVision,
-            $enableSemanticEnhancement
-        )
-        .dropFirst()
-        .sink { [weak self] style, language, enhancedVision, semanticEnhancement in
-            guard let self = self else { return }
-            let prefs = AICaptionPreferences(
-                captionStyle: style,
-                preferredLanguage: language,
-                enableEnhancedVision: enhancedVision,
-                enableSemanticEnhancement: semanticEnhancement
-            )
-            self.preferencesService.aiCaptionPreferences = prefs
-        }
-        .store(in: &cancellables)
-        
         // Bind extended preferences to UserDefaults
         setupExtendedBindings()
     }
@@ -487,10 +435,6 @@ class PreferencesViewModel: ObservableObject {
             "loopSlideshow": loopSlideshow,
             "enableAIAnalysis": enableAIAnalysis,
             "enableImageEnhancements": enableImageEnhancements,
-            "captionStyle": captionStyle.rawValue,
-            "captionLanguage": captionLanguage,
-            "enableEnhancedVision": enableEnhancedVision,
-            "enableSemanticEnhancement": enableSemanticEnhancement,
             "toolbarStyle": toolbarStyle.rawValue,
             "enableGlassEffects": enableGlassEffects,
             "animationIntensity": animationIntensity.rawValue,
@@ -512,10 +456,6 @@ class PreferencesViewModel: ObservableObject {
             "loopSlideshow": loopSlideshow,
             "enableAIAnalysis": enableAIAnalysis,
             "enableImageEnhancements": enableImageEnhancements,
-            "captionStyle": captionStyle.rawValue,
-            "captionLanguage": captionLanguage,
-            "enableEnhancedVision": enableEnhancedVision,
-            "enableSemanticEnhancement": enableSemanticEnhancement,
             "toolbarStyle": toolbarStyle.rawValue,
             "enableGlassEffects": enableGlassEffects,
             "animationIntensity": animationIntensity.rawValue,
@@ -613,19 +553,6 @@ class PreferencesViewModel: ObservableObject {
                 self?.updateValidation()
             }
             .store(in: &cancellables)
-        
-        // AI caption preferences change tracking
-        Publishers.CombineLatest4(
-            $captionStyle,
-            $captionLanguage,
-            $enableEnhancedVision,
-            $enableSemanticEnhancement
-        )
-        .dropFirst()
-        .sink { [weak self] _, _, _, _ in
-            self?.checkForUnsavedChanges()
-        }
-        .store(in: &cancellables)
     }
     
     // MARK: - Undo/Redo Methods
@@ -640,11 +567,8 @@ class PreferencesViewModel: ObservableObject {
             rememberLastFolder: rememberLastFolder,
             defaultZoomLevel: defaultZoomLevel,
             loopSlideshow: loopSlideshow,
+            enableAIAnalysis: enableAIAnalysis,
             enableImageEnhancements: enableImageEnhancements,
-            captionStyle: captionStyle,
-            captionLanguage: captionLanguage,
-            enableEnhancedVision: enableEnhancedVision,
-            enableSemanticEnhancement: enableSemanticEnhancement,
             toolbarStyle: toolbarStyle,
             enableGlassEffects: enableGlassEffects,
             animationIntensity: animationIntensity,
@@ -663,11 +587,8 @@ class PreferencesViewModel: ObservableObject {
         rememberLastFolder = snapshot.rememberLastFolder
         defaultZoomLevel = snapshot.defaultZoomLevel
         loopSlideshow = snapshot.loopSlideshow
+        enableAIAnalysis = snapshot.enableAIAnalysis
         enableImageEnhancements = snapshot.enableImageEnhancements
-        captionStyle = snapshot.captionStyle
-        captionLanguage = snapshot.captionLanguage
-        enableEnhancedVision = snapshot.enableEnhancedVision
-        enableSemanticEnhancement = snapshot.enableSemanticEnhancement
         toolbarStyle = snapshot.toolbarStyle
         enableGlassEffects = snapshot.enableGlassEffects
         animationIntensity = snapshot.animationIntensity
@@ -765,21 +686,11 @@ class PreferencesViewModel: ObservableObject {
         if let loopSlideshowInitial = initialValues["loopSlideshow"] as? Bool {
             loopSlideshow = loopSlideshowInitial
         }
+        if let enableAIAnalysisInitial = initialValues["enableAIAnalysis"] as? Bool {
+            enableAIAnalysis = enableAIAnalysisInitial
+        }
         if let enableEnhancementsInitial = initialValues["enableImageEnhancements"] as? Bool {
             enableImageEnhancements = enableEnhancementsInitial
-        }
-        if let captionStyleRaw = initialValues["captionStyle"] as? String,
-           let style = CaptionStyle(rawValue: captionStyleRaw) {
-            captionStyle = style
-        }
-        if let captionLanguageInitial = initialValues["captionLanguage"] as? String {
-            captionLanguage = captionLanguageInitial
-        }
-        if let enableEnhancedVisionInitial = initialValues["enableEnhancedVision"] as? Bool {
-            enableEnhancedVision = enableEnhancedVisionInitial
-        }
-        if let enableSemanticEnhancementInitial = initialValues["enableSemanticEnhancement"] as? Bool {
-            enableSemanticEnhancement = enableSemanticEnhancementInitial
         }
         if let toolbarStyleRaw = initialValues["toolbarStyle"] as? String,
            let style = Preferences.ToolbarStyle(rawValue: toolbarStyleRaw) {
@@ -843,11 +754,8 @@ private struct PreferencesSnapshot {
     let rememberLastFolder: Bool
     let defaultZoomLevel: Preferences.ZoomLevel
     let loopSlideshow: Bool
+    let enableAIAnalysis: Bool
     let enableImageEnhancements: Bool
-    let captionStyle: CaptionStyle
-    let captionLanguage: String
-    let enableEnhancedVision: Bool
-    let enableSemanticEnhancement: Bool
     let toolbarStyle: Preferences.ToolbarStyle
     let enableGlassEffects: Bool
     let animationIntensity: Preferences.AnimationIntensity
