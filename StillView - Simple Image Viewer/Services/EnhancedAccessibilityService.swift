@@ -25,7 +25,6 @@ final class EnhancedAccessibilityService: ObservableObject {
     
     // MARK: - Private Properties
     
-    private let compatibilityService = MacOS26CompatibilityService.shared
     private var cancellables = Set<AnyCancellable>()
     private let descriptionQueue = DispatchQueue(label: "com.vinny.accessibility.description", qos: .userInitiated)
     

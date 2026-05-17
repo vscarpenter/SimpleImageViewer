@@ -23,7 +23,6 @@ final class EnhancedSecurityService: ObservableObject {
     
     // MARK: - Private Properties
     
-    private let compatibilityService = MacOS26CompatibilityService.shared
     private let keychain = KeychainManager()
     private var cancellables = Set<AnyCancellable>()
     
@@ -38,15 +37,6 @@ final class EnhancedSecurityService: ObservableObject {
     
     /// Request advanced permissions for macOS 26 features
     func requestAdvancedPermissions() async -> SecurityPermissionResult {
-        guard compatibilityService.isFeatureAvailable(.advancedSecurity) else {
-            return SecurityPermissionResult(
-                success: false,
-                grantedPermissions: [],
-                deniedPermissions: SecurityPermission.allCases,
-                error: SecurityError.featureNotAvailable
-            )
-        }
-        
         var grantedPermissions: [SecurityPermission] = []
         var deniedPermissions: [SecurityPermission] = []
         
@@ -109,10 +99,6 @@ final class EnhancedSecurityService: ObservableObject {
     
     /// Enable enhanced privacy features
     func enableEnhancedPrivacy() async throws {
-        guard compatibilityService.isFeatureAvailable(.advancedSecurity) else {
-            throw SecurityError.featureNotAvailable
-        }
-        
         // Enable hardware-encrypted storage
         try await enableHardwareEncryption()
         
@@ -133,10 +119,9 @@ final class EnhancedSecurityService: ObservableObject {
     
     private func isFeatureSupported(_ feature: SecurityFeature) -> Bool {
         switch feature {
-        case .hardwareEncryption, .automaticCleanup, .secureBookmarks, .biometricAuthentication:
+        case .hardwareEncryption, .automaticCleanup, .secureBookmarks, .biometricAuthentication,
+             .granularPermissions, .privacyMonitoring:
             return true
-        case .granularPermissions, .privacyMonitoring:
-            return compatibilityService.isFeatureAvailable(.advancedSecurity)
         }
     }
     

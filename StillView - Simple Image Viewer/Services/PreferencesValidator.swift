@@ -165,21 +165,16 @@ class PreferencesValidator {
             ))
         }
 
-        if viewModel.enableImageEnhancements && !MacOS26CompatibilityService.shared.isFeatureAvailable(.enhancedImageProcessing) {
-            results.append(.warning(
-                "Automatic enhancements require macOS 26 features",
-                suggestion: "Disable image enhancements or update macOS to access this capability"
-            ))
-        } else if viewModel.enableImageEnhancements {
+        if viewModel.enableImageEnhancements {
             results.append(.info(
                 "Automatic enhancements may increase image load time slightly"
             ))
         }
 
-        if viewModel.enableAIAnalysis && !MacOS26CompatibilityService.shared.isFeatureAvailable(.aiImageAnalysis) {
-            let featureInfo = MacOS26CompatibilityService.shared.getFeatureInfo(.aiImageAnalysis)
+        let aiAvailability = AppleIntelligenceInsightsService.shared.availability()
+        if viewModel.enableAIAnalysis, case .unavailable = aiAvailability {
             results.append(.warning(
-                featureInfo.unavailableMessage,
+                aiAvailability.message,
                 suggestion: "Disable AI Insights or enable Apple Intelligence on a supported Mac."
             ))
         }

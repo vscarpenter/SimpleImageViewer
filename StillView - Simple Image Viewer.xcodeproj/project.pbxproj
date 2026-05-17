@@ -67,7 +67,6 @@
 		FB2E7C932E556A5F000525C4 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2E7C922E556A5F000525C4 /* Logger.swift */; };
 		FB49A3702E80D50800F77575 /* PreferencesEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A36F2E80D50800F77575 /* PreferencesEnums.swift */; };
 		FB49A3742E80D51E00F77575 /* EnhancedImageDisplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A3722E80D51E00F77575 /* EnhancedImageDisplayView.swift */; };
-		FB49A3782E80D52B00F77575 /* macOS26CompatibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A3762E80D52B00F77575 /* macOS26CompatibilityService.swift */; };
 		FB49A37E2E80D54000F77575 /* EnhancedAccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A37B2E80D54000F77575 /* EnhancedAccessibilityService.swift */; };
 		FB49A3822E80D54B00F77575 /* EnhancedSecurityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A3802E80D54B00F77575 /* EnhancedSecurityService.swift */; };
 		FB49A3832E80D54B00F77575 /* EnhancedImageProcessingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A37F2E80D54B00F77575 /* EnhancedImageProcessingService.swift */; };
@@ -175,7 +174,6 @@
 		FB2E7C922E556A5F000525C4 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		FB49A36F2E80D50800F77575 /* PreferencesEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesEnums.swift; sourceTree = "<group>"; };
 		FB49A3722E80D51E00F77575 /* EnhancedImageDisplayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedImageDisplayView.swift; sourceTree = "<group>"; };
-		FB49A3762E80D52B00F77575 /* macOS26CompatibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = macOS26CompatibilityService.swift; sourceTree = "<group>"; };
 		FB49A37B2E80D54000F77575 /* EnhancedAccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedAccessibilityService.swift; sourceTree = "<group>"; };
 		FB49A37F2E80D54B00F77575 /* EnhancedImageProcessingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedImageProcessingService.swift; sourceTree = "<group>"; };
 		FB49A3802E80D54B00F77575 /* EnhancedSecurityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedSecurityService.swift; sourceTree = "<group>"; };
@@ -288,7 +286,6 @@
 				B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */,
 				B2010000000000000000000E /* ImagePerceptionService.swift */,
 				FB4EE8272E916AEA00B4AA4D /* FeedbackService.swift */,
-				FB49A3762E80D52B00F77575 /* macOS26CompatibilityService.swift */,
 				FB49A37B2E80D54000F77575 /* EnhancedAccessibilityService.swift */,
 				FB49A37F2E80D54B00F77575 /* EnhancedImageProcessingService.swift */,
 				FB49A3802E80D54B00F77575 /* EnhancedSecurityService.swift */,
@@ -590,7 +587,6 @@
 				A1000088 /* ImageCache.swift in Sources */,
 				A100008A /* ImageMemoryManager.swift in Sources */,
 				FBF3C89F2E5FDC5200F10DC8 /* PreferencesTab.swift in Sources */,
-				FB49A3782E80D52B00F77575 /* macOS26CompatibilityService.swift in Sources */,
 				FBF3C8A02E5FDC5200F10DC8 /* ShortcutDefinition.swift in Sources */,
 				FBF3C8A12E5FDC5200F10DC8 /* ValidationResult.swift in Sources */,
 				A1000090 /* Bundle+Resources.swift in Sources */,

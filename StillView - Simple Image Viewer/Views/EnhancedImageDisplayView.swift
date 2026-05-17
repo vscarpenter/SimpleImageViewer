@@ -5,7 +5,6 @@ import Combine
 /// Enhanced image display view with macOS 26 capabilities
 struct EnhancedImageDisplayView: View {
     @ObservedObject var viewModel: ImageViewerViewModel
-    @StateObject private var compatibilityService = MacOS26CompatibilityService.shared
     @StateObject private var enhancedProcessing = EnhancedImageProcessingService.shared
     @State private var dragOffset: CGSize = .zero
     @State private var magnification: CGFloat = 1.0
@@ -22,13 +21,7 @@ struct EnhancedImageDisplayView: View {
                 
                 // Main image content
                 if let image = viewModel.currentImage {
-                    imageContent(image, geometry: geometry)
-                        .macOS26Enhanced {
-                            enhancedImageContent(image, geometry: geometry)
-                        }
-                        .macOS15Enhanced {
-                            modernImageContent(image, geometry: geometry)
-                        }
+                    modernImageContent(image, geometry: geometry)
                 } else {
                     placeholderContent
                 }
@@ -95,23 +88,12 @@ struct EnhancedImageDisplayView: View {
     
     @ViewBuilder
     private func enhancedImageContent(_ image: NSImage, geometry: GeometryProxy) -> some View {
-        // macOS 26 specific enhancements
-        imageContent(image, geometry: geometry)
-            .withFeature(.predictiveLoading) {
-                predictiveImageContent(image, geometry: geometry)
-            }
+        predictiveImageContent(image, geometry: geometry)
     }
-    
+
     @ViewBuilder
     private func modernImageContent(_ image: NSImage, geometry: GeometryProxy) -> some View {
-        // macOS 15+ specific enhancements
-        imageContent(image, geometry: geometry)
-            .withFeature(.enhancedImageProcessing) {
-                processingEnhancedImageContent(image, geometry: geometry)
-            }
-            .withFeature(.hardwareAcceleration) {
-                hardwareAcceleratedImageContent(image, geometry: geometry)
-            }
+        hardwareAcceleratedImageContent(image, geometry: geometry)
     }
     
     @ViewBuilder
@@ -203,8 +185,7 @@ struct EnhancedImageDisplayView: View {
             Button("Enhance Image") {
                 enhanceCurrentImage()
             }
-            .disabled(!compatibilityService.isFeatureAvailable(.enhancedImageProcessing))
-            
+
             Divider()
             
             Button("Reset Enhancements") {
@@ -278,9 +259,6 @@ struct EnhancedImageDisplayView: View {
     }
     
     private func preloadAdjacentImages() {
-        // Implement predictive loading
-        guard compatibilityService.isFeatureAvailable(.predictiveLoading) else { return }
-        
         // Preload next and previous images
         // Implementation would go here
     }

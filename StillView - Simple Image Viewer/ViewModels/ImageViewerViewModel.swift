@@ -104,7 +104,6 @@ class ImageViewerViewModel: ObservableObject {
     private let sharingDelegate = SharingServiceDelegate()
     
     // MARK: - macOS 26 Enhanced Services
-    private let compatibilityService = MacOS26CompatibilityService.shared
     private let enhancedImageProcessing = EnhancedImageProcessingService.shared
     private let enhancedSecurity = EnhancedSecurityService.shared
     private let imageInsightService: AppleIntelligenceInsightsService
@@ -588,7 +587,7 @@ class ImageViewerViewModel: ObservableObject {
     /// Load image with macOS 26 enhancements
     private func loadImageWithEnhancements(_ imageFile: ImageFile) {
         // Use enhanced image processing only when available and enabled by the user
-        if compatibilityService.isFeatureAvailable(.enhancedImageProcessing) && isEnhancedProcessingEnabled {
+        if isEnhancedProcessingEnabled {
             loadImageWithEnhancedProcessing(imageFile)
         } else {
             loadImageStandard(imageFile)

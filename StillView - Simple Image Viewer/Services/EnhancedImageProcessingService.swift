@@ -26,7 +26,6 @@ final class EnhancedImageProcessingService: ObservableObject {
     
     // MARK: - Private Properties
     
-    private let compatibilityService = MacOS26CompatibilityService.shared
     private let metalDevice: MTLDevice?
     private let ciContext: CIContext
     private var cancellables = Set<AnyCancellable>()
@@ -104,11 +103,7 @@ final class EnhancedImageProcessingService: ObservableObject {
         size: CGSize,
         quality: ThumbnailQuality = .high
     ) async throws -> NSImage {
-        if compatibilityService.isFeatureAvailable(.enhancedImageProcessing) {
-            return try await generateAdvancedThumbnail(from: image, size: size, quality: quality)
-        } else {
-            return try await generateStandardThumbnail(from: image, size: size, quality: quality)
-        }
+        return try await generateAdvancedThumbnail(from: image, size: size, quality: quality)
     }
     
     // MARK: - Private Methods
@@ -121,12 +116,10 @@ final class EnhancedImageProcessingService: ObservableObject {
     
     private func isFeatureSupported(_ feature: ProcessingFeature) -> Bool {
         switch feature {
-        case .smartCropping, .noiseReduction, .colorEnhancement:
+        case .smartCropping, .noiseReduction, .colorEnhancement, .predictiveEnhancement:
             return true
         case .hardwareAcceleration:
-            return compatibilityService.isFeatureAvailable(.hardwareAcceleration) && metalDevice != nil
-        case .predictiveEnhancement:
-            return compatibilityService.isFeatureAvailable(.predictiveLoading)
+            return metalDevice != nil
         }
     }
     
