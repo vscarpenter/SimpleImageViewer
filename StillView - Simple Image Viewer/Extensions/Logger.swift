@@ -124,9 +124,7 @@ struct Logger {
     static func security(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         info(message, category: security, file: file, function: function, line: line)
     }
-    
-    // Favorites removed
-    
+
     /// Log thumbnail-related information
     static func thumbnails(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         debug(message, category: thumbnails, file: file, function: function, line: line)
@@ -217,7 +215,6 @@ extension Logger {
         switch context {
         case "security":
             category = security
-        // Favorites removed
         case "thumbnails":
             category = thumbnails
         case "performance":

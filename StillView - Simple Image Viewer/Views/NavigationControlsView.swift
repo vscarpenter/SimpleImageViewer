@@ -155,8 +155,6 @@ struct NavigationControlsView: View {
             .help("Return to folder selection (Escape or B)")
             .accessibilityLabel("Back to folder selection")
             .accessibilityHint("Returns to the main folder selection screen")
-            
-            // Favorites removed
 
             // Image counter (always visible)
             imageCounterView
@@ -211,8 +209,6 @@ struct NavigationControlsView: View {
     // MARK: - Responsive Right Section
     private var responsiveRightSection: some View {
         HStack(spacing: 8) {
-            // Favorites removed
-            
             // Share button (hidden in compact modes)
             if layoutManager.isItemVisible("share") {
                 Divider()
@@ -294,9 +290,7 @@ struct NavigationControlsView: View {
         .accessibilityHint("Move the current image to Trash")
         .disabled(!viewModel.canDeleteCurrentImage)
     }
-    
-    // Favorites removed
-    
+
     // MARK: - Image Counter View
     private var imageCounterView: some View {
         HStack(spacing: 8) {

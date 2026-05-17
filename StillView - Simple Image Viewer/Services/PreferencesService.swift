@@ -46,10 +46,7 @@ protocol PreferencesService {
     
     /// Whether to remember AI Insights panel visibility across sessions
     var rememberAIInsightsPanelState: Bool { get set }
-    
-    /// Favorited images data
-    // Favorites removed
-    
+
     /// Add a folder to the recent folders list
     /// - Parameter url: The folder URL to add
     func addRecentFolder(_ url: URL)
@@ -74,13 +71,6 @@ protocol PreferencesService {
     /// Load window state from persistent storage
     /// - Returns: The saved window state, or nil if none exists
     func loadWindowState() -> WindowState?
-    
-    /// Save favorites to persistent storage
-    func saveFavorites()
-    
-    /// Update favorites data
-    /// - Parameter favorites: The new favorites array
-    // Favorites removed
 }
 
 /// Default implementation using UserDefaults
@@ -110,7 +100,6 @@ class DefaultPreferencesService: PreferencesService {
         static let enableAIAnalysis = "enableAIAnalysis"
         static let enableImageEnhancements = "enableImageEnhancements"
         static let rememberAIInsightsPanelState = "rememberAIInsightsPanelState"
-        // Favorites removed
     }
     
     // MARK: - Properties
@@ -306,9 +295,7 @@ class DefaultPreferencesService: PreferencesService {
             userDefaults.set(newValue, forKey: Keys.rememberAIInsightsPanelState)
         }
     }
-    
-    // Favorites removed
-    
+
     // MARK: - Methods
     func addRecentFolder(_ url: URL) {
         var folders = recentFolders
@@ -349,12 +336,6 @@ class DefaultPreferencesService: PreferencesService {
     func loadWindowState() -> WindowState? {
         return windowState
     }
-    
-    func saveFavorites() {
-        savePreferences()
-    }
-    
-    // Favorites removed
 }
 
 // MARK: - Notifications

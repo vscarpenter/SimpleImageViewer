@@ -104,15 +104,7 @@ class PreferencesValidator {
     /// - Returns: Validation result with feedback
     func validateGlassEffects(_ enabled: Bool) -> ValidationResult {
         if enabled {
-            // Check macOS version for optimal glass effects
-            if #available(macOS 12.0, *) {
-                return .success(message: "Glass effects are fully supported")
-            } else {
-                return .warning(
-                    "Glass effects may have reduced quality on older macOS versions",
-                    suggestion: "Update to macOS 12.0 or later for best visual quality"
-                )
-            }
+            return .success(message: "Glass effects are fully supported")
         } else {
             return .info("Glass effects are disabled for better performance")
         }
@@ -264,30 +256,11 @@ class PreferencesValidator {
     @MainActor
     func validateSystemCompatibility(_ viewModel: PreferencesViewModel) -> [ValidationResult] {
         var results: [ValidationResult] = []
-        
-        // Check macOS version compatibility
-        if #available(macOS 13.0, *) {
-            // Modern macOS - all features supported
-            if viewModel.enableGlassEffects {
-                results.append(.success(message: "Glass effects are fully supported on this macOS version"))
-            }
-        } else {
-            // Older macOS - some limitations
-            if viewModel.enableGlassEffects {
-                results.append(.warning(
-                    "Glass effects may have reduced quality on older macOS versions",
-                    suggestion: "Update to macOS 13 or later for optimal visual quality"
-                ))
-            }
-            
-            if viewModel.animationIntensity == .enhanced {
-                results.append(.warning(
-                    "Enhanced animations may not work properly on older macOS versions",
-                    suggestion: "Use 'Normal' animation intensity for better compatibility"
-                ))
-            }
+
+        if viewModel.enableGlassEffects {
+            results.append(.success(message: "Glass effects are fully supported on this macOS version"))
         }
-        
+
         return results
     }
     

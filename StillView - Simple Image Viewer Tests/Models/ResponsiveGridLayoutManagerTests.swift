@@ -323,8 +323,6 @@ private class MockPreferencesService: PreferencesService {
     func loadWindowState() -> WindowState? {
         return windowState
     }
-    
-    func saveFavorites() { }
 }
 
 // MARK: - ThumbnailGridSize Extension Tests

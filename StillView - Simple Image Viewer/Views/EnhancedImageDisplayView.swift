@@ -87,36 +87,7 @@ struct EnhancedImageDisplayView: View {
     }
     
     @ViewBuilder
-    private func enhancedImageContent(_ image: NSImage, geometry: GeometryProxy) -> some View {
-        predictiveImageContent(image, geometry: geometry)
-    }
-
-    @ViewBuilder
     private func modernImageContent(_ image: NSImage, geometry: GeometryProxy) -> some View {
-        hardwareAcceleratedImageContent(image, geometry: geometry)
-    }
-    
-    @ViewBuilder
-    private func predictiveImageContent(_ image: NSImage, geometry: GeometryProxy) -> some View {
-        // Predictive loading enhancements
-        imageContent(image, geometry: geometry)
-            .onAppear {
-                preloadAdjacentImages()
-            }
-    }
-    
-    @ViewBuilder
-    private func processingEnhancedImageContent(_ image: NSImage, geometry: GeometryProxy) -> some View {
-        // Enhanced processing features
-        imageContent(image, geometry: geometry)
-            .contextMenu {
-                processingContextMenu
-            }
-    }
-    
-    @ViewBuilder
-    private func hardwareAcceleratedImageContent(_ image: NSImage, geometry: GeometryProxy) -> some View {
-        // Hardware-accelerated rendering
         imageContent(image, geometry: geometry)
             .drawingGroup() // Enable hardware acceleration
     }
@@ -179,21 +150,6 @@ struct EnhancedImageDisplayView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
     
-    @ViewBuilder
-    private var processingContextMenu: some View {
-        Group {
-            Button("Enhance Image") {
-                enhanceCurrentImage()
-            }
-
-            Divider()
-            
-            Button("Reset Enhancements") {
-                resetEnhancements()
-            }
-        }
-    }
-    
     // MARK: - Gesture Handlers
     
     private func handleMagnification(_ value: CGFloat) {
@@ -226,42 +182,6 @@ struct EnhancedImageDisplayView: View {
         }
     }
     
-    // MARK: - Actions
-    
-    private func enhanceCurrentImage() {
-        guard let image = viewModel.currentImage else { return }
-        
-        Task {
-            do {
-                let features: Set<ProcessingFeature> = [
-                    .smartCropping,
-                    .colorEnhancement,
-                    .noiseReduction
-                ]
-                
-                let processedImage = try await enhancedProcessing.processImageAsync(
-                    image,
-                    with: features
-                )
-                
-                await MainActor.run {
-                    viewModel.currentImage = processedImage.currentImage
-                }
-            } catch {
-                // Handle error
-            }
-        }
-    }
-    
-    private func resetEnhancements() {
-        // Reset to original image by navigating to current index (triggers reload)
-        viewModel.navigateToIndex(viewModel.currentIndex)
-    }
-    
-    private func preloadAdjacentImages() {
-        // Preload next and previous images
-        // Implementation would go here
-    }
 }
 
 // MARK: - Preview

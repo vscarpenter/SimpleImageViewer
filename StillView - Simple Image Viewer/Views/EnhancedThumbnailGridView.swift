@@ -23,14 +23,7 @@ struct EnhancedThumbnailGridView: View {
     
     /// Callback when an image is double-clicked
     let onImageDoubleClicked: (ImageFile) -> Void
-    
-    // MARK: - Services
-    
-    /// Favorites service for checking favorite status (will be injected when available)
-    // @StateObject private var favoritesService = DefaultFavoritesService(
-    //     preferencesService: DefaultPreferencesService()
-    // )
-    
+
     // MARK: - State Properties
     
     @State private var hoveredImageFile: ImageFile?
@@ -57,7 +50,6 @@ struct EnhancedThumbnailGridView: View {
                             imageFile: imageFile,
                             index: index,
                             viewModel: viewModel,
-                            // favoritesService: favoritesService, // Will be enabled when FavoritesService is added to project
                             isSelected: selectedImageFile?.url == imageFile.url,
                             isHovered: hoveredImageFile?.url == imageFile.url,
                             thumbnail: thumbnailCache[imageFile.url],
@@ -161,7 +153,6 @@ private struct ThumbnailGridItem: View {
     let imageFile: ImageFile
     let index: Int
     let viewModel: ImageViewerViewModel
-    // let favoritesService: DefaultFavoritesService // Will be enabled when FavoritesService is added to project
     let isSelected: Bool
     let isHovered: Bool
     let thumbnail: NSImage?
@@ -221,7 +212,6 @@ private struct ThumbnailGridItem: View {
             thumbnailContentView
             selectionIndicator
             hoverOverlay
-            // Favorites removed
             metadataBadgesOverlay
             fileNameLabel
         }
@@ -270,9 +260,7 @@ private struct ThumbnailGridItem: View {
                 .transition(.opacity)
         }
     }
-    
-    // Favorites removed
-    
+
     private var metadataBadgesOverlay: some View {
         VStack {
             HStack {
@@ -328,9 +316,7 @@ private struct ThumbnailGridItem: View {
         if isSelected {
             values.append("Selected")
         }
-        
-        // Favorites removed
-        
+
         // Add file metadata
         let fileSize = ByteCountFormatter.string(fromByteCount: imageFile.size, countStyle: .file)
         values.append("Size: \(fileSize)")

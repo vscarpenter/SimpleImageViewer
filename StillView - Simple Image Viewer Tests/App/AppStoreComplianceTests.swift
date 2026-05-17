@@ -617,6 +617,4 @@ class MockPreferencesService: PreferencesService {
     func loadWindowState() -> WindowState? {
         return windowState
     }
-    
-    func saveFavorites() { }
 }

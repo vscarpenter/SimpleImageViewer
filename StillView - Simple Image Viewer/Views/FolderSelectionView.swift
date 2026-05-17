@@ -5,8 +5,8 @@ import AppKit
 struct FolderSelectionView: View {
     @StateObject private var viewModel = FolderSelectionViewModel()
     @State private var showingErrorAlert = false
-    
-    /// Callback when an image is selected for full-screen viewing from favorites
+
+    /// Callback when an image is selected for full-screen viewing
     let onImageSelected: ((FolderContent, ImageFile) -> Void)?
     
     var body: some View { folderSelectionContent }
@@ -45,13 +45,11 @@ struct FolderSelectionView: View {
                 VStack(spacing: 32) {
                     headerView
                     folderSelectionButton
-                    
+
                     if viewModel.isScanning {
                         scanningView
                     }
-                    
-                    // Favorites removed
-                    
+
                     if !viewModel.recentFolders.isEmpty && !viewModel.isScanning {
                         recentFoldersView
                     }
@@ -107,9 +105,7 @@ struct FolderSelectionView: View {
                 Label("Select Folder...", systemImage: "folder.badge.plus")
             }
             .keyboardShortcut("o", modifiers: .command)
-            
-            // Favorites removed
-            
+
             Divider()
             
             if !viewModel.recentFolders.isEmpty {
@@ -327,9 +323,7 @@ struct FolderSelectionView: View {
                 )
         )
     }
-    
-    // Favorites removed
-    
+
     // MARK: - Recent Folders View
     private var recentFoldersView: some View {
         VStack(alignment: .leading, spacing: 20) {

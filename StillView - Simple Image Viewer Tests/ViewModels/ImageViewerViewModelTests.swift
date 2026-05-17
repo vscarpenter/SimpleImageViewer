@@ -618,8 +618,7 @@ class MockPreferencesService: PreferencesService {
     var defaultThumbnailGridSize: ThumbnailGridSize = .medium
     var useResponsiveGridLayout: Bool = true
     var enableAIAnalysis: Bool = true
-    // Favorites removed
-    
+
     var savePreferencesCalled = false
     var loadPreferencesCalled = false
     
@@ -650,8 +649,6 @@ class MockPreferencesService: PreferencesService {
     func loadWindowState() -> WindowState? {
         return windowState
     }
-    
-    // Favorites removed
 }
 
 

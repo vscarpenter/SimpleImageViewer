@@ -30,15 +30,12 @@ class FolderSelectionViewModel: ObservableObject {
     
     /// The selected folder content ready for navigation
     @Published var selectedFolderContent: FolderContent?
-    
-    // Favorites removed
-    
+
     // MARK: - Private Properties
-    
+
     private let fileSystemService: FileSystemService
     private var preferencesService: PreferencesService
     private let errorHandlingService: ErrorHandlingService
-    // Favorites removed
     private let accessManager = SecurityScopedAccessManager.shared
     private var cancellables = Set<AnyCancellable>()
     private var scanTask: Task<Void, Never>?
@@ -51,17 +48,15 @@ class FolderSelectionViewModel: ObservableObject {
     ///   - fileSystemService: Service for file system operations
     ///   - preferencesService: Service for managing user preferences
     ///   - errorHandlingService: Service for handling errors and user feedback
-    ///   - favoritesService: Service for managing favorites
     init(fileSystemService: FileSystemService = DefaultFileSystemService(),
          preferencesService: PreferencesService = DefaultPreferencesService(),
          errorHandlingService: ErrorHandlingService = ErrorHandlingService.shared) {
         self.fileSystemService = fileSystemService
         self.preferencesService = preferencesService
         self.errorHandlingService = errorHandlingService
-        
+
         loadRecentFolders()
         setupBindings()
-        // Favorites removed
     }
     
     deinit {
@@ -204,8 +199,6 @@ class FolderSelectionViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
-        
-        // Favorites removed
     }
     
     private func loadRecentFolders() {
@@ -416,7 +409,5 @@ class FolderSelectionViewModel: ObservableObject {
         selectedFolderURL = folderURL
         scanFolder(folderURL)
     }
-
-    // Favorites removed
 }
 

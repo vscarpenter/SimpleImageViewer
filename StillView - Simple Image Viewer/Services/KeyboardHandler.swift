@@ -127,7 +127,6 @@ class KeyboardHandler: ObservableObject {
     private func handleSingleCharacter(_ character: Character, viewModel: ImageViewerViewModel) -> Bool {
         switch character {
         case "f":
-            // Favorites removed; use F for fullscreen toggle
             viewModel.toggleFullscreen()
             return true
 

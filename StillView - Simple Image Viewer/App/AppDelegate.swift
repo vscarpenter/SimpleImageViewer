@@ -38,8 +38,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.async {
             self.setupMenus()
         }
-        
-        // Favorites removed
     }
     
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -223,8 +221,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             userInfo: userInfo
         )
     }
-    
-    // Favorites removed
 }
 
 // MARK: - Window Delegate

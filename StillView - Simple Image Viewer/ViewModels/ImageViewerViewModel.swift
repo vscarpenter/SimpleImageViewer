@@ -88,9 +88,7 @@ class ImageViewerViewModel: ObservableObject {
     var allImageFiles: [ImageFile] {
         return imageFiles
     }
-    
-    // Favorites removed
-    
+
     // MARK: - Private Properties
     private var imageFiles: [ImageFile] = []
     private var folderContent: FolderContent?
@@ -98,7 +96,6 @@ class ImageViewerViewModel: ObservableObject {
     private let imageLoaderService: ImageLoaderService
     private var preferencesService: PreferencesService
     private let errorHandlingService: ErrorHandlingService
-    // Favorites removed
     private var slideshowTimer: Timer?
     private let thumbnailCache = NSCache<NSURL, NSImage>()
     private let sharingDelegate = SharingServiceDelegate()
@@ -167,8 +164,6 @@ class ImageViewerViewModel: ObservableObject {
                 self?.prepareImageInsightForCurrentImage()
             }
             .store(in: &cancellables)
-
-        // Favorites removed
     }
     
     // MARK: - Public Methods
@@ -183,9 +178,7 @@ class ImageViewerViewModel: ObservableObject {
         
         // Initialize AI Insights state for new folder session
         initializeAIInsightsForNewSession()
-        
-        // Favorites removed
-        
+
         // Load the current image
         if folderContent.hasImages {
             loadCurrentImage()
@@ -440,9 +433,7 @@ class ImageViewerViewModel: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
-    // Favorites removed
-    
+
     private func handleMemoryWarning() {
         // Clear the image loader cache
         imageLoaderService.clearCache()
@@ -806,9 +797,7 @@ class ImageViewerViewModel: ObservableObject {
         
         // Clear the image cache to free memory
         imageLoaderService.clearCache()
-        
-        // Favorites removed
-        
+
         currentImage = nil
         expectedImageSize = nil
         imageFiles = []
@@ -1115,8 +1104,6 @@ class ImageViewerViewModel: ObservableObject {
     var canDeleteCurrentImage: Bool {
         return currentImageFile != nil
     }
-    
-    // Favorites removed
 }
 
 // MARK: - Sharing Service Delegate

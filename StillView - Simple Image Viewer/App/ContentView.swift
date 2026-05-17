@@ -6,8 +6,7 @@ struct ContentView: View {
     @StateObject private var imageViewerViewModel = ImageViewerViewModel()
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
     @State private var showImageViewer = false
-    // Favorites removed
-    
+
     // MARK: - Body
     var body: some View {
         mainContent
@@ -474,9 +473,7 @@ struct ThumbnailItemView: View {
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(Color.accentColor, lineWidth: 3)
                 }
-                
-                // Favorites removed
-                
+
                 // Image index overlay
                 VStack {
                     Spacer()
@@ -653,14 +650,7 @@ struct GridThumbnailItemView: View {
     @State private var isHovered = false
     
     @Environment(\.colorScheme) private var colorScheme
-    
-    // MARK: - Services
-    
-    /// Favorites service for checking favorite status (will be injected when available)
-    // @StateObject private var favoritesService = DefaultFavoritesService(
-    //     preferencesService: DefaultPreferencesService()
-    // )
-    
+
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 8) {
@@ -717,9 +707,7 @@ struct GridThumbnailItemView: View {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(Color.accentColor.opacity(0.1))
                     }
-                    
-                    // Favorites removed
-                    
+
                     // Index badge
                     VStack {
                         HStack {
