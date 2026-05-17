@@ -16,9 +16,8 @@ extension View {
 
 /// Extension to support keyboard navigation in preferences
 extension View {
-    
+
     /// Add keyboard navigation support for preferences tabs
-    @available(macOS 14.0, *)
     func preferencesKeyboardNavigation(
         selectedTab: Binding<Preferences.Tab>,
         onTabSelected: @escaping (Preferences.Tab) -> Void
@@ -36,56 +35,27 @@ extension View {
             return .handled
         }
         .onKeyPress(.tab) {
-            // Allow default tab navigation
             return .ignored
         }
         .onKeyPress(.escape) {
-            // Close preferences window
             NSApp.keyWindow?.close()
             return .handled
         }
     }
-    
-    /// Add keyboard navigation support for preferences tabs (fallback for older macOS)
-    func preferencesKeyboardNavigationLegacy(
-        selectedTab: Binding<Preferences.Tab>,
-        onTabSelected: @escaping (Preferences.Tab) -> Void
-    ) -> some View {
-        self.onReceive(NotificationCenter.default.publisher(for: NSApplication.keyboardNavigationNotification)) { _ in
-            // Handle keyboard navigation events
-        }
-        .focusable()
-    }
-    
+
     /// Add keyboard shortcuts for common preferences actions
-    @available(macOS 14.0, *)
     func preferencesKeyboardShortcuts() -> some View {
         self
-            // Keyboard shortcuts will be handled by the system
-            // onKeyPress is not available in the current macOS target
     }
-    
-    /// Add keyboard shortcuts for common preferences actions (fallback for older macOS)
-    func preferencesKeyboardShortcutsLegacy() -> some View {
-        self
-    }
-    
+
     /// Add focus ring for keyboard navigation
-    @available(macOS 14.0, *)
     func preferencesFocusRing(isVisible: Bool = true) -> some View {
         self
             .focusable()
             .focusEffectDisabled(!isVisible)
     }
-    
-    /// Add focus ring for keyboard navigation (fallback for older macOS)
-    func preferencesFocusRingLegacy(isVisible: Bool = true) -> some View {
-        self
-            .focusable()
-    }
-    
+
     /// Add keyboard support for preference controls
-    @available(macOS 14.0, *)
     func preferencesControlKeyboard<T: Equatable>(
         value: Binding<T>,
         options: [T],
@@ -101,16 +71,6 @@ extension View {
                 navigateOptions(value: value, options: options, direction: .next, onValueChanged: onValueChanged)
                 return .handled
             }
-    }
-    
-    /// Add keyboard support for preference controls (fallback for older macOS)
-    func preferencesControlKeyboardLegacy<T: Equatable>(
-        value: Binding<T>,
-        options: [T],
-        onValueChanged: @escaping (T) -> Void = { _ in }
-    ) -> some View {
-        self
-            .focusable()
     }
 }
 
@@ -348,10 +308,6 @@ struct SymbolEffectModifier: ViewModifier {
     let isSelected: Bool
     
     func body(content: Content) -> some View {
-        if #available(macOS 14.0, *) {
-            content.symbolEffect(.bounce, value: isSelected)
-        } else {
-            content
-        }
+        content.symbolEffect(.bounce, value: isSelected)
     }
 }

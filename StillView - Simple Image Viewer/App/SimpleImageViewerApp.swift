@@ -71,7 +71,7 @@ struct SimpleImageViewerApp: App {
                     }
                 }
         }
-        .applyWindowResizability()
+        .windowResizability(.contentSize)
         .commands {
             // Add About menu command
             CommandGroup(replacing: .appInfo) {
@@ -298,14 +298,3 @@ struct SimpleImageViewerApp: App {
     
 }
 
-// MARK: - Compatibility Extensions
-
-extension Scene {
-    func applyWindowResizability() -> some Scene {
-        if #available(macOS 13.0, *) {
-            return self.windowResizability(.contentSize)
-        } else {
-            return self
-        }
-    }
-}

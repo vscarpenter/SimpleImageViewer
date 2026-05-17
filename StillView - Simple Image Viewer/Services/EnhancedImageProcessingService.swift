@@ -121,12 +121,8 @@ final class EnhancedImageProcessingService: ObservableObject {
     
     private func isFeatureSupported(_ feature: ProcessingFeature) -> Bool {
         switch feature {
-        case .smartCropping:
-            return compatibilityService.isMacOS15OrLater
-        case .noiseReduction:
-            return compatibilityService.isMacOS15OrLater
-        case .colorEnhancement:
-            return compatibilityService.isMacOS15OrLater
+        case .smartCropping, .noiseReduction, .colorEnhancement:
+            return true
         case .hardwareAcceleration:
             return compatibilityService.isFeatureAvailable(.hardwareAcceleration) && metalDevice != nil
         case .predictiveEnhancement:

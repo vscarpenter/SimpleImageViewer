@@ -22,7 +22,6 @@
 		A1000010 /* ImageFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000F /* ImageFile.swift */; };
 		A1000012 /* FolderScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011 /* FolderScanner.swift */; };
 		A1000014 /* ImageViewerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000013 /* ImageViewerViewModel.swift */; };
-		A1000016 /* ImageDisplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000015 /* ImageDisplayView.swift */; };
 		A1000018 /* ImageLoaderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000017 /* ImageLoaderService.swift */; };
 		A100001A /* FileSystemService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000019 /* FileSystemService.swift */; };
 		A100001C /* PreferencesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100001B /* PreferencesService.swift */; };
@@ -124,7 +123,6 @@
 		A100000F /* ImageFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageFile.swift; sourceTree = "<group>"; };
 		A1000011 /* FolderScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderScanner.swift; sourceTree = "<group>"; };
 		A1000013 /* ImageViewerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewerViewModel.swift; sourceTree = "<group>"; };
-		A1000015 /* ImageDisplayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDisplayView.swift; sourceTree = "<group>"; };
 		A1000017 /* ImageLoaderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoaderService.swift; sourceTree = "<group>"; };
 		A1000019 /* FileSystemService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemService.swift; sourceTree = "<group>"; };
 		A100001B /* PreferencesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesService.swift; sourceTree = "<group>"; };
@@ -342,7 +340,6 @@
 				FB748BE92E41617A00E6D948 /* ToolbarButtonStyles.swift */,
 				FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */,
 				FBA046072E36DBA8006F9C47 /* HelpView.swift */,
-				A1000015 /* ImageDisplayView.swift */,
 				A1000092 /* NavigationControlsView.swift */,
 				A1000093 /* FolderSelectionView.swift */,
 				A100009C /* ErrorDialogView.swift */,
@@ -572,7 +569,6 @@
 				FBA0460A2E36DC34006F9C47 /* HelpContent.swift in Sources */,
 				A1000012 /* FolderScanner.swift in Sources */,
 				A1000014 /* ImageViewerViewModel.swift in Sources */,
-				A1000016 /* ImageDisplayView.swift in Sources */,
 				FB748BE82E41616900E6D948 /* ToolbarLayoutManager.swift in Sources */,
 				A1000018 /* ImageLoaderService.swift in Sources */,
 				FB49A37E2E80D54000F77575 /* EnhancedAccessibilityService.swift in Sources */,
@@ -719,7 +715,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -779,7 +775,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -809,7 +805,7 @@
 				INFOPLIST_KEY_CFBundleDocumentTypes = "";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_LSMinimumSystemVersion = 12.0;
+				INFOPLIST_KEY_LSMinimumSystemVersion = 26.0;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
 				INFOPLIST_KEY_NSHumanReadableDescription = "A lightweight, distraction-free image viewer for macOS by Vinny Carpenter (https://vinny.dev). Source code available at https://github.com/vscarpenter/SimpleImageViewer";
 				INFOPLIST_KEY_NSSupportsAutomaticTermination = YES;
@@ -852,7 +848,7 @@
 				INFOPLIST_KEY_CFBundleDocumentTypes = "";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_LSMinimumSystemVersion = 12.0;
+				INFOPLIST_KEY_LSMinimumSystemVersion = 26.0;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
 				INFOPLIST_KEY_NSHumanReadableDescription = "A lightweight, distraction-free image viewer for macOS by Vinny Carpenter (https://vinny.dev). Source code available at https://github.com/vscarpenter/SimpleImageViewer";
 				INFOPLIST_KEY_NSSupportsAutomaticTermination = YES;
@@ -883,7 +879,6 @@
 				DEVELOPMENT_TEAM = 52HVJ3VDSM;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleName = "$(PRODUCT_NAME)";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -893,12 +888,11 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Services\"",
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.StillViewTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "";
 			};
 			name = Debug;
@@ -912,7 +906,6 @@
 				DEVELOPMENT_TEAM = 52HVJ3VDSM;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleName = "$(PRODUCT_NAME)";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -922,12 +915,11 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Services\"",
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.StillViewTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "";
 			};
 			name = Release;

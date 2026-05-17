@@ -220,7 +220,7 @@ final class EnhancedAccessibilityService: ObservableObject {
         case .voiceOverOptimization:
             return true
         case .multiLanguageSupport:
-            return compatibilityService.isMacOS15OrLater
+            return true
         case .contextualHelp:
             return true
         case .smartNavigation:

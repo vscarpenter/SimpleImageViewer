@@ -133,18 +133,10 @@ final class EnhancedSecurityService: ObservableObject {
     
     private func isFeatureSupported(_ feature: SecurityFeature) -> Bool {
         switch feature {
-        case .hardwareEncryption:
-            return compatibilityService.isMacOS15OrLater
-        case .granularPermissions:
+        case .hardwareEncryption, .automaticCleanup, .secureBookmarks, .biometricAuthentication:
+            return true
+        case .granularPermissions, .privacyMonitoring:
             return compatibilityService.isFeatureAvailable(.advancedSecurity)
-        case .automaticCleanup:
-            return compatibilityService.isMacOS15OrLater
-        case .privacyMonitoring:
-            return compatibilityService.isFeatureAvailable(.advancedSecurity)
-        case .secureBookmarks:
-            return compatibilityService.isMacOS15OrLater
-        case .biometricAuthentication:
-            return compatibilityService.isMacOS15OrLater
         }
     }
     

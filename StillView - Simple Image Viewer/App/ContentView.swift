@@ -62,14 +62,8 @@ struct ContentView: View {
                     ? geometry.size.width - 360 // 320 panel width + 40 padding
                     : geometry.size.width
                 
-                // Use enhanced image display view when available
-                if #available(macOS 15.0, *) {
-                    EnhancedImageDisplayView(viewModel: imageViewerViewModel)
-                        .frame(width: availableWidth, height: geometry.size.height)
-                } else {
-                    ImageDisplayView(viewModel: imageViewerViewModel)
-                        .frame(width: availableWidth, height: geometry.size.height)
-                }
+                EnhancedImageDisplayView(viewModel: imageViewerViewModel)
+                    .frame(width: availableWidth, height: geometry.size.height)
                 
                 NavigationControlsView(viewModel: imageViewerViewModel, onExit: {
                     showImageViewer = false

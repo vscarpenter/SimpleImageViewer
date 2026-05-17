@@ -53,7 +53,7 @@ struct PreferencesTabView: View {
         .background(windowBackground)
         .environmentObject(focusManager)
         .environment(\.preferencesViewModel, preferencesViewModel)
-        .preferencesKeyboardShortcutsLegacy()
+        .preferencesKeyboardShortcuts()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Preferences window")
         .onAppear {
@@ -150,7 +150,7 @@ struct TabSelector: View {
         .padding(.vertical, 16)
         .background(Color.appSecondarySurface)
         .environmentObject(focusManager)
-        .preferencesKeyboardNavigationLegacy(selectedTab: $selectedTab, onTabSelected: onTabSelected)
+        .preferencesKeyboardNavigation(selectedTab: $selectedTab, onTabSelected: onTabSelected)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Preference tabs")
         .accessibilityHint("Use left and right arrow keys to navigate between tabs")
