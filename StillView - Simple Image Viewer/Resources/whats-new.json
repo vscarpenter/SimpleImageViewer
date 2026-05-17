@@ -1,6 +1,6 @@
 {
-  "version": "3.1.0",
-  "releaseDate": "2026-01-27T00:00:00Z",
+  "version": "3.3.0",
+  "releaseDate": "2026-05-17T00:00:00Z",
   "sections": [
     {
       "title": "New Features",
@@ -8,7 +8,7 @@
       "items": [
         {
           "title": "AI Insights with Apple Intelligence (macOS 26+)",
-          "description": "Generate concise, metadata-grounded image notes with Apple's on-device Foundation Models framework when Apple Intelligence is available on this Mac.",
+          "description": "Generate concise, visually-grounded image notes with Apple's on-device Foundation Models framework. Insights describe what the image actually shows, not just camera or file metadata.",
           "isHighlighted": true
         },
         {
@@ -48,8 +48,13 @@
       "type": "improvements",
       "items": [
         {
+          "title": "Vision-Grounded Insights",
+          "description": "On-device Apple Vision perception now runs before each insight is generated. Detected scene classifications, OCR text, faces, and saliency become primary evidence in the prompt — camera and EXIF data are clearly marked as context only, never as the subject.",
+          "isHighlighted": true
+        },
+        {
           "title": "Smaller, More Honest AI Results",
-          "description": "The old AI analysis pipeline has been replaced with a focused Apple Intelligence service that uses local metadata and avoids unsupported claims about image contents.",
+          "description": "The old AI analysis pipeline has been replaced with a focused Apple Intelligence service that uses local visual signals and metadata, and avoids unsupported claims about image contents.",
           "isHighlighted": true
         },
         {

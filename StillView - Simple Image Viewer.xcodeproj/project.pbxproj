@@ -815,7 +815,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 3.2.0;
+				MARKETING_VERSION = 3.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -858,7 +858,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 3.2.0;
+				MARKETING_VERSION = 3.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

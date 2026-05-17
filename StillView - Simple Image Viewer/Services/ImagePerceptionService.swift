@@ -96,7 +96,7 @@ private enum OCRCleaner {
 
 /// Runs a focused set of on-device Vision requests against a local image and returns
 /// structured observations. All work happens on a background priority Task, never on the main actor.
-/// No network, no analytics, no model downloads — Apple Vision ships with macOS.
+/// Runs entirely on-device — Apple Vision ships with macOS; no network calls, no remote model fetches.
 struct ImagePerceptionService: Sendable {
     static let shared = ImagePerceptionService()
 
