@@ -7,14 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B20100000000000000000001 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
-		B20100000000000000000003 /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
-		B20100000000000000000005 /* AppleIntelligenceInsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */; };
-		B20100000000000000000007 /* ImageInsightPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000008 /* ImageInsightPanelView.swift */; };
-		B20100000000000000000009 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
-		B2010000000000000000000A /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
-		B2010000000000000000000B /* ImageInsightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000C /* ImageInsightTests.swift */; };
-		B2010000000000000000000D /* ImagePerceptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000E /* ImagePerceptionService.swift */; };
 		A1000001 /* SimpleImageViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000 /* SimpleImageViewerApp.swift */; };
 		A1000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002 /* ContentView.swift */; };
 		A1000005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000004 /* Assets.xcassets */; };
@@ -48,6 +40,14 @@
 		A10000AD /* Color+Adaptive.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000AC /* Color+Adaptive.swift */; };
 		A10000B0 /* WindowState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000AF /* WindowState.swift */; };
 		A10000B2 /* WindowStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000B1 /* WindowStateManager.swift */; };
+		B20100000000000000000001 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
+		B20100000000000000000003 /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
+		B20100000000000000000005 /* AppleIntelligenceInsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */; };
+		B20100000000000000000007 /* ImageInsightPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000008 /* ImageInsightPanelView.swift */; };
+		B20100000000000000000009 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
+		B2010000000000000000000A /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
+		B2010000000000000000000B /* ImageInsightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000C /* ImageInsightTests.swift */; };
+		B2010000000000000000000D /* ImagePerceptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000E /* ImagePerceptionService.swift */; };
 		C0C0C0C0C0C0C0C0C0C0C0D1 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0C0C0C0C0C0C0C0C0C0F1 /* SmokeTests.swift */; };
 		FB140FAB2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB140FAA2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift */; };
 		FB140FB02E435B8F00A36AB6 /* SkeletonLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB140FAD2E435B8F00A36AB6 /* SkeletonLoadingView.swift */; };
@@ -789,7 +789,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 28;
+				CURRENT_PROJECT_VERSION = 30;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_APP_SANDBOX = YES;
@@ -800,6 +800,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "StillView - Image Viewer";
 				INFOPLIST_KEY_CFBundleDocumentTypes = "";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_LSMinimumSystemVersion = 26.0;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
@@ -815,7 +816,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 3.3.0;
+				MARKETING_VERSION = 4.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -829,12 +830,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "StillView - Simple Image Viewer/Simple_Image_Viewer.entitlements";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
-				CODE_SIGN_STYLE = Manual;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 28;
+				CURRENT_PROJECT_VERSION = 30;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 52HVJ3VDSM;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -843,6 +845,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "StillView - Image Viewer";
 				INFOPLIST_KEY_CFBundleDocumentTypes = "";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_LSMinimumSystemVersion = 26.0;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
@@ -858,7 +861,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 3.3.0;
+				MARKETING_VERSION = 4.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

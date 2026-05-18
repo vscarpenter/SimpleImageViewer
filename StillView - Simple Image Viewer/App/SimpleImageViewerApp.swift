@@ -168,77 +168,42 @@ struct SimpleImageViewerApp: App {
                 }
             }
         }
-        
-        // Delay security-scoped bookmark restoration to prevent startup crashes
-        // This allows the app to fully initialize before accessing system resources
-        let bookmarkRestorationDelay: TimeInterval = 2.0
-        DispatchQueue.main.asyncAfter(deadline: .now() + bookmarkRestorationDelay) {
-            Logger.start("Starting bookmark restoration...")
-            SecurityScopedBookmarkManager.shared.restoreBookmarksOnLaunch()
-            Logger.complete("Bookmark restoration completed")
-        }
+        // Security-scoped bookmark restoration now happens in
+        // AppDelegate.applicationDidFinishLaunching — no arbitrary delay needed.
     }
-    
-    /// Handles the app launch sequence including automatic "What's New" popup
+
+    /// Handles the app launch sequence including automatic "What's New" popup.
+    /// Triggered from the WindowGroup `.onAppear` and re-tried on the first
+    /// `didBecomeActive` so we don't depend on a timing-based delay.
     private func handleAppLaunchSequence() {
-        // Mark that we've started the launch sequence
-        hasCompletedInitialLaunch = false
-        
-        // Delay the "What's New" check to ensure main app initialization is complete
-        // This prevents interference with the main app startup and ensures the window is ready
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            self.checkAndShowWhatsNewIfNeeded()
-        }
+        checkAndShowWhatsNewIfNeeded()
     }
-    
-    /// Checks if "What's New" should be shown and presents it automatically
+
+    /// Checks if "What's New" should be shown and presents it automatically.
+    /// Returns silently if the window isn't ready yet; the `didBecomeActive`
+    /// publisher will re-invoke this on the next activation, which is the
+    /// proper signal for "the app is fully on screen."
     private func checkAndShowWhatsNewIfNeeded() {
-        // Only show automatic popup if we haven't completed initial launch
-        // and the service determines it should be shown
-        guard !hasCompletedInitialLaunch && whatsNewService.shouldShowWhatsNew() else {
+        guard !hasCompletedInitialLaunch else { return }
+        guard whatsNewService.shouldShowWhatsNew() else {
             hasCompletedInitialLaunch = true
             return
         }
-        
-        // Ensure the main window is ready and visible before showing the popup
-        guard let window = window, window.isVisible, window.isMainWindow else {
-            // Retry after a short delay if window isn't ready, but limit retries
-            let maxRetries = 5
-            let currentRetry = UserDefaults.standard.integer(forKey: "WhatsNewRetryCount")
-            
-            if currentRetry < maxRetries {
-                UserDefaults.standard.set(currentRetry + 1, forKey: "WhatsNewRetryCount")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    self.checkAndShowWhatsNewIfNeeded()
-                }
-            } else {
-                // Reset retry count and mark as completed to avoid infinite retries
-                UserDefaults.standard.removeObject(forKey: "WhatsNewRetryCount")
-                hasCompletedInitialLaunch = true
-            }
+        guard let window = window, window.isVisible else {
+            // Window not attached yet; bail out and wait for didBecomeActive to re-call us.
             return
         }
-        
-        // Reset retry count on successful window check
-        UserDefaults.standard.removeObject(forKey: "WhatsNewRetryCount")
-        
-        // Ensure the main app interface is fully loaded before showing popup
-        // This prevents interference with the main app initialization
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            // Final check that we should still show the popup
-            guard self.whatsNewService.shouldShowWhatsNew() else {
-                self.hasCompletedInitialLaunch = true
-                return
-            }
-            
-            // Show the "What's New" sheet
-            self.showingWhatsNew = true
-            self.hasCompletedInitialLaunch = true
-        }
+
+        showingWhatsNew = true
+        hasCompletedInitialLaunch = true
     }
     
-    /// Handles app becoming active (for focus management)
+    /// Handles app becoming active (for focus management and What's New retry).
     private func handleAppDidBecomeActive() {
+        // Second-chance trigger for What's New: when the app first becomes active the
+        // window has been attached, so a check that bailed out from `.onAppear` can succeed.
+        checkAndShowWhatsNewIfNeeded()
+
         // If we're showing the What's New sheet, ensure proper focus
         if showingWhatsNew {
             // Ensure the main window remains key after the sheet is presented

@@ -87,12 +87,16 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
                 temperature: 0.5,
                 maximumResponseTokens: 600
             )
-            let response = try await session.respond(
-                to: prompt,
-                generating: GeneratedImageInsight.self,
-                options: options
-            )
-            return response.content.result
+            do {
+                let response = try await session.respond(
+                    to: prompt,
+                    generating: GeneratedImageInsight.self,
+                    options: options
+                )
+                return response.content.result
+            } catch let generationError as LanguageModelSession.GenerationError {
+                throw Self.mapGenerationError(generationError)
+            }
         }
         #endif
 
@@ -167,6 +171,34 @@ private extension AppleIntelligenceInsightsService {
             return .modelNotReady
         @unknown default:
             return .unknownUnavailable
+        }
+    }
+
+    /// Maps Foundation Models generation errors to user-facing `ImageInsightError` cases.
+    /// Apple's `localizedDescription` is often technical or empty for these cases; the panel
+    /// surfaces whatever message we put here verbatim, so it needs to be reader-friendly.
+    static func mapGenerationError(_ error: LanguageModelSession.GenerationError) -> ImageInsightError {
+        switch error {
+        case .guardrailViolation:
+            return .generationFailed("Apple Intelligence won't summarize this image's content.")
+        case .unsupportedLanguageOrLocale:
+            return .generationFailed("Apple Intelligence doesn't support this language yet.")
+        case .assetsUnavailable:
+            return .generationFailed("Apple Intelligence is still preparing its on-device model. Try again in a few minutes.")
+        case .exceededContextWindowSize:
+            return .generationFailed("This image has too many visual signals for Apple Intelligence to summarize.")
+        case .rateLimited:
+            return .generationFailed("Apple Intelligence is busy. Try again in a moment.")
+        case .concurrentRequests:
+            return .generationFailed("Another insight is already being generated. Please wait for it to finish.")
+        case .decodingFailure:
+            return .invalidGeneratedContent
+        case .unsupportedGuide:
+            return .generationFailed("Apple Intelligence couldn't follow the response format.")
+        case .refusal:
+            return .generationFailed("Apple Intelligence declined to describe this image.")
+        @unknown default:
+            return .generationFailed(error.localizedDescription)
         }
     }
 }

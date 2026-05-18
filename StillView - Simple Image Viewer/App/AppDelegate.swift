@@ -34,6 +34,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupApplication()
+
+        // Restore security-scoped bookmarks at the proper macOS lifecycle hook. Previously
+        // this was delayed 2 s from SwiftUI's onAppear to dodge an unspecified startup
+        // ordering issue; by the time applicationDidFinishLaunching fires, the sandbox is
+        // fully initialized and bookmark resolution is safe without an arbitrary sleep.
+        SecurityScopedBookmarkManager.shared.restoreBookmarksOnLaunch()
+
         // Delay menu setup to ensure main window is available
         DispatchQueue.main.async {
             self.setupMenus()

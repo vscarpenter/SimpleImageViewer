@@ -2,7 +2,7 @@
 
 > **"Because sometimes, simple is perfect."**
 
-[![macOS](https://img.shields.io/badge/macOS-12.0+-blue)](https://www.apple.com/macos/)
+[![macOS](https://img.shields.io/badge/macOS-26.0+-blue)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.0+-orange)](https://swift.org/)
 [![App Store](https://img.shields.io/badge/Available_on-Mac_App_Store-blue?logo=apple)](https://apps.apple.com/us/app/stillview-image-viewer/id6749210445)
 

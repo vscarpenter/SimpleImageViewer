@@ -2,32 +2,39 @@ import Foundation
 import os.log
 
 /// Centralized logging utility for the application
-/// Provides conditional logging based on build configuration
+///
+/// Logging policy (App Store privacy posture):
+/// - `debug`, `info`, `success`, `start`, `complete` are DEBUG-only. They never reach
+///   release logs, so progress/status messages cannot leak user content via Console.app.
+/// - `warning`, `error`, and `fail` reach release logs but use `%{private}@`, so any
+///   user content interpolated into the message is redacted in Console.app by default.
+///   Developers attaching an os_log configuration profile (or running under a debugger)
+///   still see the full content for diagnostics.
 struct Logger {
-    
+
     // MARK: - Log Categories
-    
+
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.vinny.StillView"
-    
+
     private static let general = OSLog(subsystem: subsystem, category: "General")
     private static let security = OSLog(subsystem: subsystem, category: "Security")
     private static let thumbnails = OSLog(subsystem: subsystem, category: "Thumbnails")
     private static let performance = OSLog(subsystem: subsystem, category: "Performance")
     private static let error = OSLog(subsystem: subsystem, category: "Error")
     private static let ai = OSLog(subsystem: subsystem, category: "AI")
-    
+
     // MARK: - Instance Properties
-    
+
     private let osLog: OSLog
-    
+
     // MARK: - Initialization
-    
+
     init(subsystem: String = Logger.subsystem, category: String) {
         self.osLog = OSLog(subsystem: subsystem, category: category)
     }
-    
+
     // MARK: - Instance Methods
-    
+
     /// Log debug information (only in debug builds)
     func debug(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         #if DEBUG
@@ -36,30 +43,32 @@ struct Logger {
         os_log(.debug, log: osLog, "%{public}@", logMessage)
         #endif
     }
-    
-    /// Log general information
+
+    /// Log general information (DEBUG only — never reaches release logs).
     func info(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
+        #if DEBUG
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function): \(message)"
         os_log(.info, log: osLog, "%{public}@", logMessage)
+        #endif
     }
-    
-    /// Log warnings
+
+    /// Log warnings. Reaches release logs but uses `%{private}@` to redact user content.
     func warning(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function): \(message)"
-        os_log(.default, log: osLog, "⚠️ %{public}@", logMessage)
+        os_log(.default, log: osLog, "%{private}@", logMessage)
     }
-    
-    /// Log errors
+
+    /// Log errors. Reaches release logs but uses `%{private}@` to redact user content.
     func error(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function): \(message)"
-        os_log(.error, log: osLog, "❌ %{public}@", logMessage)
+        os_log(.error, log: osLog, "%{private}@", logMessage)
     }
-    
+
     // MARK: - Static Methods (for backward compatibility)
-    
+
     /// Log debug information (only in debug builds)
     static func debug(_ message: String, category: OSLog = general, file: String = #file, function: String = #function, line: Int = #line) {
         #if DEBUG
@@ -68,7 +77,7 @@ struct Logger {
         os_log(.debug, log: category, "%{public}@", logMessage)
         #endif
     }
-    
+
     /// Log debug information with context (only in debug builds)
     static func debug(_ message: String, context: String, file: String = #file, function: String = #function, line: Int = #line) {
         #if DEBUG
@@ -77,94 +86,109 @@ struct Logger {
         os_log(.debug, log: general, "%{public}@", logMessage)
         #endif
     }
-    
-    /// Log general information
+
+    /// Log general information (DEBUG only — never reaches release logs).
     static func info(_ message: String, category: OSLog = general, file: String = #file, function: String = #function, line: Int = #line) {
+        #if DEBUG
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function): \(message)"
         os_log(.info, log: category, "%{public}@", logMessage)
+        #endif
     }
-    
-    /// Log general information with context
+
+    /// Log general information with context (DEBUG only — never reaches release logs).
     static func info(_ message: String, context: String, file: String = #file, function: String = #function, line: Int = #line) {
+        #if DEBUG
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function) [\(context)]: \(message)"
         os_log(.info, log: general, "%{public}@", logMessage)
+        #endif
     }
-    
-    /// Log warnings
+
+    /// Log warnings. Reaches release logs but uses `%{private}@` to redact user content.
     static func warning(_ message: String, category: OSLog = general, file: String = #file, function: String = #function, line: Int = #line) {
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function): \(message)"
-        os_log(.default, log: category, "⚠️ %{public}@", logMessage)
+        os_log(.default, log: category, "%{private}@", logMessage)
     }
-    
-    /// Log warnings with context
+
+    /// Log warnings with context. Reaches release logs but uses `%{private}@`.
     static func warning(_ message: String, context: String, file: String = #file, function: String = #function, line: Int = #line) {
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function) [\(context)]: \(message)"
-        os_log(.default, log: general, "⚠️ %{public}@", logMessage)
+        os_log(.default, log: general, "%{private}@", logMessage)
     }
-    
-    /// Log errors
+
+    /// Log errors. Reaches release logs but uses `%{private}@` to redact user content.
     static func error(_ message: String, category: OSLog = error, file: String = #file, function: String = #function, line: Int = #line) {
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function): \(message)"
-        os_log(.error, log: category, "❌ %{public}@", logMessage)
+        os_log(.error, log: category, "%{private}@", logMessage)
     }
-    
-    /// Log errors with context
+
+    /// Log errors with context. Reaches release logs but uses `%{private}@`.
     static func error(_ message: String, context: String, file: String = #file, function: String = #function, line: Int = #line) {
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function) [\(context)]: \(message)"
-        os_log(.error, log: error, "❌ %{public}@", logMessage)
+        os_log(.error, log: error, "%{private}@", logMessage)
     }
-    
-    /// Log security-related information
+
+    /// Log security-related information (DEBUG only).
     static func security(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         info(message, category: security, file: file, function: function, line: line)
     }
 
-    /// Log thumbnail-related information
+    /// Log thumbnail-related information (DEBUG only).
     static func thumbnails(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         debug(message, category: thumbnails, file: file, function: function, line: line)
     }
-    
-    /// Log performance-related information
+
+    /// Log performance-related information (DEBUG only).
     static func performance(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         debug(message, category: performance, file: file, function: function, line: line)
     }
-    
-    /// Log AI Insights-related information
+
+    /// Log AI Insights-related information (DEBUG only).
     static func ai(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         debug(message, category: ai, file: file, function: function, line: line)
     }
-    
+
     // MARK: - Convenience Methods
-    
-    /// Log success messages
+
+    /// Log success messages (DEBUG only — progress indicators don't belong in release logs).
     static func success(_ message: String, category: OSLog = general, file: String = #file, function: String = #function, line: Int = #line) {
+        #if DEBUG
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function): \(message)"
-        os_log(.info, log: category, "✅ %{public}@", logMessage)
+        os_log(.info, log: category, "%{public}@", logMessage)
+        #endif
     }
-    
-    /// Log operation start
+
+    /// Log success messages with context (DEBUG only).
+    static func success(_ message: String, context: String, file: String = #file, function: String = #function, line: Int = #line) {
+        #if DEBUG
+        let fileName = URL(fileURLWithPath: file).lastPathComponent
+        let logMessage = "[\(fileName):\(line)] \(function) [\(context)]: \(message)"
+        os_log(.info, log: general, "%{public}@", logMessage)
+        #endif
+    }
+
+    /// Log operation start (DEBUG only).
     static func start(_ operation: String, category: OSLog = general, file: String = #file, function: String = #function, line: Int = #line) {
-        debug("🔄 Starting: \(operation)", category: category, file: file, function: function, line: line)
+        debug("Starting: \(operation)", category: category, file: file, function: function, line: line)
     }
-    
-    /// Log operation start with context
+
+    /// Log operation start with context (DEBUG only).
     static func start(_ operation: String, context: String, file: String = #file, function: String = #function, line: Int = #line) {
-        debug("🔄 Starting: \(operation)", context: context, file: file, function: function, line: line)
+        debug("Starting: \(operation)", context: context, file: file, function: function, line: line)
     }
-    
-    /// Log operation completion
+
+    /// Log operation completion (DEBUG only).
     static func complete(_ operation: String, category: OSLog = general, file: String = #file, function: String = #function, line: Int = #line) {
-        debug("✅ Completed: \(operation)", category: category, file: file, function: function, line: line)
+        debug("Completed: \(operation)", category: category, file: file, function: function, line: line)
     }
-    
-    /// Log operation failure
+
+    /// Log operation failure. Reaches release logs via `error` (private-redacted).
     static func fail(
         _ operation: String,
         error: Error? = nil,
@@ -174,11 +198,11 @@ struct Logger {
         line: Int = #line
     ) {
         let errorMessage = error != nil ? " - Error: \(error!.localizedDescription)" : ""
-        let message = "❌ Failed: \(operation)\(errorMessage)"
+        let message = "Failed: \(operation)\(errorMessage)"
         Logger.error(message, category: category, file: file, function: function, line: line)
     }
-    
-    /// Log operation failure with context
+
+    /// Log operation failure with context. Reaches release logs via `error` (private-redacted).
     static func fail(
         _ operation: String,
         error: Error? = nil,
@@ -188,21 +212,8 @@ struct Logger {
         line: Int = #line
     ) {
         let errorMessage = error != nil ? " - Error: \(error!.localizedDescription)" : ""
-        let message = "❌ Failed: \(operation)\(errorMessage)"
+        let message = "Failed: \(operation)\(errorMessage)"
         Logger.error(message, context: context, file: file, function: function, line: line)
-    }
-    
-    /// Log success messages with context
-    static func success(
-        _ message: String,
-        context: String,
-        file: String = #file,
-        function: String = #function,
-        line: Int = #line
-    ) {
-        let fileName = URL(fileURLWithPath: file).lastPathComponent
-        let logMessage = "[\(fileName):\(line)] \(function) [\(context)]: \(message)"
-        os_log(.info, log: general, "✅ %{public}@", logMessage)
     }
 }
 
@@ -226,7 +237,7 @@ extension Logger {
         default:
             category = general
         }
-        
+
         switch level {
         case .debug:
             debug(message, category: category, file: file, function: function, line: line)

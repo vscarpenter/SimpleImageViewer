@@ -105,11 +105,11 @@ struct ImagePerceptionService: Sendable {
     func analyze(url: URL) async -> ImagePerceptionResult {
         await Task.detached(priority: .userInitiated) { () -> ImagePerceptionResult in
             guard let loaded = Self.loadCGImage(at: url) else {
-                Logger.warning("Perception: could not decode image at \(url.lastPathComponent)", context: "AIInsights")
+                Logger.warning("Perception: could not decode image", context: "AIInsights")
                 return .empty
             }
             let result = Self.runRequests(on: loaded.image, orientation: loaded.orientation)
-            Self.log(result: result, fileName: url.lastPathComponent)
+            Self.log(result: result)
             return result
         }.value
     }
@@ -204,15 +204,12 @@ struct ImagePerceptionService: Sendable {
         )
     }
 
-    private static func log(result: ImagePerceptionResult, fileName: String) {
-        let classified = result.classifications.isEmpty
-            ? "none"
-            : result.classifications.map { "\($0.identifier)=\(String(format: "%.2f", $0.confidence))" }.joined(separator: ",")
-        let ocr = result.recognizedText.isEmpty
-            ? "none"
-            : result.recognizedText.prefix(10).joined(separator: "|")
+    private static func log(result: ImagePerceptionResult) {
+        // Privacy: never log filenames, OCR text, or specific classification labels.
+        // Counts and category flags are enough for diagnostics and contain no user content
+        // that could end up in Console.app or sysdiagnose.
         Logger.info(
-            "Perception [\(fileName)] classifications=[\(classified)] faces=\(result.faceCount) ocr=[\(ocr)] salientObjects=\(result.salientObjectCount) horizon=\(result.hasHorizon)",
+            "Perception complete classifications=\(result.classifications.count) faces=\(result.faceCount) ocrTokens=\(result.recognizedText.count) salientObjects=\(result.salientObjectCount) horizon=\(result.hasHorizon)",
             context: "AIInsights"
         )
     }

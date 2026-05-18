@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ImageInsightPanelView: View {
@@ -109,14 +110,44 @@ struct ImageInsightPanelView: View {
         }
     }
 
+    @ViewBuilder
     private func unavailableSection(_ message: String) -> some View {
-        Label {
-            Text(message)
-                .font(.subheadline)
-                .fixedSize(horizontal: false, vertical: true)
-        } icon: {
-            Image(systemName: "exclamationmark.circle")
-                .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            Label {
+                Text(message)
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "exclamationmark.circle")
+                    .foregroundColor(.secondary)
+            }
+
+            if case .unavailable(.appleIntelligenceDisabled) = viewModel.imageInsightAvailability {
+                Button(action: openAppleIntelligenceSettings) {
+                    Label("Open System Settings", systemImage: "gearshape")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .help("Open Apple Intelligence settings to enable AI Insights")
+            }
+        }
+    }
+
+    private func openAppleIntelligenceSettings() {
+        // Apple Intelligence preferences pane on macOS 26. If the deep link is rejected
+        // (e.g., on a future macOS where the pane identifier changed), fall back to opening
+        // the root System Settings app so the user still gets somewhere useful.
+        let deepLinkCandidates = [
+            "x-apple.systempreferences:com.apple.preference.intelligence",
+            "x-apple.systempreferences:com.apple.Siri-Settings.extension"
+        ]
+        for urlString in deepLinkCandidates {
+            if let url = URL(string: urlString), NSWorkspace.shared.open(url) {
+                return
+            }
+        }
+        if let fallback = URL(string: "x-apple.systempreferences:") {
+            NSWorkspace.shared.open(fallback)
         }
     }
 
