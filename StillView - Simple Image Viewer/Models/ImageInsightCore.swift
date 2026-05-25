@@ -75,6 +75,16 @@ struct ImageInsightInput: Equatable, Sendable {
     }
 }
 
+/// Classifies the dominant content type of an image to enable type-specific prompt routing.
+enum ImageContentType: String, Sendable, CaseIterable {
+    case portrait
+    case group
+    case document
+    case landscape
+    case object
+    case general
+}
+
 /// Small, structured result shown in the AI Insights inspector.
 struct ImageInsightResult: Equatable, Sendable {
     let title: String
