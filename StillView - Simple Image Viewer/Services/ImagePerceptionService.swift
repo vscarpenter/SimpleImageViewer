@@ -139,7 +139,8 @@ struct ImagePerceptionService: Sendable {
         let textRecognition = VNRecognizeTextRequest()
         textRecognition.recognitionLevel = .accurate
         textRecognition.usesLanguageCorrection = true
-        textRecognition.recognitionLanguages = ["en-US"]
+        textRecognition.automaticallyDetectsLanguage = true
+        textRecognition.recognitionLanguages = ["en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "pt-BR", "ja", "zh-Hans", "ko"]
 
         let faceDetection = VNDetectFaceRectanglesRequest()
         // Revision 1 (the default) is deprecated; Revision 3 is the most accurate available
