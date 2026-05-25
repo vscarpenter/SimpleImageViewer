@@ -75,6 +75,16 @@ struct ImageInsightInput: Equatable, Sendable {
     }
 }
 
+/// Classifies the dominant content type of an image to enable type-specific prompt routing.
+enum ImageContentType: String, Sendable, CaseIterable {
+    case portrait
+    case group
+    case document
+    case landscape
+    case object
+    case general
+}
+
 /// Small, structured result shown in the AI Insights inspector.
 struct ImageInsightResult: Equatable, Sendable {
     let title: String
@@ -253,21 +263,168 @@ enum ImageInsightPromptBuilder {
        like "people", "adult", or "person" may reflect background figures in a still-life photo, \
        NOT the subject. Never describe the image as a photo OF people unless Rule 2 says so.
 
-    6. Do not infer people, events, parties, celebrations, weddings, gatherings, or activities \
+    4. Do not infer people, events, parties, celebrations, weddings, gatherings, or activities \
        from object types (e.g. flowers, food, decorations) or from the file name. Only describe \
        what the evidence explicitly supports.
 
-    4. Camera, lens, GPS, and EXIF metadata are CONTEXT ONLY. Never use the camera model, lens, \
+    5. Camera, lens, GPS, and EXIF metadata are CONTEXT ONLY. Never use the camera model, lens, \
        shooting settings, or coordinates as the title, summary, or main subject. A title like \
        "iPhone 13 Pro Max Capture" is forbidden — describe the photograph's content instead.
 
-    5. If PRIMARY EVIDENCE is genuinely sparse (no OCR, weak classifications, no faces), be \
+    6. If PRIMARY EVIDENCE is genuinely sparse (no OCR, weak classifications, no faces), be \
        honest: describe at the level of detail the evidence supports. Do not invent named \
        individuals, venues, brands, exact locations, or specific events that aren't in the \
        evidence for this specific image.
     """
 
-    static func prompt(for input: ImageInsightInput) -> String {
+    static func prompt(for input: ImageInsightInput, type: ImageContentType = .general) -> String {
+        let evidenceBlock = renderEvidence(for: input)
+
+        switch type {
+        case .portrait:
+            return portraitPrompt(evidence: evidenceBlock)
+        case .group:
+            return groupPrompt(evidence: evidenceBlock)
+        case .document:
+            return documentPrompt(evidence: evidenceBlock)
+        case .landscape:
+            return landscapePrompt(evidence: evidenceBlock)
+        case .object:
+            return objectPrompt(evidence: evidenceBlock)
+        case .general:
+            return generalPrompt(evidence: evidenceBlock)
+        }
+    }
+
+    // MARK: - Type-Specific Prompts
+
+    private static func portraitPrompt(evidence: String) -> String {
+        """
+        This image contains one person as the primary subject.
+
+        YOUR TASK: Describe what the person appears to be doing, their setting, and any notable \
+        visual context (clothing, activity, environment). Focus on the person as subject.
+
+        TITLE: Name the activity or scene, not "a person standing" or "portrait of someone." \
+        Pattern: "[Activity/attribute] [setting]"
+
+        FORBIDDEN in title: "A person standing", "Portrait of someone", "Selfie", any camera model.
+
+        CONSTRAINT: Never guess identity, name, or specific age. Describe only what is observable.
+
+        \(evidence)
+
+        \(returnFormat)
+        """
+    }
+
+    private static func groupPrompt(evidence: String) -> String {
+        """
+        This image contains multiple people as subjects.
+
+        YOUR TASK: Describe the group — how many people, what they appear to be doing together, \
+        and the setting. If OCR reveals venue/event signage, name it. Do not guess individual \
+        identities.
+
+        TITLE: Name the group activity and setting. \
+        Pattern: "[N people] [activity] [where]"
+
+        FORBIDDEN in title: "A group of people", "Several individuals", any camera model. \
+        Never hallucinate event type (wedding, birthday, celebration) unless OCR/signage explicitly supports it.
+
+        \(evidence)
+
+        \(returnFormat)
+        """
+    }
+
+    private static func documentPrompt(evidence: String) -> String {
+        """
+        This image is text-dominant (a document, screenshot, slide, code, or text-heavy content).
+
+        YOUR TASK: Identify what TYPE of document this is (code snippet, article, form, chat, \
+        screenshot of an application, presentation slide, etc.) and synthesize the key text \
+        content into meaning. Do NOT just list OCR words — describe what the text says.
+
+        TITLE: Lead with the document type. \
+        Pattern: "[Document type]: [key content summary]"
+
+        FORBIDDEN in title: "Text on a screen", "A document showing", any camera model. \
+        Do not describe this as "a photograph" — describe the content.
+
+        \(evidence)
+
+        \(returnFormat)
+        """
+    }
+
+    private static func landscapePrompt(evidence: String) -> String {
+        """
+        This image is a landscape or outdoor scene with no people as subjects.
+
+        YOUR TASK: Describe the setting, natural elements, lighting/time-of-day cues, and \
+        composition. Name specific elements from the classifications (mountain, ocean, forest, \
+        etc.) rather than generic "nature."
+
+        TITLE: Name the scene type and key elements. \
+        Pattern: "[Scene type] [distinctive elements]"
+
+        FORBIDDEN in title: "A beautiful landscape", "A scenic view of", "Nature scene", any camera model.
+
+        \(evidence)
+
+        \(returnFormat)
+        """
+    }
+
+    private static func objectPrompt(evidence: String) -> String {
+        """
+        This image has a strong single subject (object, animal, food, vehicle, etc.).
+
+        YOUR TASK: NAME the specific object using the highest-confidence classification. \
+        Describe its material, condition, and immediate context. Be specific — "vintage leather \
+        suitcase" not "an object."
+
+        TITLE: Name the object with a distinctive attribute. \
+        Pattern: "[Object name] [distinctive attribute]"
+
+        FORBIDDEN in title: "An object on a surface", "A photo of an item", any camera model.
+
+        \(evidence)
+
+        \(returnFormat)
+        """
+    }
+
+    private static func generalPrompt(evidence: String) -> String {
+        """
+        Describe what this image shows. Use the signals below — actively name what you see. \
+        The limitations field is required.
+
+        TITLE: Name the specific subject, scene, or activity. Never use a camera model as title. \
+        A title like "iPhone 13 Pro Max Capture" is forbidden — describe the photograph's content.
+
+        FORBIDDEN in title: "A photograph of", "An image showing", any camera/lens model.
+
+        \(evidence)
+
+        \(returnFormat)
+        """
+    }
+
+    // MARK: - Shared Components
+
+    private static let returnFormat = """
+    Return:
+    - title: a short, specific title naming what THIS image shows
+    - summary: 1 to 2 sentences describing the visible content using primary evidence
+    - likelyContent: what is in the image, grounded in primary evidence. If sparse, say so plainly.
+    - usefulDetails: up to 4 short bullets; lead with content, include EXIF only when informative
+    - tags: up to 6 short content-focused tags from evidence; avoid camera-model tags
+    - limitations: required — what this insight cannot determine from local signals
+    """
+
+    private static func renderEvidence(for input: ImageInsightInput) -> String {
         let dates = [
             input.creationDate.map { "Created: \($0)" },
             input.modificationDate.map { "Modified: \($0)" }
@@ -286,11 +443,6 @@ enum ImageInsightPromptBuilder {
         let embeddedKeywords = input.keywords.isEmpty ? "None" : input.keywords.joined(separator: ", ")
 
         return """
-        \(systemInstruction)
-
-        Describe what this image shows. Use the signals below — actively name what you see. \
-        The limitations field is required.
-
         File: \(input.fileName) (\(input.fileType), \(input.dimensions), \(input.fileSize))
         \(dates.isEmpty ? "No file dates available." : dates)
 
@@ -304,26 +456,6 @@ enum ImageInsightPromptBuilder {
         ── CONTEXT ONLY — Camera/EXIF/GPS (NEVER use as the title, summary, or main subject) ──
         \(camera)
         Color profile: \(input.colorProfile ?? "Not available")
-
-        Return:
-        - title: a short, specific title naming what THIS image shows, using ONLY the PRIMARY \
-          EVIDENCE above. Title patterns to follow (with placeholders filled from this image's \
-          evidence only):
-            * "[Activity] at [OCR venue/brand]" — when OCR contains a venue or brand name
-            * "[Subject] [setting]" — when classifications name a subject and scene
-            * "[Face-count context] [scene]" — when faces are detected but no OCR
-          NEVER a camera-model title. NEVER reuse a venue, brand, or noun from this instruction \
-          block — only use words that appear in this image's PRIMARY EVIDENCE.
-        - summary: 1 to 2 sentences describing the visible content of THIS image using this \
-          image's primary evidence
-        - likelyContent: a sentence about what is in this image, grounded in this image's \
-          primary evidence. If primary evidence is empty, say so plainly.
-        - usefulDetails: up to 4 short bullets; lead with content (subjects, objects, OCR text \
-          from this image, face count), include EXIF only when genuinely informative
-        - tags: up to 6 short content-focused tags drawn from this image's evidence; avoid \
-          camera-model or generic EXIF tags
-        - limitations: required — what this insight cannot determine from local signals
-
         """
     }
 }

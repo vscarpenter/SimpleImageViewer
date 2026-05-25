@@ -63,40 +63,39 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
 
         // Run on-device Vision perception lazily, only when the user actually requests
         // an insight. This avoids paying perception cost on every image navigation.
+        let perception: ImagePerceptionResult
         let enrichedInput: ImageInsightInput
         if let url = input.imageURL {
-            let perception = await perceptionService.analyze(url: url)
+            perception = await perceptionService.analyze(url: url)
             enrichedInput = input.withVisualSignals(perception.asSignals)
         } else {
+            perception = .empty
             enrichedInput = input
         }
 
+        let contentType = ImageContentTypeClassifier.classify(perception)
+        let profile = GenerationProfile.profile(for: contentType)
+
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *) {
-            let session = LanguageModelSession(
-                model: .default,
-                instructions: ImageInsightPromptBuilder.systemInstruction
-            )
-            let prompt = ImageInsightPromptBuilder.prompt(for: enrichedInput)
-            // .random(top: 3) gives the model just enough freedom to weave weaker signals
-            // (lower-confidence classifications, OCR text) into its output. .greedy ignores
-            // temperature entirely and produces overly-conservative argmax descriptions
-            // that miss anything not in the top-1 classification.
-            let options = GenerationOptions(
-                sampling: .random(top: 3),
-                temperature: 0.5,
-                maximumResponseTokens: 600
-            )
-            do {
-                let response = try await session.respond(
-                    to: prompt,
-                    generating: GeneratedImageInsight.self,
-                    options: options
-                )
-                return response.content.result
-            } catch let generationError as LanguageModelSession.GenerationError {
-                throw Self.mapGenerationError(generationError)
+            let result = try await generate(input: enrichedInput, type: contentType, profile: profile)
+
+            let validation = InsightOutputValidator.validate(result, input: enrichedInput)
+            if case .passed = validation {
+                return result
             }
+
+            if case .failed(let reasons) = validation {
+                let retryResult = try await generate(
+                    input: enrichedInput,
+                    type: contentType,
+                    profile: profile.retryProfile,
+                    correctionHint: InsightOutputValidator.correctionHint(for: reasons)
+                )
+                return retryResult
+            }
+
+            return result
         }
         #endif
 
@@ -171,6 +170,46 @@ private extension AppleIntelligenceInsightsService {
             return .modelNotReady
         @unknown default:
             return .unknownUnavailable
+        }
+    }
+
+    /// Runs a single FoundationModels generation pass with the given profile and optional
+    /// correction hint. Extracted so the first attempt and validation retry share one path.
+    func generate(
+        input: ImageInsightInput,
+        type: ImageContentType,
+        profile: GenerationProfile,
+        correctionHint: String? = nil
+    ) async throws -> ImageInsightResult {
+        let session = LanguageModelSession(
+            model: .default,
+            instructions: ImageInsightPromptBuilder.systemInstruction
+        )
+
+        var prompt = ImageInsightPromptBuilder.prompt(for: input, type: type)
+        if let hint = correctionHint {
+            prompt += "\n\nCORRECTION: \(hint)"
+        }
+
+        // .random(top:) gives the model just enough freedom to weave weaker signals
+        // (lower-confidence classifications, OCR text) into its output. .greedy ignores
+        // temperature entirely and produces overly-conservative argmax descriptions
+        // that miss anything not in the top-1 classification.
+        let options = GenerationOptions(
+            sampling: .random(top: profile.topK),
+            temperature: profile.temperature,
+            maximumResponseTokens: profile.maxTokens
+        )
+
+        do {
+            let response = try await session.respond(
+                to: prompt,
+                generating: GeneratedImageInsight.self,
+                options: options
+            )
+            return response.content.result
+        } catch let generationError as LanguageModelSession.GenerationError {
+            throw Self.mapGenerationError(generationError)
         }
     }
 

@@ -54,7 +54,7 @@ struct ImagePerceptionResult: Equatable, Sendable {
         if salientObjectCount > 0 {
             let descriptor = salientObjectCount == 1
                 ? "1 distinct foreground subject"
-                : "\(salientObjectCount) distinct foreground subjects (a more complex scene with multiple objects)"
+                : "\(salientObjectCount) distinct foreground subjects — describe ALL of them, not just the most prominent"
             signals.append("Foreground subjects (Vision objectness): \(descriptor)")
         }
 
@@ -139,7 +139,8 @@ struct ImagePerceptionService: Sendable {
         let textRecognition = VNRecognizeTextRequest()
         textRecognition.recognitionLevel = .accurate
         textRecognition.usesLanguageCorrection = true
-        textRecognition.recognitionLanguages = ["en-US"]
+        textRecognition.automaticallyDetectsLanguage = true
+        textRecognition.recognitionLanguages = ["en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "pt-BR", "ja", "zh-Hans", "ko"]
 
         let faceDetection = VNDetectFaceRectanglesRequest()
         // Revision 1 (the default) is deprecated; Revision 3 is the most accurate available
@@ -165,12 +166,12 @@ struct ImagePerceptionService: Sendable {
             return .empty
         }
 
-        // Confidence ≥ 0.15 + top-10 surfaces weaker labels (vehicles, secondary objects)
-        // that the higher threshold filtered out. The model sees the confidence and can
-        // decide what to lean on.
+        // Confidence ≥ 0.10 + top-12 surfaces weaker labels (vehicles, secondary objects)
+        // that a higher threshold would filter out. The model sees the confidence percentage
+        // and can decide what to lean on vs. hedge about.
         let classifications: [ImagePerceptionResult.Classification] = (classification.results ?? [])
-            .filter { $0.confidence >= 0.15 }
-            .prefix(10)
+            .filter { $0.confidence >= 0.10 }
+            .prefix(12)
             .map { .init(identifier: $0.identifier, confidence: $0.confidence) }
 
         let rawText: [String] = (textRecognition.results ?? [])
@@ -189,7 +190,7 @@ struct ImagePerceptionService: Sendable {
         let faceCount = (faceDetection.results ?? [])
             .filter { observation in
                 let area = observation.boundingBox.width * observation.boundingBox.height
-                return area >= 0.003 && observation.confidence >= 0.7
+                return area >= 0.003 || observation.confidence >= 0.7
             }
             .count
         let salientObjectCount = saliency.results?.first?.salientObjects?.count ?? 0
