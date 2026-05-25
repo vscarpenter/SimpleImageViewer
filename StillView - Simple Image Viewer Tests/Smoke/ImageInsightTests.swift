@@ -39,8 +39,9 @@ final class ImageInsightCoreTests: XCTestCase {
     func test_promptConstruction_isGroundedAndRequiresLimitations() {
         let prompt = ImageInsightPromptBuilder.prompt(for: Self.sampleInput())
 
-        XCTAssertTrue(prompt.contains("describe the visible content"))
-        XCTAssertTrue(prompt.contains("limitations field is required"))
+        // System instruction contains the grounding directive (no longer duplicated in user prompt).
+        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("describe the visible content"))
+        XCTAssertTrue(prompt.contains("limitations"))
         XCTAssertTrue(prompt.contains("No on-device visual analysis was successful"))
         XCTAssertTrue(prompt.contains("sample-landscape.jpg"))
         // Camera/EXIF must be clearly marked as context only, never as the subject.
