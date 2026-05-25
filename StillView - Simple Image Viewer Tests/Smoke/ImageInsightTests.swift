@@ -232,7 +232,9 @@ final class ImageInsightPrivacyAndProjectTests: XCTestCase {
             "StillView - Simple Image Viewer/Models/ImageInsightCore.swift",
             "StillView - Simple Image Viewer/ViewModels/ImageInsightViewModel.swift",
             "StillView - Simple Image Viewer/Services/AppleIntelligenceInsightsService.swift",
-            "StillView - Simple Image Viewer/Services/ImagePerceptionService.swift"
+            "StillView - Simple Image Viewer/Services/ImagePerceptionService.swift",
+            "StillView - Simple Image Viewer/Services/ImageContentTypeClassifier.swift",
+            "StillView - Simple Image Viewer/Services/InsightOutputValidator.swift"
         ]
         let forbidden = ["URLSession", "NWConnection", "http://", "https://", "telemetry", "analytics"]
 
