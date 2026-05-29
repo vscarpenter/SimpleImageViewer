@@ -86,13 +86,35 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
             }
 
             if case .failed(let reasons) = validation {
+                Logger.warning(
+                    "AI insight validation failed; retrying reasons=\(reasons.map(\.rawValue).joined(separator: ","))",
+                    context: "AIInsights"
+                )
                 let retryResult = try await generate(
                     input: enrichedInput,
                     type: contentType,
-                    profile: profile.retryProfile,
+                    profile: profile.retryProfile(for: reasons),
                     correctionHint: InsightOutputValidator.correctionHint(for: reasons)
                 )
-                return retryResult
+
+                let retryValidation = InsightOutputValidator.validate(retryResult, input: enrichedInput)
+                if case .passed = retryValidation {
+                    return retryResult
+                }
+
+                if case .failed(let retryReasons) = retryValidation {
+                    let retryReasonNames = retryReasons.map(\.rawValue).joined(separator: ",")
+                    Logger.warning(
+                        "AI insight retry validation failed; using grounded fallback reasons=\(retryReasonNames)",
+                        context: "AIInsights"
+                    )
+                }
+
+                return ImageInsightFallbackBuilder.result(
+                    for: enrichedInput,
+                    perception: perception,
+                    type: contentType
+                )
             }
 
             return result
@@ -243,24 +265,24 @@ private extension AppleIntelligenceInsightsService {
 }
 
 @available(macOS 26.0, *)
-@Generable(description: "A concise image insight describing the visible content of a local image, grounded in on-device Vision analysis. Camera and EXIF metadata are supplementary context only and must not drive the title or subject.")
+@Generable(description: "A concise image insight describing visible content from on-device Vision analysis. Camera and EXIF metadata are supplementary context only and must not drive the title or subject.")
 private struct GeneratedImageInsight {
-    @Guide(description: "A short title naming what the image shows — its subject, scene, or activity. Never use the camera model, lens, or shooting settings as the title. A title like 'iPhone 13 Pro Max Capture' is forbidden; describe the photograph's content instead.")
+    @Guide(description: "A short title naming what the image shows: subject, scene, or activity. Never use camera model, lens, shooting settings, file name, or prompt examples as the title.")
     let title: String
 
-    @Guide(description: "One or two sentences describing the visible content of the image, drawn from the on-device Vision signals (scene categories, recognized text, faces). Do not describe the camera or shooting settings.")
+    @Guide(description: "One or two sentences describing visible content from on-device Vision signals: scene categories, recognized text, and faces. Do not describe the camera or shooting settings.")
     let summary: String
 
     @Guide(description: "A cautious description of what the image likely depicts, based on the primary visual signals. If the visual signals are sparse or empty, say so plainly rather than guessing from EXIF.")
     let likelyContent: String
 
-    @Guide(description: "Up to 4 short bullet points of useful details about the image. Lead with content; include camera or EXIF only when genuinely helpful (e.g. capture date for a memory). Never repeat the camera model as a detail.")
+    @Guide(description: "Up to 4 short bullet points of useful details about the image. Lead with content. Include camera or EXIF only when genuinely helpful. Never repeat the camera model as a detail.")
     let usefulDetails: [String]
 
-    @Guide(description: "Up to 6 short content-focused tags describing the image (e.g. 'group photo', 'indoor', 'sports venue', 'celebration'). Avoid camera-model or EXIF-only tags.")
+    @Guide(description: "Up to 6 short content-focused tags describing the image. Avoid camera-model, file-name, prompt-example, or EXIF-only tags.")
     let tags: [String]
 
-    @Guide(description: "Required. What this insight cannot determine from local signals (e.g. 'specific names of people', 'precise location', 'event identity').")
+    @Guide(description: "Required. What this insight cannot determine from local signals, without adding unsupported specifics.")
     let limitations: [String]
 
     var result: ImageInsightResult {

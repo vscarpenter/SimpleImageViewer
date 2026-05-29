@@ -78,7 +78,11 @@ final class ImageInsightCoreTests: XCTestCase {
             "Legends Club",
             "REWER",
             "Acme",
-            "Ferrari"
+            "Ferrari",
+            "vintage leather suitcase",
+            "classic design",
+            "well-worn texture",
+            "timeless style"
         ]
         for leak in forbiddenLeakStrings {
             XCTAssertFalse(

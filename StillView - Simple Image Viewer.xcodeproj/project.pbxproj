@@ -43,6 +43,7 @@
 		B20100000000000000000001 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
 		B20100000000000000000003 /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
 		B20100000000000000000005 /* AppleIntelligenceInsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */; };
+		B2010000000000000000AA05 /* InsightEvalHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000AA06 /* InsightEvalHarness.swift */; };
 		B20100000000000000000007 /* ImageInsightPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000008 /* ImageInsightPanelView.swift */; };
 		B20100000000000000000009 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
 		B2010000000000000000000A /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
@@ -50,6 +51,7 @@
 		B2010000000000000000000D /* ImagePerceptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000E /* ImagePerceptionService.swift */; };
 		B201000000000000000000F1 /* ImageContentTypeClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000F2 /* ImageContentTypeClassifier.swift */; };
 		B201000000000000000000F3 /* ImageContentTypeClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000F4 /* ImageContentTypeClassifierTests.swift */; };
+		B2010000000000000000AA01 /* ImagePerceptionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */; };
 		B201000000000000000000F6 /* ImageContentTypeClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000F2 /* ImageContentTypeClassifier.swift */; };
 		B201000000000000000000F7 /* ImagePerceptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000E /* ImagePerceptionService.swift */; };
 		B201000000000000000000F8 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2E7C922E556A5F000525C4 /* Logger.swift */; };
@@ -159,11 +161,13 @@
 		B20100000000000000000002 /* ImageInsightCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightCore.swift; sourceTree = "<group>"; };
 		B20100000000000000000004 /* ImageInsightViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightViewModel.swift; sourceTree = "<group>"; };
 		B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleIntelligenceInsightsService.swift; sourceTree = "<group>"; };
+		B2010000000000000000AA06 /* InsightEvalHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightEvalHarness.swift; sourceTree = "<group>"; };
 		B20100000000000000000008 /* ImageInsightPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightPanelView.swift; sourceTree = "<group>"; };
 		B2010000000000000000000C /* ImageInsightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightTests.swift; sourceTree = "<group>"; };
 		B2010000000000000000000E /* ImagePerceptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePerceptionService.swift; sourceTree = "<group>"; };
 		B201000000000000000000F2 /* ImageContentTypeClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageContentTypeClassifier.swift; sourceTree = "<group>"; };
 		B201000000000000000000F4 /* ImageContentTypeClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageContentTypeClassifierTests.swift; sourceTree = "<group>"; };
+		B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePerceptionServiceTests.swift; sourceTree = "<group>"; };
 		B201000000000000000000A2 /* InsightOutputValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightOutputValidator.swift; sourceTree = "<group>"; };
 		B201000000000000000000A4 /* InsightOutputValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightOutputValidatorTests.swift; sourceTree = "<group>"; };
 		C0C0C0C0C0C0C0C0C0C0C0E1 /* StillView - Simple Image Viewer Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "StillView - Simple Image Viewer Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -296,6 +300,7 @@
 			isa = PBXGroup;
 			children = (
 				B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */,
+				B2010000000000000000AA06 /* InsightEvalHarness.swift */,
 				B2010000000000000000000E /* ImagePerceptionService.swift */,
 				B201000000000000000000F2 /* ImageContentTypeClassifier.swift */,
 				B201000000000000000000A2 /* InsightOutputValidator.swift */,
@@ -453,6 +458,7 @@
 			isa = PBXGroup;
 			children = (
 				B201000000000000000000F4 /* ImageContentTypeClassifierTests.swift */,
+				B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */,
 				B201000000000000000000A4 /* InsightOutputValidatorTests.swift */,
 			);
 			path = Services;
@@ -581,6 +587,7 @@
 				B20100000000000000000001 /* ImageInsightCore.swift in Sources */,
 				B20100000000000000000003 /* ImageInsightViewModel.swift in Sources */,
 				B20100000000000000000005 /* AppleIntelligenceInsightsService.swift in Sources */,
+				B2010000000000000000AA05 /* InsightEvalHarness.swift in Sources */,
 				B2010000000000000000000D /* ImagePerceptionService.swift in Sources */,
 				B201000000000000000000F1 /* ImageContentTypeClassifier.swift in Sources */,
 				B201000000000000000000A1 /* InsightOutputValidator.swift in Sources */,
@@ -679,6 +686,7 @@
 				B201000000000000000000F7 /* ImagePerceptionService.swift in Sources */,
 				B201000000000000000000F8 /* Logger.swift in Sources */,
 				B201000000000000000000F3 /* ImageContentTypeClassifierTests.swift in Sources */,
+				B2010000000000000000AA01 /* ImagePerceptionServiceTests.swift in Sources */,
 				B201000000000000000000A5 /* InsightOutputValidator.swift in Sources */,
 				B201000000000000000000A3 /* InsightOutputValidatorTests.swift in Sources */,
 				C0C0C0C0C0C0C0C0C0C0C0D1 /* SmokeTests.swift in Sources */,
@@ -821,7 +829,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 31;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_APP_SANDBOX = YES;
@@ -848,7 +856,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 4.0.0;
+				MARKETING_VERSION = 4.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -865,7 +873,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 31;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 52HVJ3VDSM;
@@ -893,7 +901,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 4.0.0;
+				MARKETING_VERSION = 4.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

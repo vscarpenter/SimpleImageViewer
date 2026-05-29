@@ -73,6 +73,14 @@ struct SimpleImageViewerApp: App {
         }
         .windowResizability(.contentSize)
         .commands {
+            #if DEBUG
+            CommandMenu("Debug") {
+                Button("Run AI Insights Eval…") {
+                    InsightEvalHarness.presentAndRun()
+                }
+            }
+            #endif
+
             // Add About menu command
             CommandGroup(replacing: .appInfo) {
                 Button("About StillView") {
