@@ -43,6 +43,7 @@
 		B20100000000000000000001 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
 		B20100000000000000000003 /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
 		B20100000000000000000005 /* AppleIntelligenceInsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */; };
+		B2010000000000000000AA05 /* InsightEvalHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000AA06 /* InsightEvalHarness.swift */; };
 		B20100000000000000000007 /* ImageInsightPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000008 /* ImageInsightPanelView.swift */; };
 		B20100000000000000000009 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
 		B2010000000000000000000A /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
@@ -160,6 +161,7 @@
 		B20100000000000000000002 /* ImageInsightCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightCore.swift; sourceTree = "<group>"; };
 		B20100000000000000000004 /* ImageInsightViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightViewModel.swift; sourceTree = "<group>"; };
 		B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleIntelligenceInsightsService.swift; sourceTree = "<group>"; };
+		B2010000000000000000AA06 /* InsightEvalHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightEvalHarness.swift; sourceTree = "<group>"; };
 		B20100000000000000000008 /* ImageInsightPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightPanelView.swift; sourceTree = "<group>"; };
 		B2010000000000000000000C /* ImageInsightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightTests.swift; sourceTree = "<group>"; };
 		B2010000000000000000000E /* ImagePerceptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePerceptionService.swift; sourceTree = "<group>"; };
@@ -298,6 +300,7 @@
 			isa = PBXGroup;
 			children = (
 				B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */,
+				B2010000000000000000AA06 /* InsightEvalHarness.swift */,
 				B2010000000000000000000E /* ImagePerceptionService.swift */,
 				B201000000000000000000F2 /* ImageContentTypeClassifier.swift */,
 				B201000000000000000000A2 /* InsightOutputValidator.swift */,
@@ -584,6 +587,7 @@
 				B20100000000000000000001 /* ImageInsightCore.swift in Sources */,
 				B20100000000000000000003 /* ImageInsightViewModel.swift in Sources */,
 				B20100000000000000000005 /* AppleIntelligenceInsightsService.swift in Sources */,
+				B2010000000000000000AA05 /* InsightEvalHarness.swift in Sources */,
 				B2010000000000000000000D /* ImagePerceptionService.swift in Sources */,
 				B201000000000000000000F1 /* ImageContentTypeClassifier.swift in Sources */,
 				B201000000000000000000A1 /* InsightOutputValidator.swift in Sources */,
