@@ -8,7 +8,8 @@ import Foundation
 ///      Primary evidence for "what is in the image."
 ///   2. `metadataDescription` + `keywords` — embedded file metadata (often user-authored).
 ///      Secondary evidence.
-///   3. `cameraSignals` — camera/EXIF/GPS. Context only; must never be the title or subject.
+///   3. `cameraSignals` + file details — camera/EXIF/GPS.
+///      Context only; must never be the title or subject.
 struct ImageInsightInput: Equatable, Sendable {
     let fileName: String
     let fileType: String
@@ -237,10 +238,10 @@ protocol ImageInsightGenerating: Sendable {
 enum ImageInsightPromptBuilder {
     static let systemInstruction = """
     You describe the visible content of a local image for a minimalist macOS image viewer. \
-    Your job is to NAME what is in the image using ONLY the on-device Vision signals provided in \
+    Your job is to NAME what is in the image using the on-device Vision signals provided in \
     the current prompt. Do not use any text, names, places, or examples from this instruction \
     block as if they were observations of the image — only the data under "PRIMARY EVIDENCE" in \
-    the user prompt counts.
+    the user prompt counts as visual evidence.
 
     RULES (in order of importance):
 
@@ -250,21 +251,19 @@ enum ImageInsightPromptBuilder {
        Garbled fragments may need interpretation; pick the cleanest, longest tokens. If OCR is \
        empty or absent for THIS image, NEVER invent venue or brand names.
 
-    2. FACE COUNT is the ONLY source of truth for "people in the photo." If the PRIMARY \
-       EVIDENCE has no "Faces detected" line, the photo has NO people as subjects — do not \
-       describe it as a portrait, group photo, or social gathering. The subject is whatever \
-       else the evidence shows (flowers, food, a vehicle, a building, etc.). \
+    2. FACE COUNT is the strongest source of truth for people as primary subjects. \
        If "Faces detected: N" is present: 1 = portrait or selfie, 2-4 = small group, 5+ = \
-       group photo.
+       group photo. If there is no "Faces detected" line, do not make people the main subject \
+       solely from generic "person", "people", or "adult" classifications. Mention people only \
+       cautiously when another strong signal supports it.
 
-    3. Use the scene/object classifications from PRIMARY EVIDENCE to set the scene. Name the \
-       dominant categories that actually appear in the evidence. When confidence is high (>0.7) \
-       state the category as fact; when low (<0.5) hedge with "appears to be." Classifications \
-       like "people", "adult", or "person" may reflect background figures in a still-life photo, \
-       NOT the subject. Never describe the image as a photo OF people unless Rule 2 says so.
+    3. Use scene/object classifications from PRIMARY EVIDENCE to set the scene, but weigh them \
+       by confidence. Name high-confidence categories (>0.7) directly. Hedge low-confidence \
+       categories (<0.5) with "appears to be" or omit them if they conflict with stronger signals. \
+       Generic labels like "indoor", "outdoor", "person", or "people" are context, not a title.
 
     4. Do not infer people, events, parties, celebrations, weddings, gatherings, or activities \
-       from object types (e.g. flowers, food, decorations) or from the file name. Only describe \
+       from object types such as flowers, food, or decorations, or from the file name. Only describe \
        what the evidence explicitly supports.
 
     5. Camera, lens, GPS, and EXIF metadata are CONTEXT ONLY. Never use the camera model, lens, \
@@ -272,9 +271,9 @@ enum ImageInsightPromptBuilder {
        "iPhone 13 Pro Max Capture" is forbidden — describe the photograph's content instead.
 
     6. If PRIMARY EVIDENCE is genuinely sparse (no OCR, weak classifications, no faces), be \
-       honest: describe at the level of detail the evidence supports. Do not invent named \
-       individuals, venues, brands, exact locations, or specific events that aren't in the \
-       evidence for this specific image.
+       honest in the summary and limitations: describe only the level of detail the evidence \
+       supports. Do not invent named individuals, venues, brands, exact locations, or specific \
+       events that are not in the evidence for this specific image.
     """
 
     static func prompt(for input: ImageInsightInput, type: ImageContentType = .general) -> String {
@@ -300,7 +299,7 @@ enum ImageInsightPromptBuilder {
 
     private static func portraitPrompt(evidence: String) -> String {
         """
-        This image contains one person as the primary subject.
+        This image has one detected face and likely has one person as the primary subject.
 
         YOUR TASK: Describe what the person appears to be doing, their setting, and any notable \
         visual context (clothing, activity, environment). Focus on the person as subject.
@@ -308,7 +307,9 @@ enum ImageInsightPromptBuilder {
         TITLE: Name the activity or scene, not "a person standing" or "portrait of someone." \
         Pattern: "[Activity/attribute] [setting]"
 
-        FORBIDDEN in title: "A person standing", "Portrait of someone", "Selfie", any camera model.
+        FORBIDDEN in title: "A person standing", "Portrait of someone", a bare "Selfie" or \
+        "Portrait" with no descriptive content, any camera model. ("Selfie" is fine when paired \
+        with what the person is doing or where they are.)
 
         CONSTRAINT: Never guess identity, name, or specific age. Describe only what is observable.
 
@@ -320,7 +321,7 @@ enum ImageInsightPromptBuilder {
 
     private static func groupPrompt(evidence: String) -> String {
         """
-        This image contains multiple people as subjects.
+        This image has multiple detected faces and likely has multiple people as subjects.
 
         YOUR TASK: Describe the group — how many people, what they appear to be doing together, \
         and the setting. If OCR reveals venue/event signage, name it. Do not guess individual \
@@ -381,9 +382,9 @@ enum ImageInsightPromptBuilder {
         """
         This image has a strong single subject (object, animal, food, vehicle, etc.).
 
-        YOUR TASK: NAME the specific object using the highest-confidence classification. \
-        Describe its material, condition, and immediate context. Be specific — "vintage leather \
-        suitcase" not "an object."
+        YOUR TASK: Name the specific object using the highest-confidence non-generic classification. \
+        Describe only attributes supported by the evidence. Do not invent material, age, style, brand, \
+        condition, or use-history.
 
         TITLE: Name the object with a distinctive attribute. \
         Pattern: "[Object name] [distinctive attribute]"
@@ -398,8 +399,8 @@ enum ImageInsightPromptBuilder {
 
     private static func generalPrompt(evidence: String) -> String {
         """
-        Describe what this image shows. Use the signals below — actively name what you see. \
-        The limitations field is required.
+        Describe what this image shows. Use the strongest visual signals below and be explicit \
+        when the available evidence is weak. The limitations field is required.
 
         TITLE: Name the specific subject, scene, or activity. Never use a camera model as title. \
         A title like "iPhone 13 Pro Max Capture" is forbidden — describe the photograph's content.
@@ -416,11 +417,11 @@ enum ImageInsightPromptBuilder {
 
     private static let returnFormat = """
     Return:
-    - title: a short, specific title naming what THIS image shows
-    - summary: 1 to 2 sentences describing the visible content using primary evidence
+    - title: a short, specific title naming what THIS image shows; no generic photo/image wording
+    - summary: 1 to 2 sentences describing visible content first, using primary evidence
     - likelyContent: what is in the image, grounded in primary evidence. If sparse, say so plainly.
-    - usefulDetails: up to 4 short bullets; lead with content, include EXIF only when informative
-    - tags: up to 6 short content-focused tags from evidence; avoid camera-model tags
+    - usefulDetails: up to 4 short bullets; lead with content, avoid repeating camera models
+    - tags: up to 6 short content-focused tags from evidence; no camera, lens, or file-name tags
     - limitations: required — what this insight cannot determine from local signals
     """
 
@@ -443,20 +444,236 @@ enum ImageInsightPromptBuilder {
         let embeddedKeywords = input.keywords.isEmpty ? "None" : input.keywords.joined(separator: ", ")
 
         return """
-        File: \(input.fileName) (\(input.fileType), \(input.dimensions), \(input.fileSize))
-        \(dates.isEmpty ? "No file dates available." : dates)
-
-        ── PRIMARY EVIDENCE — On-device Apple Vision (USE every signal; name what you see) ──
+        ── PRIMARY EVIDENCE — On-device Apple Vision (weigh by confidence; name supported content) ──
         \(visual)
 
         ── SECONDARY EVIDENCE — Embedded file metadata (often user-authored; treat as hints) ──
         Description: \(input.metadataDescription ?? "None")
         Keywords: \(embeddedKeywords)
 
-        ── CONTEXT ONLY — Camera/EXIF/GPS (NEVER use as the title, summary, or main subject) ──
+        ── CONTEXT ONLY — File/Camera/EXIF/GPS (NEVER use as the title, summary, or main subject) ──
+        File name (not visual evidence): \(input.fileName)
+        File type: \(input.fileType)
+        Dimensions: \(input.dimensions)
+        File size: \(input.fileSize)
+        \(dates.isEmpty ? "No file dates available." : dates)
         \(camera)
         Color profile: \(input.colorProfile ?? "Not available")
         """
+    }
+}
+
+enum ImageInsightFallbackBuilder {
+    static func result(
+        for input: ImageInsightInput,
+        perception: ImagePerceptionResult,
+        type: ImageContentType
+    ) -> ImageInsightResult {
+        let labels = usableLabels(from: perception)
+        let nonPersonLabels = labels.filter { !personLikeLabels.contains($0) }
+
+        let title = title(for: type, perception: perception, subject: confidentSubject(from: perception))
+        let summary = summary(for: perception, labels: labels)
+        let details = details(for: input, perception: perception, labels: labels)
+        let tags = tags(for: type, labels: nonPersonLabels.isEmpty ? labels : nonPersonLabels)
+        let limitations = limitations(for: perception)
+
+        return ImageInsightResult(
+            title: title,
+            summary: summary,
+            likelyContent: likelyContent(for: perception, labels: labels),
+            usefulDetails: details,
+            tags: tags,
+            limitations: limitations
+        )
+    }
+
+    private static let personLikeLabels: Set<String> = [
+        "person", "people", "adult", "man", "woman", "boy", "girl", "child", "human"
+    ]
+
+    private static func title(
+        for type: ImageContentType,
+        perception: ImagePerceptionResult,
+        subject: String?
+    ) -> String {
+        switch type {
+        case .document:
+            if let firstLine = perception.recognizedText.first {
+                return "Document: \(clipped(firstLine, to: 50))"
+            }
+            return "Text-heavy image"
+        case .group:
+            return "\(perception.faceCount) people detected"
+        case .portrait:
+            return "Person detected in image"
+        case .landscape:
+            return subject.map { "\(capitalized($0)) outdoor scene" } ?? "Outdoor scene"
+        case .object:
+            return subject.map { "\(capitalized($0)) subject" } ?? "Foreground subject"
+        case .general:
+            return subject.map { "\(capitalized($0)) image" } ?? "Sparse visual evidence"
+        }
+    }
+
+    private static func summary(for perception: ImagePerceptionResult, labels: [String]) -> String {
+        var parts: [String] = []
+
+        if !labels.isEmpty {
+            parts.append("Apple Vision reported \(list(labels.prefix(4))) as the strongest visual categories.")
+        }
+
+        if perception.faceCount > 0 {
+            let noun = perception.faceCount == 1 ? "face" : "faces"
+            parts.append("It detected \(perception.faceCount) \(noun).")
+        }
+
+        if let firstText = perception.recognizedText.first {
+            parts.append("Readable text includes \"\(clipped(firstText, to: 60))\".")
+        }
+
+        if perception.salientObjectCount > 0 {
+            let noun = perception.salientObjectCount == 1 ? "foreground subject" : "foreground subjects"
+            parts.append("It found \(perception.salientObjectCount) \(noun).")
+        }
+
+        if parts.isEmpty {
+            return "On-device visual analysis did not return enough signals to describe specific content confidently."
+        }
+
+        return parts.joined(separator: " ")
+    }
+
+    private static func likelyContent(for perception: ImagePerceptionResult, labels: [String]) -> String {
+        if labels.isEmpty && perception.recognizedText.isEmpty && perception.faceCount == 0 {
+            return "Specific content is unclear from the available local signals."
+        }
+
+        var components: [String] = []
+        if !labels.isEmpty {
+            components.append("visual categories such as \(list(labels.prefix(3)))")
+        }
+        if perception.faceCount > 0 {
+            components.append("\(perception.faceCount) detected face\(perception.faceCount == 1 ? "" : "s")")
+        }
+        if !perception.recognizedText.isEmpty {
+            components.append("readable text")
+        }
+
+        return "Likely contains \(list(components))."
+    }
+
+    private static func details(
+        for input: ImageInsightInput,
+        perception: ImagePerceptionResult,
+        labels: [String]
+    ) -> [String] {
+        var details = ["\(input.fileType), \(input.dimensions), \(input.fileSize)"]
+
+        if !labels.isEmpty {
+            details.append("Top visual categories: \(list(labels.prefix(4)))")
+        }
+
+        if perception.faceCount > 0 {
+            details.append("Faces detected: \(perception.faceCount)")
+        }
+
+        if let firstText = perception.recognizedText.first {
+            details.append("Readable text: \(clipped(firstText, to: 70))")
+        }
+
+        if perception.salientObjectCount > 0 {
+            details.append("Foreground subjects detected: \(perception.salientObjectCount)")
+        }
+
+        return details
+    }
+
+    private static func tags(for type: ImageContentType, labels: [String]) -> [String] {
+        var output = type == .general ? [] : [type.rawValue]
+        output.append(contentsOf: labels.prefix(5))
+        return deduped(output)
+    }
+
+    private static func limitations(for perception: ImagePerceptionResult) -> [String] {
+        if perception.asSignals.isEmpty {
+            return [
+                "On-device Vision returned sparse signals, so this cannot identify specific content confidently."
+            ]
+        }
+
+        return [
+            "This cannot identify specific people, exact locations, or event names unless present in readable text."
+        ]
+    }
+
+    private static func usableLabels(from perception: ImagePerceptionResult) -> [String] {
+        perception.classifications
+            .filter { $0.confidence >= 0.2 }
+            .map { displayLabel($0.identifier) }
+            .filter { !$0.isEmpty }
+    }
+
+    /// The titling subject must clear a higher bar than the 0.2 floor used for summary/tags:
+    /// a sub-50%-confidence label should not be stated as a confident title (FALLBACK-2).
+    /// Returns nil when nothing qualifies, so the title hedges instead of guessing.
+    private static func confidentSubject(from perception: ImagePerceptionResult) -> String? {
+        perception.classifications
+            .filter { $0.confidence >= 0.5 }
+            .map { displayLabel($0.identifier) }
+            .first { !$0.isEmpty && !personLikeLabels.contains($0) }
+    }
+
+    private static func displayLabel(_ identifier: String) -> String {
+        identifier
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
+
+    private static func capitalized(_ text: String) -> String {
+        guard let first = text.first else { return text }
+        return first.uppercased() + String(text.dropFirst())
+    }
+
+    private static func list<S: Sequence>(_ values: S) -> String where S.Element == String {
+        let items = Array(values)
+        switch items.count {
+        case 0:
+            return ""
+        case 1:
+            return items[0]
+        case 2:
+            return "\(items[0]) and \(items[1])"
+        default:
+            return "\(items.dropLast().joined(separator: ", ")), and \(items.last ?? "")"
+        }
+    }
+
+    private static func clipped(_ text: String, to limit: Int) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > limit else { return trimmed }
+        let end = trimmed.index(trimmed.startIndex, offsetBy: limit)
+        return String(trimmed[..<end]).trimmingCharacters(in: .whitespacesAndNewlines) + "..."
+    }
+
+    private static func deduped(_ values: [String]) -> [String] {
+        var seen = Set<String>()
+        var output: [String] = []
+
+        for value in values {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
+            let key = trimmed.lowercased()
+            guard !seen.contains(key) else { continue }
+
+            seen.insert(key)
+            output.append(trimmed)
+        }
+
+        return output
     }
 }
 

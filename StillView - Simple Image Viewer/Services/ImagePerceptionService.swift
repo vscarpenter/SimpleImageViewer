@@ -71,18 +71,20 @@ struct ImagePerceptionResult: Equatable, Sendable {
 /// case-insensitively and drop tokens that are too short or mostly non-alphabetic —
 /// this stops the FM from distrusting the entire OCR field because of a few garbled
 /// fragments.
-private enum OCRCleaner {
+enum OCRCleaner {
     static func clean(_ raw: [String]) -> [String] {
         var seen = Set<String>()
         var output: [String] = []
 
         for token in raw {
             let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmed.count >= 3 else { continue }
+            // A single CJK character (出, 湯, …) is valid standalone signage; the 2-character
+            // floor would otherwise discard it even though OCR is configured for ja/zh/ko.
+            guard trimmed.count >= 2 || isStandaloneCJK(trimmed) else { continue }
 
-            let letterCount = trimmed.unicodeScalars.filter { CharacterSet.letters.contains($0) }.count
-            let alphaRatio = Double(letterCount) / Double(trimmed.count)
-            guard alphaRatio >= 0.5 else { continue }
+            let semanticCount = trimmed.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.count
+            let semanticRatio = Double(semanticCount) / Double(trimmed.count)
+            guard semanticCount >= 2 || isStandaloneCJK(trimmed), semanticRatio >= 0.5 else { continue }
 
             let key = trimmed.lowercased()
             guard !seen.contains(key) else { continue }
@@ -92,6 +94,17 @@ private enum OCRCleaner {
 
         return output
     }
+
+    /// True for a single CJK character (Han / Kana / Hangul) — a valid one-character signage
+    /// token that the generic multi-character floors would otherwise discard (PERCEPT-3).
+    private static func isStandaloneCJK(_ token: String) -> Bool {
+        guard token.count == 1, let scalar = token.unicodeScalars.first else { return false }
+        let value = scalar.value
+        return (0x4E00...0x9FFF).contains(value)   // CJK Unified Ideographs
+            || (0x3400...0x4DBF).contains(value)   // CJK Extension A
+            || (0x3040...0x30FF).contains(value)   // Hiragana + Katakana
+            || (0xAC00...0xD7A3).contains(value)   // Hangul syllables
+    }
 }
 
 /// Runs a focused set of on-device Vision requests against a local image and returns
@@ -99,6 +112,13 @@ private enum OCRCleaner {
 /// Runs entirely on-device — Apple Vision ships with macOS; no network calls, no remote model fetches.
 struct ImagePerceptionService: Sendable {
     static let shared = ImagePerceptionService()
+
+    /// Whether a detected face should be counted as a real foreground subject: it qualifies
+    /// when it occupies a reasonable area OR is high-confidence. `faceCount` drives prompt
+    /// routing (portrait vs group), so this predicate is kept pure and unit-tested (PERCEPT-2).
+    static func shouldCountFace(area: Double, confidence: Float) -> Bool {
+        area >= 0.003 || confidence >= 0.7
+    }
 
     /// Analyze the image at `url` and return on-device perception results.
     /// Returns `.empty` if the image cannot be decoded or if every request fails.
@@ -179,18 +199,19 @@ struct ImagePerceptionService: Sendable {
         let recognizedText = OCRCleaner.clean(rawText)
 
         // Two-pronged face filter so we count real foreground subjects, not background
-        // blurs or false positives:
-        //   - Area ≥ 0.3% catches all reasonable foreground faces (even a 5-person group
-        //     photo where each face occupies ~0.8-1% of the frame).
-        //   - Confidence ≥ 0.7 rejects false positives that happen to be large (e.g. a
-        //     face-shaped pattern in a poster, decoration, or reflection).
+        // blurs (see `shouldCountFace`):
+        //   - Area ≥ 0.3% catches reasonable foreground faces (even a 5-person group photo
+        //     where each face occupies ~0.8-1% of the frame).
+        //   - Confidence ≥ 0.7 RESCUES small but high-confidence faces below the area floor
+        //     (a distant but real face). Because the two arms are OR'd, this can only ADD
+        //     matches — it cannot reject a large detection.
         // Either condition is enough to qualify; together they balance the rose-photo case
         // (tiny background figures → 0 faces) with the group-photo case (5 real subjects
         // → 5 faces).
         let faceCount = (faceDetection.results ?? [])
             .filter { observation in
                 let area = observation.boundingBox.width * observation.boundingBox.height
-                return area >= 0.003 || observation.confidence >= 0.7
+                return shouldCountFace(area: Double(area), confidence: observation.confidence)
             }
             .count
         let salientObjectCount = saliency.results?.first?.salientObjects?.count ?? 0
