@@ -266,7 +266,7 @@ class WindowStateManager: ObservableObject {
         Publishers.CombineLatest4(
             viewModel.$zoomLevel,
             viewModel.$showFileName,
-            viewModel.$showImageInfo,
+            viewModel.$inspectorVisible,
             viewModel.$viewMode
         )
         .dropFirst()
@@ -291,8 +291,8 @@ class WindowStateManager: ObservableObject {
         }
         .store(in: &cancellables)
         
-        // Observe AI Insights panel visibility changes
-        viewModel.$showAIInsights
+        // Observe inspector tab changes (Info vs Insights is persisted)
+        viewModel.$inspectorTab
             .dropFirst()
             .removeDuplicates()
             .sink { [weak self] _ in
@@ -349,14 +349,12 @@ class WindowStateManager: ObservableObject {
         
         // Additional check for AI Insights panel state restoration
         if preferencesService.rememberAIInsightsPanelState {
-            // The applyUIState method already handles AI Insights restoration with proper checks
-            Logger.info("AI Insights panel state restoration enabled - state will be restored if conditions are met")
-        } else {
-            // User doesn't want panel state remembered, ensure it starts hidden
-            if viewModel.isAIInsightsAvailable {
-                viewModel.restoreAIInsightsState(false)
-                Logger.info("AI Insights panel state restoration disabled - panel will start hidden")
-            }
+            // The applyUIState method already handles inspector restoration with proper checks
+            Logger.info("Inspector state restoration enabled - state will be restored if conditions are met")
+        } else if viewModel.inspectorVisible && viewModel.inspectorTab == .insights {
+            // User doesn't want the Insights panel remembered — fall back to Info
+            viewModel.selectInspectorTab(.info)
+            Logger.info("AI Insights restoration disabled - inspector falls back to Info tab")
         }
     }
 }

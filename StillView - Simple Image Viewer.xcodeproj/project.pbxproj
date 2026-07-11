@@ -25,7 +25,6 @@
 		A100008C /* logo-horizontal.svg in Resources */ = {isa = PBXBuildFile; fileRef = A100008D /* logo-horizontal.svg */; };
 		A100008E /* logo-vertical.svg in Resources */ = {isa = PBXBuildFile; fileRef = A100008F /* logo-vertical.svg */; };
 		A1000090 /* Bundle+Resources.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000091 /* Bundle+Resources.swift */; };
-		A1000095 /* NavigationControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000092 /* NavigationControlsView.swift */; };
 		A1000096 /* FolderSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000093 /* FolderSelectionView.swift */; };
 		A1000097 /* FolderSelectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000094 /* FolderSelectionViewModel.swift */; };
 		A100009B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A100009A /* PrivacyInfo.xcprivacy */; };
@@ -44,7 +43,6 @@
 		B20100000000000000000003 /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
 		B20100000000000000000005 /* AppleIntelligenceInsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */; };
 		B2010000000000000000AA05 /* InsightEvalHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000AA06 /* InsightEvalHarness.swift */; };
-		B20100000000000000000007 /* ImageInsightPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000008 /* ImageInsightPanelView.swift */; };
 		B20100000000000000000009 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
 		B2010000000000000000000A /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
 		B2010000000000000000000B /* ImageInsightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000C /* ImageInsightTests.swift */; };
@@ -92,10 +90,6 @@
 		FB4EE8282E916AEA00B4AA4D /* FeedbackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB4EE8272E916AEA00B4AA4D /* FeedbackService.swift */; };
 		FB5D39042E355791004B9D85 /* ImageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39032E355791004B9D85 /* ImageMetadataService.swift */; };
 		FB5D39062E35579D004B9D85 /* AccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39052E35579D004B9D85 /* AccessibilityService.swift */; };
-		FB748BE62E41615E00E6D948 /* ToolbarOverflowMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB748BE52E41615E00E6D948 /* ToolbarOverflowMenu.swift */; };
-		FB748BE82E41616900E6D948 /* ToolbarLayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB748BE72E41616900E6D948 /* ToolbarLayoutManager.swift */; };
-		FB748BEA2E41617A00E6D948 /* ToolbarButtonStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB748BE92E41617A00E6D948 /* ToolbarButtonStyles.swift */; };
-		FB9F40EC2E38708B005C2968 /* ImageInfoOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */; };
 		FBA046082E36DBA8006F9C47 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA046072E36DBA8006F9C47 /* HelpView.swift */; };
 		FBA0460A2E36DC34006F9C47 /* HelpContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA046092E36DC34006F9C47 /* HelpContent.swift */; };
 		FBA5E0AC2E45ABA0009F3D00 /* WhatsNewContentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA5E0AA2E45ABA0009F3D00 /* WhatsNewContentProvider.swift */; };
@@ -152,7 +146,6 @@
 		A100008D /* logo-horizontal.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "logo-horizontal.svg"; sourceTree = "<group>"; };
 		A100008F /* logo-vertical.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "logo-vertical.svg"; sourceTree = "<group>"; };
 		A1000091 /* Bundle+Resources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bundle+Resources.swift"; sourceTree = "<group>"; };
-		A1000092 /* NavigationControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationControlsView.swift; sourceTree = "<group>"; };
 		A1000093 /* FolderSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSelectionView.swift; sourceTree = "<group>"; };
 		A1000094 /* FolderSelectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSelectionViewModel.swift; sourceTree = "<group>"; };
 		A100009A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -171,7 +164,6 @@
 		B20100000000000000000004 /* ImageInsightViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightViewModel.swift; sourceTree = "<group>"; };
 		B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleIntelligenceInsightsService.swift; sourceTree = "<group>"; };
 		B2010000000000000000AA06 /* InsightEvalHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightEvalHarness.swift; sourceTree = "<group>"; };
-		B20100000000000000000008 /* ImageInsightPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightPanelView.swift; sourceTree = "<group>"; };
 		B2010000000000000000000C /* ImageInsightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightTests.swift; sourceTree = "<group>"; };
 		B2010000000000000000000E /* ImagePerceptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePerceptionService.swift; sourceTree = "<group>"; };
 		B201000000000000000000F2 /* ImageContentTypeClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageContentTypeClassifier.swift; sourceTree = "<group>"; };
@@ -212,10 +204,6 @@
 		FB4EE8272E916AEA00B4AA4D /* FeedbackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackService.swift; sourceTree = "<group>"; };
 		FB5D39032E355791004B9D85 /* ImageMetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataService.swift; sourceTree = "<group>"; };
 		FB5D39052E35579D004B9D85 /* AccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityService.swift; sourceTree = "<group>"; };
-		FB748BE52E41615E00E6D948 /* ToolbarOverflowMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarOverflowMenu.swift; sourceTree = "<group>"; };
-		FB748BE72E41616900E6D948 /* ToolbarLayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarLayoutManager.swift; sourceTree = "<group>"; };
-		FB748BE92E41617A00E6D948 /* ToolbarButtonStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarButtonStyles.swift; sourceTree = "<group>"; };
-		FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInfoOverlayView.swift; sourceTree = "<group>"; };
 		FBA046072E36DBA8006F9C47 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		FBA046092E36DC34006F9C47 /* HelpContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpContent.swift; sourceTree = "<group>"; };
 		FBA5E0AA2E45ABA0009F3D00 /* WhatsNewContentProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewContentProvider.swift; sourceTree = "<group>"; };
@@ -354,7 +342,6 @@
 		A100000B /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				B20100000000000000000008 /* ImageInsightPanelView.swift */,
 				B3010000000000000000000A /* FilmstripView.swift */,
 				B3010000000000000000000C /* InspectorView.swift */,
 				B3010000000000000000000E /* StudioToolbar.swift */,
@@ -372,11 +359,7 @@
 				FB140FAD2E435B8F00A36AB6 /* SkeletonLoadingView.swift */,
 				FB140FAE2E435B8F00A36AB6 /* ThumbnailGridPreferencesView.swift */,
 				FB140FB42E435B9900A36AB6 /* EnhancedThumbnailGridView.swift */,
-				FB748BE52E41615E00E6D948 /* ToolbarOverflowMenu.swift */,
-				FB748BE92E41617A00E6D948 /* ToolbarButtonStyles.swift */,
-				FB9F40EB2E38708B005C2968 /* ImageInfoOverlayView.swift */,
 				FBA046072E36DBA8006F9C47 /* HelpView.swift */,
-				A1000092 /* NavigationControlsView.swift */,
 				A1000093 /* FolderSelectionView.swift */,
 				A100009C /* ErrorDialogView.swift */,
 				A100009D /* NotificationView.swift */,
@@ -411,7 +394,6 @@
 				FBA5E0AF2E45ABAE009F3D00 /* WhatsNewContent.swift */,
 				FBA5E0B22E45ABB6009F3D00 /* ThumbnailQuality.swift */,
 				FB140FAA2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift */,
-				FB748BE72E41616900E6D948 /* ToolbarLayoutManager.swift */,
 				FBA046092E36DC34006F9C47 /* HelpContent.swift */,
 				A100000F /* ImageFile.swift */,
 				A1000086 /* FolderContent.swift */,
@@ -622,7 +604,6 @@
 				B2010000000000000000000D /* ImagePerceptionService.swift in Sources */,
 				B201000000000000000000F1 /* ImageContentTypeClassifier.swift in Sources */,
 				B201000000000000000000A1 /* InsightOutputValidator.swift in Sources */,
-				B20100000000000000000007 /* ImageInsightPanelView.swift in Sources */,
 				FB231AB52E45B2B600763700 /* WhatsNewContentView.swift in Sources */,
 				FB231AB62E45B2B600763700 /* WhatsNewSectionView.swift in Sources */,
 				FB140FAB2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift in Sources */,
@@ -630,7 +611,6 @@
 				FBA0460A2E36DC34006F9C47 /* HelpContent.swift in Sources */,
 				A1000012 /* FolderScanner.swift in Sources */,
 				A1000014 /* ImageViewerViewModel.swift in Sources */,
-				FB748BE82E41616900E6D948 /* ToolbarLayoutManager.swift in Sources */,
 				A1000018 /* ImageLoaderService.swift in Sources */,
 				FB49A37E2E80D54000F77575 /* EnhancedAccessibilityService.swift in Sources */,
 				A100001A /* FileSystemService.swift in Sources */,
@@ -672,9 +652,7 @@
 				FB5D39042E355791004B9D85 /* ImageMetadataService.swift in Sources */,
 				FB49A3702E80D50800F77575 /* PreferencesEnums.swift in Sources */,
 				FBC4F84D2E35215F00AE62AA /* ErrorHandlingService.swift in Sources */,
-				A1000095 /* NavigationControlsView.swift in Sources */,
 				A1000096 /* FolderSelectionView.swift in Sources */,
-				FB748BE62E41615E00E6D948 /* ToolbarOverflowMenu.swift in Sources */,
 				FBA5E0BA2E45ABD5009F3D00 /* DesignTokens.swift in Sources */,
 				FBA5E0BB2E45ABD5009F3D00 /* HoverEffectModifier.swift in Sources */,
 				FBAA466B2E4E1B0D00666749 /* SecurityScopedBookmarkManager.swift in Sources */,
@@ -687,14 +665,12 @@
 				FBF3C8902E5FDC1600F10DC8 /* ValidationFeedbackView.swift in Sources */,
 				FBF3C8912E5FDC1600F10DC8 /* PreferencesTabView.swift in Sources */,
 				FBA5E0BF2E45ABD5009F3D00 /* Spacing+System.swift in Sources */,
-				FB748BEA2E41617A00E6D948 /* ToolbarButtonStyles.swift in Sources */,
 				A1000097 /* FolderSelectionViewModel.swift in Sources */,
 				A100009F /* ErrorDialogView.swift in Sources */,
 				FBA5E0B32E45ABB6009F3D00 /* ThumbnailQuality.swift in Sources */,
 				FBA5E0B02E45ABAE009F3D00 /* WhatsNewContent.swift in Sources */,
 				FBA5E0B12E45ABAE009F3D00 /* VersionTracker.swift in Sources */,
 				A10000A0 /* NotificationView.swift in Sources */,
-				FB9F40EC2E38708B005C2968 /* ImageInfoOverlayView.swift in Sources */,
 				FB2E7C8F2E556A31000525C4 /* PerformanceOptimizationService.swift in Sources */,
 				FB2E7C902E556A31000525C4 /* UnifiedErrorHandlingService.swift in Sources */,
 				FB2E7C912E556A31000525C4 /* MemoryManagementService.swift in Sources */,

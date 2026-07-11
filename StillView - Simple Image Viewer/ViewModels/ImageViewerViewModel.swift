@@ -18,7 +18,6 @@ class ImageViewerViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var showFileName: Bool = false
     @Published var shouldNavigateToFolderSelection: Bool = false
-    @Published var showImageInfo: Bool = false
     @Published var isSlideshow: Bool = false
     @Published var slideshowInterval: Double = 3.0
     @Published var viewMode: ViewMode = .single
@@ -35,7 +34,6 @@ class ImageViewerViewModel: ObservableObject {
     // AI Insights state
     @Published private(set) var isAIAnalysisEnabled: Bool = false
     @Published private(set) var isEnhancedProcessingEnabled: Bool = false
-    @Published private(set) var showAIInsights: Bool = false
     @Published private(set) var isAIInsightsAvailable: Bool = false
     @Published private(set) var imageInsightAvailability: ImageInsightAvailability = .unavailable(.unknown)
     let imageInsightViewModel: ImageInsightViewModel
@@ -115,14 +113,14 @@ class ImageViewerViewModel: ObservableObject {
         thumbnailCache.countLimit = 100
         thumbnailCache.totalCostLimit = 25 * 1024 * 1024 // 25MB
         
-        // Load preferences
+        // Load preferences. The "show image info" preference now means
+        // "open the inspector on the Info tab at launch".
         self.showFileName = preferencesService.showFileName
-        self.showImageInfo = preferencesService.showImageInfo
+        self.inspectorVisible = preferencesService.showImageInfo
         self.slideshowInterval = preferencesService.slideshowInterval
-        
+
         // Initialize AI Insights availability.
         updateAIInsightsAvailability()
-        showAIInsights = false
         
         // Set up preferences binding
         setupPreferencesBinding()
@@ -329,29 +327,6 @@ class ImageViewerViewModel: ObservableObject {
         isAIAnalysisEnabled && imageInsightAvailability.isAvailable && currentImageFile != nil
     }
     
-    /// Toggle the visibility of the AI Insights panel
-    func toggleAIInsights() {
-        guard isAIInsightsAvailable else { return }
-        showAIInsights.toggle()
-        if showAIInsights {
-            prepareImageInsightForCurrentImage()
-        } else {
-            cancelImageInsightGeneration()
-        }
-    }
-    
-    /// Restore AI Insights panel visibility state from saved session
-    /// - Parameter shouldShow: Whether to show the AI Insights panel
-    func restoreAIInsightsState(_ shouldShow: Bool) {
-        guard isAIInsightsAvailable else { return }
-        showAIInsights = shouldShow
-        if shouldShow {
-            prepareImageInsightForCurrentImage()
-        } else {
-            cancelImageInsightGeneration()
-        }
-    }
-    
     /// Check if AI Insights is supported by the system (independent of user preference)
     var isAIInsightsSupported: Bool {
         imageInsightAvailability.isUserVisible
@@ -364,9 +339,11 @@ class ImageViewerViewModel: ObservableObject {
         isAIInsightsAvailable = imageInsightAvailability.isUserVisible && userEnabledAI
         imageInsightViewModel.updateAvailability(imageInsightAvailability)
 
-        // Reset showAIInsights if AI Insights becomes unavailable
+        // Fall back to the Info tab if Insights becomes unavailable
         if !isAIInsightsAvailable {
-            showAIInsights = false
+            if inspectorTab == .insights {
+                inspectorTab = .info
+            }
             cancelImageInsightGeneration()
         }
         
@@ -390,15 +367,6 @@ class ImageViewerViewModel: ObservableObject {
             .dropFirst() // Skip initial value
             .sink { [weak self] newValue in
                 self?.preferencesService.showFileName = newValue
-                self?.preferencesService.savePreferences()
-            }
-            .store(in: &cancellables)
-        
-        // Update preferences when showImageInfo changes
-        $showImageInfo
-            .dropFirst() // Skip initial value
-            .sink { [weak self] newValue in
-                self?.preferencesService.showImageInfo = newValue
                 self?.preferencesService.savePreferences()
             }
             .store(in: &cancellables)
@@ -485,15 +453,12 @@ class ImageViewerViewModel: ObservableObject {
         guard isAIAnalysisEnabled != enabled else { return }
         
         isAIAnalysisEnabled = enabled
-        
-        // Update AI Insights availability based on new preference
+
+        // Update AI Insights availability based on new preference; it already
+        // falls back to the Info tab and cancels generation when disabled.
         updateAIInsightsAvailability()
-        
-        if !enabled {
-            // Reset showAIInsights state when AI Insights is disabled.
-            showAIInsights = false
-            cancelImageInsightGeneration()
-        } else {
+
+        if enabled {
             prepareImageInsightForCurrentImage()
         }
     }
@@ -502,20 +467,21 @@ class ImageViewerViewModel: ObservableObject {
     private func initializeAIInsightsForNewSession() {
         // Update availability for the new session
         updateAIInsightsAvailability()
-        
-        // Reset panel visibility to false for new sessions unless restored from saved state
-        // The WindowStateManager will restore the proper state if needed
+
+        // Leave the Insights tab only if the user doesn't want it remembered;
+        // WindowStateManager restores the proper state when persistence is on.
         if !preferencesService.rememberAIInsightsPanelState {
-            showAIInsights = false
-            Logger.info("AI Insights panel reset for new session (persistence disabled)")
+            if inspectorTab == .insights {
+                inspectorTab = .info
+            }
+            Logger.info("AI Insights tab reset for new session (persistence disabled)")
         } else {
-            Logger.info("AI Insights panel state will be restored from saved session if available")
+            Logger.info("Inspector state will be restored from saved session if available")
         }
     }
-    
+
     /// Reset AI Insights state when ending a session
     private func resetAIInsightsForSessionEnd() {
-        showAIInsights = false
         cancelImageInsightGeneration()
         Logger.info("AI Insights state reset for session end")
     }
@@ -798,7 +764,6 @@ class ImageViewerViewModel: ObservableObject {
         errorMessage = nil
         zoomLevel = 1.0
         isFullscreen = false
-        showImageInfo = false
         viewMode = .single
         inspectorVisible = false
         inspectorTab = .info
@@ -813,13 +778,6 @@ class ImageViewerViewModel: ObservableObject {
     /// Navigate back to folder selection
     func navigateToFolderSelection() {
         shouldNavigateToFolderSelection = true
-    }
-    
-    // MARK: - Image Info Methods
-    
-    /// Toggle the image info overlay
-    func toggleImageInfo() {
-        showImageInfo.toggle()
     }
     
     // MARK: - Slideshow Methods

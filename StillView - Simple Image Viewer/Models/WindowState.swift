@@ -122,17 +122,19 @@ struct WindowState: Codable {
         
         self.lastImageIndex = imageIndex
         
-        // Capture view model state
+        // Capture view model state. The legacy showImageInfo/showAIInsights
+        // fields persist the docked inspector (visible + active tab) so saved
+        // state round-trips with older app versions.
         if let viewModel = viewModel {
             self.zoomLevel = viewModel.zoomLevel
             self.showFileName = viewModel.showFileName
-            self.showImageInfo = viewModel.showImageInfo
+            self.showImageInfo = viewModel.inspectorVisible && viewModel.inspectorTab == .info
             self.viewMode = viewModel.viewMode.rawValue
             self.wasInSlideshow = viewModel.isSlideshow
             self.slideshowInterval = viewModel.slideshowInterval
-            self.showAIInsights = viewModel.showAIInsights
+            self.showAIInsights = viewModel.inspectorVisible && viewModel.inspectorTab == .insights
         }
-        
+
         self.lastSaved = Date()
     }
     
@@ -198,11 +200,11 @@ struct WindowState: Codable {
     mutating func updateUIState(from viewModel: ImageViewerViewModel) {
         self.zoomLevel = viewModel.zoomLevel
         self.showFileName = viewModel.showFileName
-        self.showImageInfo = viewModel.showImageInfo
+        self.showImageInfo = viewModel.inspectorVisible && viewModel.inspectorTab == .info
         self.viewMode = viewModel.viewMode.rawValue
         self.wasInSlideshow = viewModel.isSlideshow
         self.slideshowInterval = viewModel.slideshowInterval
-        self.showAIInsights = viewModel.showAIInsights
+        self.showAIInsights = viewModel.inspectorVisible && viewModel.inspectorTab == .insights
         self.lastSaved = Date()
     }
     
@@ -270,28 +272,29 @@ struct WindowState: Codable {
     func applyUIState(to viewModel: ImageViewerViewModel) {
         viewModel.zoomLevel = zoomLevel
         viewModel.showFileName = showFileName
-        viewModel.showImageInfo = showImageInfo
-        
+
         // Restore view mode
         if let mode = ViewMode(rawValue: viewMode) {
             viewModel.setViewMode(mode)
         }
-        
+
         viewModel.slideshowInterval = slideshowInterval
-        
-        // Restore AI Insights panel visibility if conditions are met
+
+        // Restore the inspector from the legacy showImageInfo/showAIInsights
+        // fields; the Insights tab additionally requires availability and the
+        // remember-panel-state preference.
         let preferencesService = DefaultPreferencesService()
-        if viewModel.isAIAnalysisEnabled && 
-           viewModel.isAIInsightsAvailable && 
+        if showAIInsights,
+           viewModel.isAIAnalysisEnabled,
+           viewModel.isAIInsightsAvailable,
            preferencesService.rememberAIInsightsPanelState {
-            viewModel.restoreAIInsightsState(showAIInsights)
-            Logger.info("Restored AI Insights panel state: \(showAIInsights)")
-        } else {
-            // Ensure panel starts hidden if conditions aren't met
-            viewModel.restoreAIInsightsState(false)
-            Logger.info("AI Insights panel state not restored - starting hidden")
+            viewModel.showInspector(tab: .insights)
+            Logger.info("Restored inspector on Insights tab")
+        } else if showImageInfo {
+            viewModel.showInspector(tab: .info)
+            Logger.info("Restored inspector on Info tab")
         }
-        
+
         // Note: We don't automatically restore slideshow state as it should be user-initiated
     }
     
