@@ -62,6 +62,7 @@
 		B30100000000000000000005 /* ViewerModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000004 /* ViewerModeTests.swift */; };
 		B30100000000000000000001 /* ViewerMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000002 /* ViewerMode.swift */; };
 		B3010000000000000000000B /* FilmstripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3010000000000000000000A /* FilmstripView.swift */; };
+		B3010000000000000000000D /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3010000000000000000000C /* InspectorView.swift */; };
 		B30100000000000000000007 /* ImageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39032E355791004B9D85 /* ImageMetadataService.swift */; };
 		B30100000000000000000009 /* ImageMetadataFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000008 /* ImageMetadataFormattingTests.swift */; };
 		B30100000000000000000003 /* ViewerMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000002 /* ViewerMode.swift */; };
@@ -181,6 +182,7 @@
 		B30100000000000000000004 /* ViewerModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerModeTests.swift; sourceTree = "<group>"; };
 		B30100000000000000000002 /* ViewerMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerMode.swift; sourceTree = "<group>"; };
 		B3010000000000000000000A /* FilmstripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmstripView.swift; sourceTree = "<group>"; };
+		B3010000000000000000000C /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
 		B30100000000000000000008 /* ImageMetadataFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataFormattingTests.swift; sourceTree = "<group>"; };
 		FB140FAA2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponsiveGridLayoutManager.swift; sourceTree = "<group>"; };
 		FB140FAC2E435B8F00A36AB6 /* ContextMenuProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextMenuProvider.swift; sourceTree = "<group>"; };
@@ -350,6 +352,7 @@
 			children = (
 				B20100000000000000000008 /* ImageInsightPanelView.swift */,
 				B3010000000000000000000A /* FilmstripView.swift */,
+				B3010000000000000000000C /* InspectorView.swift */,
 				FB49A3722E80D51E00F77575 /* EnhancedImageDisplayView.swift */,
 				FBF3C8882E5FDC1600F10DC8 /* KeyboardShortcutsHelpView.swift */,
 				FBF3C8892E5FDC1600F10DC8 /* PreferencesHelpTooltip.swift */,
@@ -694,6 +697,7 @@
 				A10000A8 /* SecurityScopedAccessManager.swift in Sources */,
 				B30100000000000000000001 /* ViewerMode.swift in Sources */,
 				B3010000000000000000000B /* FilmstripView.swift in Sources */,
+				B3010000000000000000000D /* InspectorView.swift in Sources */,
 				A10000B0 /* WindowState.swift in Sources */,
 				A10000B2 /* WindowStateManager.swift in Sources */,
 			);
