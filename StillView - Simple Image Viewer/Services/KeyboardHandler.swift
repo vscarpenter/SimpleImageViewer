@@ -27,6 +27,15 @@ class KeyboardHandler: ObservableObject {
     func handleKeyPress(_ event: NSEvent) -> Bool {
         guard let viewModel = imageViewerViewModel else { return false }
 
+        // Command shortcuts: only ⌘I is ours; everything else belongs to menus
+        if event.modifierFlags.contains(.command) {
+            if event.charactersIgnoringModifiers?.lowercased() == "i" {
+                viewModel.showInspector(tab: .insights)
+                return true
+            }
+            return false
+        }
+
         let keyCode = event.keyCode
 
         // Handle special keys first
@@ -68,7 +77,12 @@ class KeyboardHandler: ObservableObject {
             return handleEscapeKey(viewModel: viewModel)
 
         case 36: // Enter/Return
-            viewModel.toggleFullscreen()
+            if viewModel.viewMode == .grid {
+                // Open the grid selection in Single view
+                viewModel.setViewMode(.single)
+            } else {
+                viewModel.toggleFullscreen()
+            }
             return true
 
         case 49: // Spacebar
@@ -89,15 +103,13 @@ class KeyboardHandler: ObservableObject {
         if viewModel.isFullscreen {
             viewModel.exitFullscreen()
             return true
-        } else if viewModel.viewMode != .single {
-            // Exit thumbnail views back to normal view
-            viewModel.setViewMode(.single)
-            return true
-        } else {
-            // Return to folder selection
-            viewModel.navigateToFolderSelection()
-            return true
         }
+        // Esc steps out one level (grid/strip → single) and is always consumed:
+        // it never exits to folder selection — only Back/breadcrumb does (U9).
+        if let nextMode = viewModel.viewMode.afterEscape {
+            viewModel.setViewMode(nextMode)
+        }
+        return true
     }
 
     private func handleSpacebarKey(viewModel: ImageViewerViewModel) -> Bool {
@@ -147,7 +159,7 @@ class KeyboardHandler: ObservableObject {
             return true
 
         case "i":
-            viewModel.toggleImageInfo()
+            viewModel.toggleInspector()
             return true
 
         case "s":
@@ -180,16 +192,17 @@ class KeyboardHandler: ObservableObject {
             "Page Up/Down": "Navigate between images",
             "Home": "Go to first image",
             "End": "Go to last image",
-            "F / Enter": "Toggle fullscreen",
-            "Escape": "Exit fullscreen / Back to folder selection",
+            "F / Enter": "Toggle fullscreen (Enter opens selection in Grid)",
+            "Escape": "Step out one level (grid → single) / exit fullscreen",
             "+ / =": "Zoom in",
             "-": "Zoom out",
             "0": "Fit to window",
             "1": "Actual size (100%)",
-            "I": "Toggle image info overlay",
+            "I": "Toggle inspector",
+            "⌘I": "Show AI Insights",
             "S": "Start/stop slideshow",
             "G": "Toggle grid view",
-            "T": "Toggle thumbnail strip",
+            "T": "Toggle strip view",
             "B": "Back to folder selection",
             "Delete / Backspace": "Move image to Trash"
         ]
