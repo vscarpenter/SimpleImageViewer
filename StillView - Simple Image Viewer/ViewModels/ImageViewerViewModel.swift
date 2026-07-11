@@ -956,16 +956,11 @@ class ImageViewerViewModel: ObservableObject {
         }
     }
     
-    /// Get available sharing services for the current image
-    @available(macOS, deprecated: 13.0, message: "No replacement API exists for programmatic service enumeration")
-    var availableSharingServices: [NSSharingService] {
-        guard let currentImageFile = currentImageFile else { return [] }
-        return NSSharingService.sharingServices(forItems: [currentImageFile.url])
-    }
-    
-    /// Check if sharing is available for the current image
+    /// Check if sharing is available for the current image. Service
+    /// enumeration is deprecated with no replacement; the sharing picker
+    /// itself presents whatever services exist for the file.
     var canShareCurrentImage: Bool {
-        return currentImageFile != nil && !availableSharingServices.isEmpty
+        return currentImageFile != nil
     }
     
     // MARK: - Delete Methods

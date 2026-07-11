@@ -301,7 +301,7 @@ final class PerformanceOptimizationService: ObservableObject {
     private func startFrameMonitoring() {
         frameTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                await self?.frameUpdate()
+                self?.frameUpdate()
             }
         }
     }
