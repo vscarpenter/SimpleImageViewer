@@ -170,12 +170,67 @@ extension Color {
     
     /// Focus ring color for keyboard navigation
     static let appFocusRing = Color(NSColor.keyboardFocusIndicatorColor)
-    
+
     /// Disabled element color
     static let appDisabled = Color.adaptive(
         light: Color.gray.opacity(0.3),
         dark: Color.gray.opacity(0.5)
     )
+
+    // MARK: - Studio Workspace Tokens
+    // Dedicated stage/chrome/inspector colors from the Studio redesign. The stage
+    // must not fall back to windowBackgroundColor (design finding V2).
+
+    /// Canvas behind the photo
+    static let appStage = Color.adaptive(
+        light: Color(hex: "#DEDCD6"),
+        dark: Color(hex: "#161618")
+    )
+
+    /// Toolbar and filmstrip chrome
+    static let appChrome = Color.adaptive(
+        light: Color(hex: "#F4F3F1"),
+        dark: Color(hex: "#2B2B2D")
+    )
+
+    /// Inspector panel background
+    static let appInspector = Color.adaptive(
+        light: Color(hex: "#EFEEEC"),
+        dark: Color(hex: "#252527")
+    )
+
+    /// Hairline separators between chrome regions
+    static let appHairline = Color.adaptive(
+        light: Color.black.opacity(0.11),
+        dark: Color.black.opacity(0.55)
+    )
+
+    /// Segmented view-mode control container fill
+    static let appSegmentContainer = Color.adaptive(
+        light: Color.black.opacity(0.055),
+        dark: Color.white.opacity(0.07)
+    )
+
+    /// Segmented view-mode control active thumb
+    static let appSegmentThumb = Color.adaptive(
+        light: Color.white,
+        dark: Color(hex: "#57575B")
+    )
+
+    /// Stat tile fill (inspector exposure strip)
+    static let appTileFill = Color.adaptive(
+        light: Color.black.opacity(0.05),
+        dark: Color.white.opacity(0.055)
+    )
+
+    /// Pill fill (zoom pill, tag capsules)
+    static let appPillFill = Color.adaptive(
+        light: Color.black.opacity(0.055),
+        dark: Color.white.opacity(0.07)
+    )
+
+    /// Warm Apple Intelligence attribution tint
+    static let appAITint = Color(hex: "#B8730F")
 }
 
 // MARK: - Color Scheme Detection

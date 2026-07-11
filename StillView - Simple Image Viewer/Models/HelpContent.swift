@@ -169,9 +169,15 @@ extension HelpSection {
                 type: .shortcut
             ),
             HelpContentItem(
-                title: "Show Image Info",
-                description: "Toggle image metadata and EXIF information overlay",
+                title: "Toggle Inspector",
+                description: "Show/hide the Info & Insights inspector panel",
                 shortcut: "I",
+                type: .shortcut
+            ),
+            HelpContentItem(
+                title: "Show AI Insights",
+                description: "Open the inspector on the Insights tab",
+                shortcut: "⌘I",
                 type: .shortcut
             ),
             HelpContentItem(
@@ -181,14 +187,14 @@ extension HelpSection {
                 type: .shortcut
             ),
             HelpContentItem(
-                title: "Thumbnail Strip",
-                description: "Show/hide horizontal thumbnail strip at bottom",
+                title: "Strip View",
+                description: "Show the docked filmstrip view",
                 shortcut: "T",
                 type: .shortcut
             ),
             HelpContentItem(
                 title: "Grid View",
-                description: "Open full-screen thumbnail grid for quick navigation",
+                description: "Browse all images in a grid; Esc or Enter returns to Single",
                 shortcut: "G",
                 type: .shortcut
             ),
@@ -201,7 +207,7 @@ extension HelpSection {
             HelpContentItem(
                 title: "Back to Folder Selection",
                 description: "Return to folder selection screen",
-                shortcut: "Escape or B",
+                shortcut: "B",
                 type: .shortcut
             ),
             HelpContentItem(
@@ -293,7 +299,7 @@ extension HelpSection {
         items: [
             HelpContentItem(
                 title: "Thumbnail Strip",
-                description: "Press 'T' or click the strip button in the center toolbar section to show a horizontal thumbnail strip at the bottom. Perfect for quick previews while maintaining focus on the main image.",
+                description: "Press 'T' or use the Strip segment in the toolbar. The docked filmstrip at the bottom gives quick previews while keeping focus on the main image.",
                 shortcut: "T",
                 type: .information
             ),
@@ -315,7 +321,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Grid View Controls",
-                description: "In grid view, use Escape to return to normal view, or click the grid button again in the toolbar. The grid shows image numbers, filenames, and file sizes for easy identification.",
+                description: "In grid view, click a tile to select it (the inspector follows), and double-click or press Enter to open it in Single view. Escape steps back to Single. Use the toolbar's density slider and sort menu to adjust the grid.",
                 type: .information
             ),
             HelpContentItem(

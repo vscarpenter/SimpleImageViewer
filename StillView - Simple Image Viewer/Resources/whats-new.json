@@ -1,44 +1,29 @@
 {
-  "version": "4.1.0",
-  "releaseDate": "2026-05-17T00:00:00Z",
+  "version": "4.3.0",
+  "releaseDate": "2026-07-11T18:00:00Z",
   "sections": [
     {
       "title": "New Features",
       "type": "newFeatures",
       "items": [
         {
-          "title": "AI Insights with Apple Intelligence (macOS 26+)",
-          "description": "Generate concise, visually-grounded image notes with Apple's on-device Foundation Models framework. Insights describe what the image actually shows, not just camera or file metadata.",
+          "title": "A New Studio Layout",
+          "description": "The viewer is rebuilt around one flat toolbar with a Single, Strip, and Grid switcher. Every control now has a permanent home.",
           "isHighlighted": true
         },
         {
-          "title": "Simple Inspector Workflow",
-          "description": "Open the AI Insights panel and choose Generate Insight for the current image. Results include a short summary, useful details, tags, and clear limitations.",
+          "title": "Info & Insights Inspector",
+          "description": "A docked panel shows filename, dimensions, exposure settings, dates, and location. Text is selectable, and clicking a row copies its value. AI Insights lives in the second tab.",
           "isHighlighted": true
         },
         {
-          "title": "Privacy-First AI",
-          "description": "Images, metadata, prompts, generated text, and results stay on this Mac. StillView does not add network AI APIs, telemetry, analytics, or bundled Core ML models for AI Insights.",
+          "title": "Grid View, Docked",
+          "description": "The grid now lives inside the window instead of covering it. Adjust thumbnail size with the density slider and sort by name, date, or size.",
           "isHighlighted": true
         },
         {
-          "title": "Comprehensive Preferences System",
-          "description": "Complete preferences interface with tabbed navigation for General settings, Appearance customization, and Keyboard shortcuts management. Features live previews and comprehensive validation.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Advanced Keyboard Shortcuts",
-          "description": "Fully customizable keyboard shortcuts with conflict detection, import/export functionality, and comprehensive help documentation. Record new shortcuts with intuitive interface.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Enhanced Appearance Controls",
-          "description": "Fine-tune the app's visual appearance with glassmorphism effects, animation intensity controls, hover effects, and toolbar style options.",
-          "isHighlighted": false
-        },
-        {
-          "title": "What's New Feature",
-          "description": "Stay informed about new features and improvements with automatic update notifications and on-demand access through the Help menu.",
+          "title": "One Zoom Control",
+          "description": "A single zoom pill replaces five buttons. Pick a preset from its menu, or double-click the photo to jump between Fit and 100%.",
           "isHighlighted": false
         }
       ]
@@ -48,58 +33,23 @@
       "type": "improvements",
       "items": [
         {
-          "title": "Vision-Grounded Insights",
-          "description": "On-device Apple Vision perception now runs before each insight is generated. Detected scene classifications, OCR text, faces, and saliency become primary evidence in the prompt — camera and EXIF data are clearly marked as context only, never as the subject.",
+          "title": "A Proper Stage for Photos",
+          "description": "Images sit on a dedicated darker canvas instead of the window background. Light mode adds a soft cast shadow.",
           "isHighlighted": true
         },
         {
-          "title": "Smaller, More Honest AI Results",
-          "description": "The old AI analysis pipeline has been replaced with a focused Apple Intelligence service that uses local visual signals and metadata, and avoids unsupported claims about image contents.",
-          "isHighlighted": true
-        },
-        {
-          "title": "Clear Availability Messages",
-          "description": "StillView now explains when AI Insights are unavailable because of macOS version, Apple Intelligence compatibility, disabled settings, model readiness, or missing image input.",
-          "isHighlighted": true
-        },
-        {
-          "title": "Removed Legacy AI Pipeline",
-          "description": "Removed custom Core ML model loading, ResNet classification, heuristic scoring, caption generation, smart AI tags, and result-merging logic from AI Insights.",
-          "isHighlighted": true
-        },
-        {
-          "title": "Improved Dark Mode Interface",
-          "description": "Lighter, more pleasant background colors in preferences and throughout the app for better visibility and reduced eye strain.",
+          "title": "A Calmer Escape Key",
+          "description": "Escape steps back one level, from grid to single. It never exits your folder; press B for that.",
           "isHighlighted": false
         },
         {
-          "title": "Enhanced User Experience",
-          "description": "Comprehensive validation system with real-time feedback, smooth animations, and intuitive interface design throughout preferences.",
+          "title": "Cleaner Thumbnails",
+          "description": "Index badges are gone. The selected image is marked with an accent ring, nothing else.",
           "isHighlighted": false
         },
         {
-          "title": "Enhanced Accessibility Support",
-          "description": "Comprehensive accessibility improvements including high contrast mode compatibility and detailed accessibility hints for interactive elements.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Keyboard Shortcuts",
-          "description": "New and refined keyboard shortcuts for navigation, zooming, fullscreen, grid view, and slideshow controls.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Faster Image Loading",
-          "description": "Optimized image loading pipeline reduces wait times and improves responsiveness.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Better Memory Management",
-          "description": "Enhanced memory handling prevents crashes when viewing large image collections.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Dark Mode Enhancements",
-          "description": "Refined dark mode appearance with better contrast and visual hierarchy.",
+          "title": "Bigger Default Window",
+          "description": "New windows open at 1180 by 740 points, sized for the new layout.",
           "isHighlighted": false
         }
       ]
@@ -108,20 +58,9 @@
       "title": "Bug Fixes",
       "type": "bugFixes",
       "items": [
-        
         {
-          "title": "Fixed Thumbnail Generation",
-          "description": "Resolved issues with thumbnail generation for certain image formats.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Window State Persistence",
-          "description": "Fixed window size and position not being remembered between app launches.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Keyboard Navigation",
-          "description": "Corrected keyboard shortcuts not working in certain UI states and improved accessibility announcements.",
+          "title": "Keyboard Shortcuts Stay Responsive",
+          "description": "Shortcuts no longer stop working after you interact with panels and controls.",
           "isHighlighted": false
         }
       ]

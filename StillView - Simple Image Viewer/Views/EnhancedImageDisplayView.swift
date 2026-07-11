@@ -10,6 +10,8 @@ struct EnhancedImageDisplayView: View {
     @State private var magnification: CGFloat = 1.0
     @State private var isProcessing: Bool = false
     @State private var processingProgress: Double = 0.0
+
+    @Environment(\.colorScheme) private var colorScheme
     
     // MARK: - Body
     
@@ -70,15 +72,30 @@ struct EnhancedImageDisplayView: View {
     
     @ViewBuilder
     private var backgroundView: some View {
-        Color(NSColor.windowBackgroundColor)
+        // Dedicated stage color — never windowBackgroundColor (finding V2)
+        Color.appStage
             .ignoresSafeArea()
     }
-    
+
     @ViewBuilder
     private func imageContent(_ image: NSImage, geometry: GeometryProxy) -> some View {
         Image(nsImage: image)
             .resizable()
             .aspectRatio(contentMode: .fit)
+            // Photos on the light stage get a cast shadow (Studio Screen 2)
+            .shadow(
+                color: colorScheme == .dark
+                    ? .clear
+                    : Color(.sRGB, red: 60 / 255, green: 70 / 255, blue: 90 / 255, opacity: 0.35),
+                radius: 25, x: 0, y: 9
+            )
+            .shadow(
+                color: colorScheme == .dark ? .clear : .black.opacity(0.12),
+                radius: 6, x: 0, y: 1.5
+            )
+            // Stage insets: ≥28 pt sides, 24 pt top/bottom at fit
+            .padding(.horizontal, 28)
+            .padding(.vertical, 24)
             .scaleEffect(viewModel.zoomLevel == -1.0 ? 1.0 : viewModel.zoomLevel)
             .offset(dragOffset)
             .clipped()

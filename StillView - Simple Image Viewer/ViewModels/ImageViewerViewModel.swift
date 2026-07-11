@@ -3,35 +3,6 @@ import SwiftUI
 import Combine
 import AppKit
 
-/// View modes for the image viewer
-enum ViewMode: String, CaseIterable {
-    case normal = "normal"
-    case thumbnailStrip = "thumbnailStrip"
-    case grid = "grid"
-    
-    var displayName: String {
-        switch self {
-        case .normal:
-            return "Normal View"
-        case .thumbnailStrip:
-            return "Thumbnail Strip"
-        case .grid:
-            return "Grid View"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .normal:
-            return "photo"
-        case .thumbnailStrip:
-            return "rectangle.grid.1x2"
-        case .grid:
-            return "square.grid.3x3"
-        }
-    }
-}
-
 /// ViewModel for the main image viewer interface
 @MainActor
 class ImageViewerViewModel: ObservableObject {
@@ -47,15 +18,22 @@ class ImageViewerViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var showFileName: Bool = false
     @Published var shouldNavigateToFolderSelection: Bool = false
-    @Published var showImageInfo: Bool = false
     @Published var isSlideshow: Bool = false
     @Published var slideshowInterval: Double = 3.0
-    @Published var viewMode: ViewMode = .normal
+    @Published var viewMode: ViewMode = .single
+
+    // Inspector state (Studio redesign): one docked panel, one active tab.
+    @Published var inspectorVisible: Bool = false
+    @Published var inspectorTab: InspectorTab = .info
+
+    // Grid toolbar state (Studio redesign, finding U10)
+    @Published var sortOrder: ImageSortOrder = .name
+    /// Minimum grid tile width in points, driven by the toolbar density slider
+    @Published var gridDensity: Double = 160
 
     // AI Insights state
     @Published private(set) var isAIAnalysisEnabled: Bool = false
     @Published private(set) var isEnhancedProcessingEnabled: Bool = false
-    @Published private(set) var showAIInsights: Bool = false
     @Published private(set) var isAIInsightsAvailable: Bool = false
     @Published private(set) var imageInsightAvailability: ImageInsightAvailability = .unavailable(.unknown)
     let imageInsightViewModel: ImageInsightViewModel
@@ -87,6 +65,15 @@ class ImageViewerViewModel: ObservableObject {
     
     var allImageFiles: [ImageFile] {
         return imageFiles
+    }
+
+    var currentFolderURL: URL? {
+        return folderContent?.folderURL
+    }
+
+    /// Folder name shown in the toolbar breadcrumb
+    var currentFolderName: String {
+        return currentFolderURL?.lastPathComponent ?? "Photos"
     }
 
     // MARK: - Private Properties
@@ -126,14 +113,14 @@ class ImageViewerViewModel: ObservableObject {
         thumbnailCache.countLimit = 100
         thumbnailCache.totalCostLimit = 25 * 1024 * 1024 // 25MB
         
-        // Load preferences
+        // Load preferences. The "show image info" preference now means
+        // "open the inspector on the Info tab at launch".
         self.showFileName = preferencesService.showFileName
-        self.showImageInfo = preferencesService.showImageInfo
+        self.inspectorVisible = preferencesService.showImageInfo
         self.slideshowInterval = preferencesService.slideshowInterval
-        
+
         // Initialize AI Insights availability.
         updateAIInsightsAvailability()
-        showAIInsights = false
         
         // Set up preferences binding
         setupPreferencesBinding()
@@ -340,29 +327,6 @@ class ImageViewerViewModel: ObservableObject {
         isAIAnalysisEnabled && imageInsightAvailability.isAvailable && currentImageFile != nil
     }
     
-    /// Toggle the visibility of the AI Insights panel
-    func toggleAIInsights() {
-        guard isAIInsightsAvailable else { return }
-        showAIInsights.toggle()
-        if showAIInsights {
-            prepareImageInsightForCurrentImage()
-        } else {
-            cancelImageInsightGeneration()
-        }
-    }
-    
-    /// Restore AI Insights panel visibility state from saved session
-    /// - Parameter shouldShow: Whether to show the AI Insights panel
-    func restoreAIInsightsState(_ shouldShow: Bool) {
-        guard isAIInsightsAvailable else { return }
-        showAIInsights = shouldShow
-        if shouldShow {
-            prepareImageInsightForCurrentImage()
-        } else {
-            cancelImageInsightGeneration()
-        }
-    }
-    
     /// Check if AI Insights is supported by the system (independent of user preference)
     var isAIInsightsSupported: Bool {
         imageInsightAvailability.isUserVisible
@@ -375,9 +339,11 @@ class ImageViewerViewModel: ObservableObject {
         isAIInsightsAvailable = imageInsightAvailability.isUserVisible && userEnabledAI
         imageInsightViewModel.updateAvailability(imageInsightAvailability)
 
-        // Reset showAIInsights if AI Insights becomes unavailable
+        // Fall back to the Info tab if Insights becomes unavailable
         if !isAIInsightsAvailable {
-            showAIInsights = false
+            if inspectorTab == .insights {
+                inspectorTab = .info
+            }
             cancelImageInsightGeneration()
         }
         
@@ -401,15 +367,6 @@ class ImageViewerViewModel: ObservableObject {
             .dropFirst() // Skip initial value
             .sink { [weak self] newValue in
                 self?.preferencesService.showFileName = newValue
-                self?.preferencesService.savePreferences()
-            }
-            .store(in: &cancellables)
-        
-        // Update preferences when showImageInfo changes
-        $showImageInfo
-            .dropFirst() // Skip initial value
-            .sink { [weak self] newValue in
-                self?.preferencesService.showImageInfo = newValue
                 self?.preferencesService.savePreferences()
             }
             .store(in: &cancellables)
@@ -496,15 +453,12 @@ class ImageViewerViewModel: ObservableObject {
         guard isAIAnalysisEnabled != enabled else { return }
         
         isAIAnalysisEnabled = enabled
-        
-        // Update AI Insights availability based on new preference
+
+        // Update AI Insights availability based on new preference; it already
+        // falls back to the Info tab and cancels generation when disabled.
         updateAIInsightsAvailability()
-        
-        if !enabled {
-            // Reset showAIInsights state when AI Insights is disabled.
-            showAIInsights = false
-            cancelImageInsightGeneration()
-        } else {
+
+        if enabled {
             prepareImageInsightForCurrentImage()
         }
     }
@@ -513,20 +467,21 @@ class ImageViewerViewModel: ObservableObject {
     private func initializeAIInsightsForNewSession() {
         // Update availability for the new session
         updateAIInsightsAvailability()
-        
-        // Reset panel visibility to false for new sessions unless restored from saved state
-        // The WindowStateManager will restore the proper state if needed
+
+        // Leave the Insights tab only if the user doesn't want it remembered;
+        // WindowStateManager restores the proper state when persistence is on.
         if !preferencesService.rememberAIInsightsPanelState {
-            showAIInsights = false
-            Logger.info("AI Insights panel reset for new session (persistence disabled)")
+            if inspectorTab == .insights {
+                inspectorTab = .info
+            }
+            Logger.info("AI Insights tab reset for new session (persistence disabled)")
         } else {
-            Logger.info("AI Insights panel state will be restored from saved session if available")
+            Logger.info("Inspector state will be restored from saved session if available")
         }
     }
-    
+
     /// Reset AI Insights state when ending a session
     private func resetAIInsightsForSessionEnd() {
-        showAIInsights = false
         cancelImageInsightGeneration()
         Logger.info("AI Insights state reset for session end")
     }
@@ -809,8 +764,9 @@ class ImageViewerViewModel: ObservableObject {
         errorMessage = nil
         zoomLevel = 1.0
         isFullscreen = false
-        showImageInfo = false
-        viewMode = .normal
+        viewMode = .single
+        inspectorVisible = false
+        inspectorTab = .info
         
         // Reset AI Insights state
         resetAIInsightsForSessionEnd()
@@ -822,13 +778,6 @@ class ImageViewerViewModel: ObservableObject {
     /// Navigate back to folder selection
     func navigateToFolderSelection() {
         shouldNavigateToFolderSelection = true
-    }
-    
-    // MARK: - Image Info Methods
-    
-    /// Toggle the image info overlay
-    func toggleImageInfo() {
-        showImageInfo.toggle()
     }
     
     // MARK: - Slideshow Methods
@@ -895,46 +844,82 @@ class ImageViewerViewModel: ObservableObject {
     }
     
     // MARK: - View Mode Methods
-    
-    /// Toggle between normal and grid view
+
+    /// Toggle between single and grid view (G key)
     func toggleGridView() {
-        switch viewMode {
-        case .normal, .thumbnailStrip:
-            viewMode = .grid
-        case .grid:
-            viewMode = .normal
-        }
+        viewMode = viewMode.togglingGrid()
     }
-    
-    /// Toggle thumbnail strip visibility
+
+    /// Toggle between single and strip view (T key)
     func toggleThumbnailStrip() {
-        switch viewMode {
-        case .normal, .grid:
-            viewMode = .thumbnailStrip
-        case .thumbnailStrip:
-            viewMode = .normal
-        }
+        viewMode = viewMode.togglingStrip()
     }
-    
+
     /// Set specific view mode
     /// - Parameter mode: The view mode to set
     func setViewMode(_ mode: ViewMode) {
         viewMode = mode
     }
-    
-    /// Jump to specific image from thumbnail selection
+
+    /// Re-sort the image list, keeping the currently displayed file selected.
+    /// - Parameter order: The sort order chosen in the grid toolbar
+    func applySortOrder(_ order: ImageSortOrder) {
+        sortOrder = order
+        guard !imageFiles.isEmpty else { return }
+
+        let currentURL = currentImageFile?.url
+        imageFiles.sort { order.areInIncreasingOrder($0, $1) }
+
+        if let currentURL,
+           let newIndex = imageFiles.firstIndex(where: { $0.url == currentURL }) {
+            currentIndex = newIndex
+        }
+    }
+
+    /// Jump to specific image from thumbnail selection.
+    /// In grid mode this only moves the selection (the inspector follows);
+    /// opening the image in Single is an explicit action (double-click/Return).
     /// - Parameter index: The index of the image to jump to
     func jumpToImage(at index: Int) {
         guard index >= 0 && index < totalImages else { return }
-        
+
         currentIndex = index
-        
+
         // Load the image
         loadCurrentImage()
-        
-        // Close grid view after selection
-        if viewMode == .grid {
-            viewMode = .normal
+    }
+
+    // MARK: - Inspector Methods
+
+    /// I key / sidebar button: toggle the inspector (keeps the current tab).
+    func toggleInspector() {
+        inspectorVisible.toggle()
+        syncInsightLifecycleWithInspector()
+    }
+
+    /// Cmd+I / Insights entry points: open the inspector on a specific tab.
+    /// - Parameter tab: The tab to show
+    func showInspector(tab: InspectorTab) {
+        inspectorTab = tab
+        inspectorVisible = true
+        syncInsightLifecycleWithInspector()
+    }
+
+    /// Select a tab in the already-visible inspector (tab bar clicks).
+    /// - Parameter tab: The tab to select
+    func selectInspectorTab(_ tab: InspectorTab) {
+        inspectorTab = tab
+        syncInsightLifecycleWithInspector()
+    }
+
+    /// Prepare insight input while the Insights tab is visible; cancel any
+    /// in-flight generation the moment it no longer is (panel closed or the
+    /// user switched to Info).
+    private func syncInsightLifecycleWithInspector() {
+        if inspectorVisible && inspectorTab == .insights {
+            prepareImageInsightForCurrentImage()
+        } else {
+            cancelImageInsightGeneration()
         }
     }
     
@@ -971,16 +956,11 @@ class ImageViewerViewModel: ObservableObject {
         }
     }
     
-    /// Get available sharing services for the current image
-    @available(macOS, deprecated: 13.0, message: "No replacement API exists for programmatic service enumeration")
-    var availableSharingServices: [NSSharingService] {
-        guard let currentImageFile = currentImageFile else { return [] }
-        return NSSharingService.sharingServices(forItems: [currentImageFile.url])
-    }
-    
-    /// Check if sharing is available for the current image
+    /// Check if sharing is available for the current image. Service
+    /// enumeration is deprecated with no replacement; the sharing picker
+    /// itself presents whatever services exist for the file.
     var canShareCurrentImage: Bool {
-        return currentImageFile != nil && !availableSharingServices.isEmpty
+        return currentImageFile != nil
     }
     
     // MARK: - Delete Methods
@@ -1135,6 +1115,25 @@ private class SharingDelegate: NSObject, NSSharingServiceDelegate {
                 "Image shared successfully",
                 type: .success
             )
+        }
+    }
+}
+
+// MARK: - Sort Comparators
+
+extension ImageSortOrder {
+    /// Comparator over ImageFile. "Date Captured" uses the file creation date —
+    /// scanning EXIF for a whole folder just to sort would be too costly.
+    func areInIncreasingOrder(_ lhs: ImageFile, _ rhs: ImageFile) -> Bool {
+        switch self {
+        case .name:
+            return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+        case .dateCaptured:
+            return lhs.creationDate < rhs.creationDate
+        case .dateModified:
+            return lhs.modificationDate < rhs.modificationDate
+        case .size:
+            return lhs.size > rhs.size
         }
     }
 }

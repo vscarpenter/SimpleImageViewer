@@ -71,6 +71,11 @@ struct SimpleImageViewerApp: App {
                     }
                 }
         }
+        // Studio redesign: the unified toolbar owns the title-bar region;
+        // traffic lights render inline over it. Default frame matches the
+        // design reference window.
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1180, height: 740)
         .windowResizability(.contentSize)
         .commands {
             #if DEBUG

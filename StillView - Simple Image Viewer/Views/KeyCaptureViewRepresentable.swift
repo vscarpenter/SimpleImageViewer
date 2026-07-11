@@ -16,51 +16,58 @@ struct KeyCaptureViewRepresentable: NSViewRepresentable {
     }
 }
 
-/// An NSView that captures keyboard events and forwards them to the KeyboardHandler
+/// An NSView that captures keyboard events and forwards them to the KeyboardHandler.
+///
+/// Uses a local NSEvent monitor instead of first-responder keyDown: SwiftUI
+/// hierarchy changes (inspector tabs, mode swaps) routinely move first
+/// responder, which silently killed shortcuts. The monitor sees every key
+/// event in this window regardless of focus, and passes through events for
+/// other windows (sheets, preferences) and active text editing.
 class KeyCaptureView: NSView {
     var keyHandler: KeyboardHandler?
-    
-    override var acceptsFirstResponder: Bool {
-        return true
-    }
-    
-    override func becomeFirstResponder() -> Bool {
-        return true
-    }
-    
-    override func keyDown(with event: NSEvent) {
-        guard let keyHandler = keyHandler else {
-            super.keyDown(with: event)
-            return
-        }
-        
-        // Let the keyboard handler process the event
-        if keyHandler.handleKeyPress(event) {
-            // Event was handled, don't pass it up the responder chain
-            return
-        }
-        
-        // Event wasn't handled, pass it up the responder chain
-        super.keyDown(with: event)
-    }
-    
-    override func flagsChanged(with event: NSEvent) {
-        guard keyHandler != nil else {
-            super.flagsChanged(with: event)
-            return
-        }
-        
-        // Handle modifier key changes if needed
-        // KeyboardHandler doesn't have a handleFlagsChanged method, so we skip this
-        super.flagsChanged(with: event)
-    }
-    
+
+    private var keyMonitor: Any?
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        
-        // Ensure this view can become first responder when added to window
-        DispatchQueue.main.async {
-            self.window?.makeFirstResponder(self)
+
+        if window != nil {
+            installMonitorIfNeeded()
+        } else {
+            removeMonitor()
+        }
+    }
+
+    deinit {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+    }
+
+    private func installMonitorIfNeeded() {
+        guard keyMonitor == nil else { return }
+
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, let keyHandler = self.keyHandler else { return event }
+
+            // Only the window hosting the viewer — not sheets or preferences
+            guard event.window === self.window else { return event }
+
+            // Never steal keys from active text editing
+            if let responder = self.window?.firstResponder,
+               responder is NSTextView || responder is NSTextField {
+                return event
+            }
+
+            // nil = consumed; otherwise let the event continue
+            return keyHandler.handleKeyPress(event) ? nil : event
+        }
+    }
+
+    private func removeMonitor() {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
         }
     }
 }

@@ -7,6 +7,12 @@ struct ContentView: View {
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
     @State private var showImageViewer = false
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // Stage hover-arrow visibility (fade in on pointer move, out after ~3 s idle)
+    @State private var stageArrowsVisible = false
+    @State private var stageArrowsHideTask: Task<Void, Never>?
+
     // MARK: - Body
     var body: some View {
         mainContent
@@ -43,6 +49,8 @@ struct ContentView: View {
             ZStack {
                 if showImageViewer && imageViewerViewModel.totalImages > 0 {
                     imageViewerInterface(geometry: geometry)
+                        // Toolbar owns the (hidden) title-bar region
+                        .ignoresSafeArea(edges: .top)
                 } else {
                     folderSelectionInterface
                 }
@@ -53,73 +61,52 @@ struct ContentView: View {
     
     @ViewBuilder
     private func imageViewerInterface(geometry: GeometryProxy) -> some View {
-        HStack(spacing: 0) {
-            // Main image viewer area
-            ZStack {
-                // Calculate available width for image viewer
-                let availableWidth = imageViewerViewModel.isAIInsightsAvailable && imageViewerViewModel.showAIInsights
-                    ? geometry.size.width - 360 // 320 panel width + 40 padding
-                    : geometry.size.width
-                
-                EnhancedImageDisplayView(viewModel: imageViewerViewModel)
-                    .frame(width: availableWidth, height: geometry.size.height)
-                
-                NavigationControlsView(viewModel: imageViewerViewModel, onExit: {
-                    showImageViewer = false
-                })
-                .frame(width: availableWidth, height: geometry.size.height)
-                
-                // Thumbnail Strip (when in thumbnail strip mode)
-                if imageViewerViewModel.viewMode == .thumbnailStrip {
-                    VStack {
-                        Spacer()
-                        ThumbnailStripView(viewModel: imageViewerViewModel)
-                    }
-                    .allowsHitTesting(true)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.viewMode)
-                }
-                
-                // Grid Overlay (when in grid mode)
-                if imageViewerViewModel.viewMode == .grid {
-                    Color.black.opacity(0.8)
-                        .ignoresSafeArea()
-                        .overlay(
-                            ThumbnailGridView(viewModel: imageViewerViewModel)
-                        )
-                        .allowsHitTesting(true)
-                        .transition(.opacity)
-                        .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.viewMode)
-                }
-                
-                // Image Info Overlay
-                if imageViewerViewModel.showImageInfo,
-                   let currentImageFile = imageViewerViewModel.currentImageFile {
-                    VStack {
-                        HStack {
-                            ImageInfoOverlayView(
-                                imageFile: currentImageFile,
-                                currentImage: imageViewerViewModel.currentImage
+        // Studio workspace: full-width toolbar on top (per the mocks — the
+        // inspector docks below it), then stage (or grid) + filmstrip with the
+        // inspector on the right. The stage only resizes as the single
+        // inspector open/close animation (finding U4).
+        VStack(spacing: 0) {
+            StudioToolbar(viewModel: imageViewerViewModel)
+
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    if imageViewerViewModel.viewMode == .grid {
+                        GridPane(viewModel: imageViewerViewModel)
+                    } else {
+                        ZStack {
+                            EnhancedImageDisplayView(viewModel: imageViewerViewModel)
+                                .onContinuousHover { phase in
+                                    switch phase {
+                                    case .active:
+                                        stageArrowsVisible = true
+                                        scheduleStageArrowsHide()
+                                    case .ended:
+                                        stageArrowsVisible = false
+                                        stageArrowsHideTask?.cancel()
+                                    }
+                                }
+                            StageHoverArrows(
+                                viewModel: imageViewerViewModel,
+                                isVisible: stageArrowsVisible
                             )
-                            Spacer()
                         }
-                        Spacer()
+
+                        if imageViewerViewModel.viewMode.showsFilmstrip {
+                            FilmstripView(viewModel: imageViewerViewModel)
+                        }
                     }
-                    .padding(.top, 20)
-                    .padding(.leading, 20)
-                    .allowsHitTesting(false)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.showImageInfo)
+                }
+                .frame(maxWidth: .infinity)
+
+                if imageViewerViewModel.inspectorVisible {
+                    InspectorView(viewModel: imageViewerViewModel)
+                        .transition(.move(edge: .trailing))
                 }
             }
-            .animation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0), 
-                      value: imageViewerViewModel.showAIInsights)
-            
-            // AI Insights Panel (when available and toggled on)
-            if imageViewerViewModel.isAIInsightsAvailable,
-               imageViewerViewModel.showAIInsights {
-                aiInsightsPanel(geometry: geometry)
-            }
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 0.3),
+                value: imageViewerViewModel.inspectorVisible
+            )
         }
     }
     
@@ -256,27 +243,17 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
-    private func aiInsightsPanel(geometry: GeometryProxy) -> some View {
-        // AI Insights inspector panel
-        ImageInsightPanelView(viewModel: imageViewerViewModel)
-            .frame(width: 320, height: geometry.size.height - 40)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.15), radius: 12, x: -2, y: 0)
-            .padding(.top, 20)
-            .padding(.trailing, 20)
-            .padding(.bottom, 20)
-            .transition(.asymmetric(
-                insertion: .move(edge: .trailing).combined(with: .opacity),
-                removal: .move(edge: .trailing).combined(with: .opacity)
-            ))
-            .allowsHitTesting(true)
-            .accessibilityLabel("AI Insights Inspector")
-            .accessibilityHint("Inspector panel showing AI-powered analysis of the current image")
-    }
-    
     // MARK: - Private Methods
-    
+
+    private func scheduleStageArrowsHide() {
+        stageArrowsHideTask?.cancel()
+        stageArrowsHideTask = Task {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            stageArrowsVisible = false
+        }
+    }
+
     private func setupApplication() {
         restoreApplicationState()
         setupWindowStateManager()
@@ -368,449 +345,55 @@ extension Notification.Name {
     static let folderSelected = Notification.Name("folderSelected")
 }
 
+// MARK: - Stage Hover Arrows
 
-// MARK: - Thumbnail Views
-
-/// Horizontal thumbnail strip for quick image navigation
-struct ThumbnailStripView: View {
+/// Prev/next arrows shown over the stage while the pointer is active (Studio
+/// redesign). Purely presentational — hover tracking lives on the stage view
+/// so this overlay never intercepts stage gestures. The far-side arrow — the
+/// direction you can't navigate — idles at 35 % opacity.
+private struct StageHoverArrows: View {
     @ObservedObject var viewModel: ImageViewerViewModel
-    
-    // MARK: - Properties
-    private let thumbnailSize: CGSize = CGSize(width: 80, height: 60)
-    private let stripHeight: CGFloat = 100
-    
-    @Environment(\.colorScheme) private var colorScheme
-    
+    let isVisible: Bool
+
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 8) {
-                    ForEach(Array(viewModel.allImageFiles.enumerated()), id: \.element.id) { index, imageFile in
-                        ThumbnailItemView(
-                            imageFile: imageFile,
-                            index: index,
-                            isSelected: index == viewModel.currentIndex,
-                            size: thumbnailSize,
-                            onTap: {
-                                viewModel.jumpToImage(at: index)
-                            },
-                            viewModel: viewModel
-                        )
-                        .id(index)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+        HStack {
+            arrow(symbol: "chevron.left", enabled: viewModel.hasPrevious, label: "Previous image") {
+                viewModel.previousImage()
             }
-            .frame(height: stripHeight)
-            .background(
-                .regularMaterial,
-                in: RoundedRectangle(cornerRadius: 12)
-            )
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
-            .onChange(of: viewModel.currentIndex) { _, newIndex in
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    proxy.scrollTo(newIndex, anchor: .center)
-                }
-            }
-            .onAppear {
-                proxy.scrollTo(viewModel.currentIndex, anchor: .center)
+            Spacer()
+            arrow(symbol: "chevron.right", enabled: viewModel.hasNext, label: "Next image") {
+                viewModel.nextImage()
             }
         }
+        .padding(.horizontal, 16)
+        .opacity(isVisible ? 1.0 : 0.0)
+        .animation(.easeInOut(duration: 0.25), value: isVisible)
+        .allowsHitTesting(isVisible)
     }
-}
 
-/// Individual thumbnail item in the strip
-struct ThumbnailItemView: View {
-    let imageFile: ImageFile
-    let index: Int
-    let isSelected: Bool
-    let size: CGSize
-    let onTap: () -> Void
-    let viewModel: ImageViewerViewModel
-    
-    @State private var thumbnail: NSImage?
-    @State private var isLoading = true
-    
-    @Environment(\.colorScheme) private var colorScheme
-    
-    var body: some View {
-        Button(action: onTap) {
-            ZStack {
-                // Background
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(colorScheme == .dark ? Color(NSColor.controlBackgroundColor) : Color.white)
-                    .shadow(
-                        color: isSelected ? .accentColor.opacity(0.4) : .black.opacity(0.1),
-                        radius: isSelected ? 4 : 2,
-                        x: 0,
-                        y: 1
-                    )
-                
-                // Content
-                Group {
-                    if let thumbnail = thumbnail {
-                        Image(nsImage: thumbnail)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    } else if isLoading {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                            .progressViewStyle(.circular)
-                    } else {
-                        // Fallback icon
-                        Image(systemName: "photo")
-                            .font(.system(size: 24))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .frame(width: size.width - 8, height: size.height - 8)
-                
-                // Selection indicator
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.accentColor, lineWidth: 3)
-                }
-
-                // Image index overlay
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Text("\(index + 1)")
-                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule()
-                                    .fill(Color.black.opacity(0.7))
-                            )
-                            .padding(.trailing, 4)
-                            .padding(.bottom, 4)
-                    }
-                }
-            }
+    private func arrow(symbol: String, enabled: Bool, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white.opacity(0.8))
+                .frame(width: 36, height: 36)
+                .background(
+                    Circle()
+                        .fill(Color(.sRGB, red: 20 / 255, green: 20 / 255, blue: 22 / 255, opacity: 0.7))
+                )
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
         }
         .buttonStyle(.plain)
-        .frame(width: size.width, height: size.height)
-        .help("Image \(index + 1): \(imageFile.displayName)")
-        .accessibilityLabel("Thumbnail \(index + 1), \(imageFile.displayName)")
-        .accessibilityHint("Tap to view this image, right-click for options")
-        .thumbnailContextMenu(for: imageFile, at: index, viewModel: viewModel)
-        .onAppear {
-            loadThumbnail()
-        }
-        .onChange(of: imageFile.url) { _, _ in
-            loadThumbnail()
-        }
-    }
-    
-    private func loadThumbnail() {
-        isLoading = true
-        
-        // Simple thumbnail generation using NSImage
-        DispatchQueue.global(qos: .userInitiated).async {
-            let thumbnailImage = generateSimpleThumbnail(from: imageFile.url, size: size)
-            
-            DispatchQueue.main.async {
-                thumbnail = thumbnailImage
-                isLoading = false
-            }
-        }
-    }
-    
-    private func generateSimpleThumbnail(from url: URL, size: CGSize) -> NSImage? {
-        guard let image = NSImage(contentsOf: url) else { return nil }
-        
-        let targetSize = size
-        let imageSize = image.size
-        
-        // Calculate aspect ratio
-        let aspectRatio = imageSize.width / imageSize.height
-        let targetAspectRatio = targetSize.width / targetSize.height
-        
-        var scaledSize: NSSize
-        if aspectRatio > targetAspectRatio {
-            scaledSize = NSSize(width: targetSize.width, height: targetSize.width / aspectRatio)
-        } else {
-            scaledSize = NSSize(width: targetSize.height * aspectRatio, height: targetSize.height)
-        }
-        
-        let thumbnail = NSImage(size: scaledSize)
-        thumbnail.lockFocus()
-        image.draw(in: NSRect(origin: .zero, size: scaledSize))
-        thumbnail.unlockFocus()
-        
-        return thumbnail
+        .disabled(!enabled)
+        .opacity(enabled ? 1.0 : 0.35)
+        .accessibilityLabel(label)
     }
 }
 
-/// Full-screen grid view for browsing all images
-struct ThumbnailGridView: View {
-    @ObservedObject var viewModel: ImageViewerViewModel
-    
-    // MARK: - Properties
-    private let gridThumbnailSize: CGSize = CGSize(width: 200, height: 150)
-    
-    @Environment(\.colorScheme) private var colorScheme
-    
-    // Adaptive grid columns
-    private let columns = [
-        GridItem(.adaptive(minimum: 220, maximum: 250), spacing: 16)
-    ]
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Top toolbar for macOS
-            HStack {
-                Button("Close") {
-                    viewModel.setViewMode(.normal)
-                }
-                .keyboardShortcut(.escape, modifiers: [])
-                .padding(.leading)
-                
-                Spacer()
-                
-                Text("Grid View (\(viewModel.totalImages) images)")
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Text("\(viewModel.currentIndex + 1) of \(viewModel.totalImages)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.trailing)
-            }
-            .padding(.vertical, 8)
-            .background(.regularMaterial)
-            
-            // Grid content
-            GeometryReader { geometry in
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 16) {
-                            ForEach(Array(viewModel.allImageFiles.enumerated()), id: \.element.id) { index, imageFile in
-                                GridThumbnailItemView(
-                                    imageFile: imageFile,
-                                    index: index,
-                                    isSelected: index == viewModel.currentIndex,
-                                    size: gridThumbnailSize,
-                                    onTap: {
-                                        viewModel.jumpToImage(at: index)
-                                    },
-                                    viewModel: viewModel
-                                )
-                                .id(index)
-                            }
-                        }
-                        .padding(20)
-                    }
-                    .background(
-                        Color(colorScheme == .dark ? NSColor.windowBackgroundColor : NSColor.controlBackgroundColor)
-                            .opacity(0.95)
-                    )
-                    .onChange(of: viewModel.currentIndex) { _, newIndex in
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            proxy.scrollTo(newIndex, anchor: .center)
-                        }
-                    }
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            proxy.scrollTo(viewModel.currentIndex, anchor: .center)
-                        }
-                    }
-                }
-            }
-        }
-        .background(
-            Color.black.opacity(0.3)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    viewModel.setViewMode(.normal)
-                }
-        )
-    }
-}
 
-/// Individual thumbnail item in the grid
-struct GridThumbnailItemView: View {
-    let imageFile: ImageFile
-    let index: Int
-    let isSelected: Bool
-    let size: CGSize
-    let onTap: () -> Void
-    let viewModel: ImageViewerViewModel
-    
-    @State private var thumbnail: NSImage?
-    @State private var isLoading = true
-    @State private var isHovered = false
-    
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 8) {
-                // Thumbnail container
-                ZStack {
-                    // Background
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(colorScheme == .dark ? Color(NSColor.controlBackgroundColor) : Color.white)
-                        .shadow(
-                            color: isSelected ? .accentColor.opacity(0.4) : .black.opacity(0.1),
-                            radius: isSelected ? 6 : 3,
-                            x: 0,
-                            y: 2
-                        )
-                    
-                    // Thumbnail content
-                    Group {
-                        if let thumbnail = thumbnail {
-                            Image(nsImage: thumbnail)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        } else if isLoading {
-                            VStack {
-                                ProgressView()
-                                    .scaleEffect(1.2)
-                                    .progressViewStyle(.circular)
-                                Text("Loading...")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        } else {
-                            // Fallback
-                            VStack {
-                                Image(systemName: "photo")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(.secondary)
-                                Text("Failed to load")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .frame(width: size.width - 16, height: size.height - 16)
-                    
-                    // Selection indicator
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.accentColor, lineWidth: 4)
-                    }
-                    
-                    // Hover overlay
-                    if isHovered && !isSelected {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.accentColor.opacity(0.1))
-                    }
-
-                    // Index badge
-                    VStack {
-                        HStack {
-                            Text("\(index + 1)")
-                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(isSelected ? Color.accentColor : Color.black.opacity(0.7))
-                                )
-                                .padding(.top, 8)
-                                .padding(.leading, 8)
-                            Spacer()
-                        }
-                        Spacer()
-                    }
-                }
-                .frame(width: size.width, height: size.height)
-                
-                // File info
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(imageFile.displayName)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    
-                    HStack {
-                        Text(imageFile.formattedSize)
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                        
-                        Spacer()
-                        
-                        Text(imageFile.formatDescription)
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .frame(width: size.width, alignment: .leading)
-            }
-        }
-        .buttonStyle(.plain)
-        .help("Image \(index + 1): \(imageFile.displayName)")
-        .accessibilityLabel("Grid thumbnail \(index + 1), \(imageFile.displayName)")
-        .accessibilityHint("Double-tap to view this image, right-click for options")
-        .thumbnailContextMenu(for: imageFile, at: index, viewModel: viewModel)
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isHovered = hovering
-            }
-        }
-        .scaleEffect(isHovered ? 1.05 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: isHovered)
-        .onAppear {
-            loadThumbnail()
-        }
-        .onChange(of: imageFile.url) { _, _ in
-            loadThumbnail()
-        }
-    }
-    
-    private func loadThumbnail() {
-        isLoading = true
-        
-        // Simple thumbnail generation using NSImage
-        DispatchQueue.global(qos: .userInitiated).async {
-            let thumbnailImage = generateSimpleThumbnail(from: imageFile.url, size: size)
-            
-            DispatchQueue.main.async {
-                thumbnail = thumbnailImage
-                isLoading = false
-            }
-        }
-    }
-    
-    private func generateSimpleThumbnail(from url: URL, size: CGSize) -> NSImage? {
-        guard let image = NSImage(contentsOf: url) else { return nil }
-        
-        let targetSize = size
-        let imageSize = image.size
-        
-        // Calculate aspect ratio
-        let aspectRatio = imageSize.width / imageSize.height
-        let targetAspectRatio = targetSize.width / targetSize.height
-        
-        var scaledSize: NSSize
-        if aspectRatio > targetAspectRatio {
-            scaledSize = NSSize(width: targetSize.width, height: targetSize.width / aspectRatio)
-        } else {
-            scaledSize = NSSize(width: targetSize.height * aspectRatio, height: targetSize.height)
-        }
-        
-        let thumbnail = NSImage(size: scaledSize)
-        thumbnail.lockFocus()
-        image.draw(in: NSRect(origin: .zero, size: scaledSize))
-        thumbnail.unlockFocus()
-        
-        return thumbnail
-    }
-}
 
 // MARK: - Preview
 #Preview {

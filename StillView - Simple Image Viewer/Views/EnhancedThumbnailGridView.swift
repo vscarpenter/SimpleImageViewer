@@ -328,13 +328,7 @@ private struct ThumbnailGridItem: View {
     }
     
     private var thumbnailAccessibilityTraits: AccessibilityTraits {
-        var traits: AccessibilityTraits = [.isButton, .isImage]
-        
-        if isSelected {
-            traits.insert(.isSelected)
-        }
-        
-        return traits
+        isSelected ? [.isButton, .isImage, .isSelected] : [.isButton, .isImage]
     }
 }
 

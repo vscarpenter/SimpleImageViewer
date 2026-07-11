@@ -402,7 +402,7 @@ enum HelpShortcutCategory: CaseIterable {
                 ShortcutHelpItem(
                     name: "Back to Folder Selection",
                     description: "Return to folder selection screen",
-                    defaultShortcut: "Escape or B",
+                    defaultShortcut: "B",
                     isCustomizable: true
                 )
             ]
@@ -470,7 +470,7 @@ enum HelpShortcutCategory: CaseIterable {
             return [
                 ShortcutHelpItem(
                     name: "Thumbnail Strip",
-                    description: "Show/hide horizontal thumbnail strip at bottom",
+                    description: "Show the docked filmstrip view",
                     defaultShortcut: "T",
                     isCustomizable: true
                 ),
@@ -517,7 +517,7 @@ enum HelpShortcutCategory: CaseIterable {
             return [
                 "Use spacebar for quick forward navigation - it's faster than arrow keys for browsing large collections",
                 "Home and End keys are perfect for quickly jumping to the beginning or end of a folder",
-                "The Escape key is your universal 'back' button throughout the app"
+                "Escape steps out one level at a time — grid to single, fullscreen to windowed — and never leaves your folder"
             ]
         case .viewing:
             return [
