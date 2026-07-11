@@ -51,7 +51,7 @@ enum ImageContentTypeClassifier {
             .flatMap { $0.components(separatedBy: CharacterSet.alphanumerics.inverted) }
             .filter { $0.count >= 2 }
             .count
-        return (lines.count >= 2 && wordCount >= 4) || wordCount >= 8
+        return wordCount >= 4
     }
 
     static func evidence(from perception: ImagePerceptionResult) -> ImageInsightEvidence {

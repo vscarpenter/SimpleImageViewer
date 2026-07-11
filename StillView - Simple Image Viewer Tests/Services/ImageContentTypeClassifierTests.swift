@@ -25,6 +25,12 @@ final class ImageContentTypeClassifierTests: XCTestCase {
         XCTAssertEqual(ImageContentTypeClassifier.classify(perception), .subject)
     }
 
+    func test_fourWordSignIsTextEvidence() {
+        let perception = makePerception(recognizedText: ["CLOSED FOR PRIVATE EVENT"])
+
+        XCTAssertEqual(ImageContentTypeClassifier.classify(perception), .text)
+    }
+
     func test_highConfidenceSpecificLabelIsSubjectEvidence() {
         let perception = makePerception(classifications: [
             .init(identifier: "sports_car", confidence: 0.86),
