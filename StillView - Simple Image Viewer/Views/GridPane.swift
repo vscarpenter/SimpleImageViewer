@@ -46,6 +46,7 @@ struct GridPane: View {
                 proxy.scrollTo(viewModel.currentIndex, anchor: .center)
             }
         }
+        .id(viewModel.currentFolderURL)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Image grid")
     }
@@ -111,7 +112,10 @@ private struct GridTile: View {
             .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             .accessibilityHint("Click to select, double-click to open")
             .task(id: imageFile.url) {
-                thumbnail = await StudioThumbnailLoader.load(from: imageFile.url, maxPixelSize: 440)
+                thumbnail = nil
+                let loadedThumbnail = await StudioThumbnailLoader.load(from: imageFile.url, maxPixelSize: 440)
+                guard !Task.isCancelled else { return }
+                thumbnail = loadedThumbnail
             }
     }
 }
