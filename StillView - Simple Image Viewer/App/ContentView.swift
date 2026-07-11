@@ -7,6 +7,12 @@ struct ContentView: View {
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
     @State private var showImageViewer = false
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // Stage hover-arrow visibility (fade in on pointer move, out after ~3 s idle)
+    @State private var stageArrowsVisible = false
+    @State private var stageArrowsHideTask: Task<Void, Never>?
+
     // MARK: - Body
     var body: some View {
         mainContent
@@ -43,6 +49,8 @@ struct ContentView: View {
             ZStack {
                 if showImageViewer && imageViewerViewModel.totalImages > 0 {
                     imageViewerInterface(geometry: geometry)
+                        // Toolbar owns the (hidden) title-bar region
+                        .ignoresSafeArea(edges: .top)
                 } else {
                     folderSelectionInterface
                 }
@@ -53,74 +61,50 @@ struct ContentView: View {
     
     @ViewBuilder
     private func imageViewerInterface(geometry: GeometryProxy) -> some View {
+        // Studio workspace: toolbar / stage (or grid) / filmstrip, with the
+        // docked inspector on the right. The stage only resizes as the single
+        // inspector open/close animation (finding U4).
         HStack(spacing: 0) {
-            // Main image viewer area
-            ZStack {
-                // Calculate available width for image viewer
-                let availableWidth = imageViewerViewModel.isAIInsightsAvailable && imageViewerViewModel.showAIInsights
-                    ? geometry.size.width - 360 // 320 panel width + 40 padding
-                    : geometry.size.width
-                
-                EnhancedImageDisplayView(viewModel: imageViewerViewModel)
-                    .frame(width: availableWidth, height: geometry.size.height)
-                
-                NavigationControlsView(viewModel: imageViewerViewModel, onExit: {
-                    showImageViewer = false
-                })
-                .frame(width: availableWidth, height: geometry.size.height)
-                
-                // Thumbnail Strip (when in thumbnail strip mode)
-                if imageViewerViewModel.viewMode == .strip {
-                    VStack {
-                        Spacer()
-                        ThumbnailStripView(viewModel: imageViewerViewModel)
-                    }
-                    .allowsHitTesting(true)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.viewMode)
-                }
-                
-                // Grid Overlay (when in grid mode)
+            VStack(spacing: 0) {
+                StudioToolbar(viewModel: imageViewerViewModel)
+
                 if imageViewerViewModel.viewMode == .grid {
-                    Color.black.opacity(0.8)
-                        .ignoresSafeArea()
-                        .overlay(
-                            ThumbnailGridView(viewModel: imageViewerViewModel)
+                    GridPane(viewModel: imageViewerViewModel)
+                } else {
+                    ZStack {
+                        EnhancedImageDisplayView(viewModel: imageViewerViewModel)
+                            .onContinuousHover { phase in
+                                switch phase {
+                                case .active:
+                                    stageArrowsVisible = true
+                                    scheduleStageArrowsHide()
+                                case .ended:
+                                    stageArrowsVisible = false
+                                    stageArrowsHideTask?.cancel()
+                                }
+                            }
+                        StageHoverArrows(
+                            viewModel: imageViewerViewModel,
+                            isVisible: stageArrowsVisible
                         )
-                        .allowsHitTesting(true)
-                        .transition(.opacity)
-                        .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.viewMode)
-                }
-                
-                // Image Info Overlay
-                if imageViewerViewModel.showImageInfo,
-                   let currentImageFile = imageViewerViewModel.currentImageFile {
-                    VStack {
-                        HStack {
-                            ImageInfoOverlayView(
-                                imageFile: currentImageFile,
-                                currentImage: imageViewerViewModel.currentImage
-                            )
-                            Spacer()
-                        }
-                        Spacer()
                     }
-                    .padding(.top, 20)
-                    .padding(.leading, 20)
-                    .allowsHitTesting(false)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.3), value: imageViewerViewModel.showImageInfo)
+
+                    if imageViewerViewModel.viewMode.showsFilmstrip {
+                        FilmstripView(viewModel: imageViewerViewModel)
+                    }
                 }
             }
-            .animation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0), 
-                      value: imageViewerViewModel.showAIInsights)
-            
-            // AI Insights Panel (when available and toggled on)
-            if imageViewerViewModel.isAIInsightsAvailable,
-               imageViewerViewModel.showAIInsights {
-                aiInsightsPanel(geometry: geometry)
+            .frame(maxWidth: .infinity)
+
+            if imageViewerViewModel.inspectorVisible {
+                InspectorView(viewModel: imageViewerViewModel)
+                    .transition(.move(edge: .trailing))
             }
         }
+        .animation(
+            reduceMotion ? nil : .easeInOut(duration: 0.3),
+            value: imageViewerViewModel.inspectorVisible
+        )
     }
     
     @ViewBuilder
@@ -256,27 +240,17 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
-    private func aiInsightsPanel(geometry: GeometryProxy) -> some View {
-        // AI Insights inspector panel
-        ImageInsightPanelView(viewModel: imageViewerViewModel)
-            .frame(width: 320, height: geometry.size.height - 40)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.15), radius: 12, x: -2, y: 0)
-            .padding(.top, 20)
-            .padding(.trailing, 20)
-            .padding(.bottom, 20)
-            .transition(.asymmetric(
-                insertion: .move(edge: .trailing).combined(with: .opacity),
-                removal: .move(edge: .trailing).combined(with: .opacity)
-            ))
-            .allowsHitTesting(true)
-            .accessibilityLabel("AI Insights Inspector")
-            .accessibilityHint("Inspector panel showing AI-powered analysis of the current image")
-    }
-    
     // MARK: - Private Methods
-    
+
+    private func scheduleStageArrowsHide() {
+        stageArrowsHideTask?.cancel()
+        stageArrowsHideTask = Task {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            stageArrowsVisible = false
+        }
+    }
+
     private func setupApplication() {
         restoreApplicationState()
         setupWindowStateManager()
@@ -366,6 +340,54 @@ struct ContentView: View {
 // MARK: - Notification Names
 extension Notification.Name {
     static let folderSelected = Notification.Name("folderSelected")
+}
+
+// MARK: - Stage Hover Arrows
+
+/// Prev/next arrows shown over the stage while the pointer is active (Studio
+/// redesign). Purely presentational — hover tracking lives on the stage view
+/// so this overlay never intercepts stage gestures. The far-side arrow — the
+/// direction you can't navigate — idles at 35 % opacity.
+private struct StageHoverArrows: View {
+    @ObservedObject var viewModel: ImageViewerViewModel
+    let isVisible: Bool
+
+    var body: some View {
+        HStack {
+            arrow(symbol: "chevron.left", enabled: viewModel.hasPrevious, label: "Previous image") {
+                viewModel.previousImage()
+            }
+            Spacer()
+            arrow(symbol: "chevron.right", enabled: viewModel.hasNext, label: "Next image") {
+                viewModel.nextImage()
+            }
+        }
+        .padding(.horizontal, 16)
+        .opacity(isVisible ? 1.0 : 0.0)
+        .animation(.easeInOut(duration: 0.25), value: isVisible)
+        .allowsHitTesting(isVisible)
+    }
+
+    private func arrow(symbol: String, enabled: Bool, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white.opacity(0.8))
+                .frame(width: 36, height: 36)
+                .background(
+                    Circle()
+                        .fill(Color(.sRGB, red: 20 / 255, green: 20 / 255, blue: 22 / 255, opacity: 0.7))
+                )
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1.0 : 0.35)
+        .accessibilityLabel(label)
+    }
 }
 
 

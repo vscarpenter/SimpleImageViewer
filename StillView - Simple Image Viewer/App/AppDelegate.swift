@@ -105,15 +105,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor func setMainWindow(_ window: NSWindow) {
         mainWindow = window
         setupWindowDelegate(for: window)
-        
+        configureStudioWindowChrome(window)
+
         // Set up window state manager
         windowStateManager.setMainWindow(window)
-        
+
         // Store initial window frame
         lastWindowFrame = window.frame
-        
+
         // Try to restore previous session if available
         tryRestorePreviousSession()
+    }
+
+    /// Studio redesign: the unified toolbar owns the title-bar region, with the
+    /// standard traffic lights inline.
+    @MainActor private func configureStudioWindowChrome(_ window: NSWindow) {
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.styleMask.insert(.fullSizeContentView)
     }
     
     /// Returns whether the main window is currently visible
