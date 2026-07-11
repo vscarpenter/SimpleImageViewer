@@ -18,6 +18,11 @@ class ImageMetadataService {
         let captureDate: Date?
         let description: String?
         let keywords: [String]
+        /// Raw pixel size for compact display ("5120 × 3200")
+        var pixelWidth: Int?
+        var pixelHeight: Int?
+        /// ICC profile name (e.g. "Display P3"); falls back to color model
+        var colorProfile: String?
         
         /// Generate accessibility description from metadata
         var accessibilityDescription: String {
@@ -81,12 +86,50 @@ class ImageMetadataService {
         let make: String
         let model: String
         let settings: String?
-        
-        init(make: String = "", model: String = "", settings: String? = nil) {
+        // Discrete exposure values for the inspector's spec strip
+        let aperture: String?
+        let shutterSpeed: String?
+        let iso: String?
+        let focalLength: String?
+        let lensModel: String?
+
+        init(make: String = "",
+             model: String = "",
+             settings: String? = nil,
+             aperture: String? = nil,
+             shutterSpeed: String? = nil,
+             iso: String? = nil,
+             focalLength: String? = nil,
+             lensModel: String? = nil) {
             self.make = make
             self.model = model
             self.settings = settings
+            self.aperture = aperture
+            self.shutterSpeed = shutterSpeed
+            self.iso = iso
+            self.focalLength = focalLength
+            self.lensModel = lensModel
         }
+    }
+
+    // MARK: - Exposure Formatters
+
+    /// "ƒ/11" or "ƒ/2.8" — trailing .0 trimmed
+    static func formatAperture(_ fNumber: Double) -> String {
+        fNumber == fNumber.rounded() ? "ƒ/\(Int(fNumber))" : String(format: "ƒ/%.1f", fNumber)
+    }
+
+    /// "1/60" for fractional exposures, "2s" / "1.5s" for whole-or-longer
+    static func formatShutterSpeed(_ seconds: Double) -> String {
+        if seconds >= 1 {
+            return seconds == seconds.rounded() ? "\(Int(seconds))s" : String(format: "%.1fs", seconds)
+        }
+        return "1/\(Int((1.0 / seconds).rounded()))"
+    }
+
+    /// "16mm" — whole millimeters
+    static func formatFocalLength(_ millimeters: Double) -> String {
+        "\(Int(millimeters.rounded()))mm"
     }
     
     /// Location metadata
@@ -152,7 +195,7 @@ class ImageMetadataService {
         // Extract description and keywords
         let description = extractDescription(from: properties)
         let keywords = extractKeywords(from: properties)
-        
+
         return ImageMetadata(
             fileName: fileName,
             fileSize: fileSize,
@@ -162,7 +205,10 @@ class ImageMetadataService {
             location: location,
             captureDate: captureDate,
             description: description,
-            keywords: keywords
+            keywords: keywords,
+            pixelWidth: properties[kCGImagePropertyPixelWidth as String] as? Int,
+            pixelHeight: properties[kCGImagePropertyPixelHeight as String] as? Int,
+            colorProfile: properties[kCGImagePropertyProfileName as String] as? String ?? colorSpace
         )
     }
     
@@ -243,32 +289,52 @@ class ImageMetadataService {
             (dict as? [String: Any])?[kCGImagePropertyTIFFModel as String] as? String
         } ?? ""
         
-        // Extract camera settings
+        // Extract camera settings — a joined string for accessibility plus
+        // discrete values for the inspector's exposure spec strip
         var settings: [String] = []
-        
+        var aperture: String?
+        var shutterSpeed: String?
+        var isoText: String?
+        var focalLength: String?
+
         if let fNumber = exif[kCGImagePropertyExifFNumber as String] as? Double {
+            aperture = Self.formatAperture(fNumber)
             settings.append(String(format: "f/%.1f", fNumber))
         }
-        
+
         if let exposureTime = exif[kCGImagePropertyExifExposureTime as String] as? Double {
+            shutterSpeed = Self.formatShutterSpeed(exposureTime)
             if exposureTime < 1 {
                 settings.append(String(format: "1/%.0f s", 1/exposureTime))
             } else {
                 settings.append(String(format: "%.1f s", exposureTime))
             }
         }
-        
+
         if let iso = exif[kCGImagePropertyExifISOSpeedRatings as String] as? [Int], let isoValue = iso.first {
+            isoText = "\(isoValue)"
             settings.append("ISO \(isoValue)")
         }
-        
-        if let focalLength = exif[kCGImagePropertyExifFocalLength as String] as? Double {
-            settings.append(String(format: "%.0fmm", focalLength))
+
+        if let focal = exif[kCGImagePropertyExifFocalLength as String] as? Double {
+            focalLength = Self.formatFocalLength(focal)
+            settings.append(String(format: "%.0fmm", focal))
         }
-        
+
+        let lensModel = exif[kCGImagePropertyExifLensModel as String] as? String
+
         let settingsString = settings.isEmpty ? nil : settings.joined(separator: ", ")
-        
-        return CameraInfo(make: make, model: model, settings: settingsString)
+
+        return CameraInfo(
+            make: make,
+            model: model,
+            settings: settingsString,
+            aperture: aperture,
+            shutterSpeed: shutterSpeed,
+            iso: isoText,
+            focalLength: focalLength,
+            lensModel: lensModel
+        )
     }
     
     private func extractLocationInfo(from properties: [String: Any]) -> LocationInfo? {

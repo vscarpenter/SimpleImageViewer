@@ -61,6 +61,8 @@
 		C0C0C0C0C0C0C0C0C0C0C0D1 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0C0C0C0C0C0C0C0C0C0F1 /* SmokeTests.swift */; };
 		B30100000000000000000005 /* ViewerModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000004 /* ViewerModeTests.swift */; };
 		B30100000000000000000001 /* ViewerMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000002 /* ViewerMode.swift */; };
+		B30100000000000000000007 /* ImageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39032E355791004B9D85 /* ImageMetadataService.swift */; };
+		B30100000000000000000009 /* ImageMetadataFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000008 /* ImageMetadataFormattingTests.swift */; };
 		B30100000000000000000003 /* ViewerMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000002 /* ViewerMode.swift */; };
 		FB140FAB2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB140FAA2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift */; };
 		FB140FB02E435B8F00A36AB6 /* SkeletonLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB140FAD2E435B8F00A36AB6 /* SkeletonLoadingView.swift */; };
@@ -177,6 +179,7 @@
 		C0C0C0C0C0C0C0C0C0C0C0F1 /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
 		B30100000000000000000004 /* ViewerModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerModeTests.swift; sourceTree = "<group>"; };
 		B30100000000000000000002 /* ViewerMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerMode.swift; sourceTree = "<group>"; };
+		B30100000000000000000008 /* ImageMetadataFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataFormattingTests.swift; sourceTree = "<group>"; };
 		FB140FAA2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponsiveGridLayoutManager.swift; sourceTree = "<group>"; };
 		FB140FAC2E435B8F00A36AB6 /* ContextMenuProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextMenuProvider.swift; sourceTree = "<group>"; };
 		FB140FAD2E435B8F00A36AB6 /* SkeletonLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonLoadingView.swift; sourceTree = "<group>"; };
@@ -475,6 +478,7 @@
 				B201000000000000000000F4 /* ImageContentTypeClassifierTests.swift */,
 				B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */,
 				B201000000000000000000A4 /* InsightOutputValidatorTests.swift */,
+				B30100000000000000000008 /* ImageMetadataFormattingTests.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -707,6 +711,8 @@
 				B201000000000000000000A3 /* InsightOutputValidatorTests.swift in Sources */,
 				C0C0C0C0C0C0C0C0C0C0C0D1 /* SmokeTests.swift in Sources */,
 				B30100000000000000000003 /* ViewerMode.swift in Sources */,
+				B30100000000000000000007 /* ImageMetadataService.swift in Sources */,
+				B30100000000000000000009 /* ImageMetadataFormattingTests.swift in Sources */,
 				B30100000000000000000005 /* ViewerModeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
