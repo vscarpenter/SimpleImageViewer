@@ -61,50 +61,53 @@ struct ContentView: View {
     
     @ViewBuilder
     private func imageViewerInterface(geometry: GeometryProxy) -> some View {
-        // Studio workspace: toolbar / stage (or grid) / filmstrip, with the
-        // docked inspector on the right. The stage only resizes as the single
+        // Studio workspace: full-width toolbar on top (per the mocks — the
+        // inspector docks below it), then stage (or grid) + filmstrip with the
+        // inspector on the right. The stage only resizes as the single
         // inspector open/close animation (finding U4).
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                StudioToolbar(viewModel: imageViewerViewModel)
+        VStack(spacing: 0) {
+            StudioToolbar(viewModel: imageViewerViewModel)
 
-                if imageViewerViewModel.viewMode == .grid {
-                    GridPane(viewModel: imageViewerViewModel)
-                } else {
-                    ZStack {
-                        EnhancedImageDisplayView(viewModel: imageViewerViewModel)
-                            .onContinuousHover { phase in
-                                switch phase {
-                                case .active:
-                                    stageArrowsVisible = true
-                                    scheduleStageArrowsHide()
-                                case .ended:
-                                    stageArrowsVisible = false
-                                    stageArrowsHideTask?.cancel()
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    if imageViewerViewModel.viewMode == .grid {
+                        GridPane(viewModel: imageViewerViewModel)
+                    } else {
+                        ZStack {
+                            EnhancedImageDisplayView(viewModel: imageViewerViewModel)
+                                .onContinuousHover { phase in
+                                    switch phase {
+                                    case .active:
+                                        stageArrowsVisible = true
+                                        scheduleStageArrowsHide()
+                                    case .ended:
+                                        stageArrowsVisible = false
+                                        stageArrowsHideTask?.cancel()
+                                    }
                                 }
-                            }
-                        StageHoverArrows(
-                            viewModel: imageViewerViewModel,
-                            isVisible: stageArrowsVisible
-                        )
-                    }
+                            StageHoverArrows(
+                                viewModel: imageViewerViewModel,
+                                isVisible: stageArrowsVisible
+                            )
+                        }
 
-                    if imageViewerViewModel.viewMode.showsFilmstrip {
-                        FilmstripView(viewModel: imageViewerViewModel)
+                        if imageViewerViewModel.viewMode.showsFilmstrip {
+                            FilmstripView(viewModel: imageViewerViewModel)
+                        }
                     }
                 }
-            }
-            .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity)
 
-            if imageViewerViewModel.inspectorVisible {
-                InspectorView(viewModel: imageViewerViewModel)
-                    .transition(.move(edge: .trailing))
+                if imageViewerViewModel.inspectorVisible {
+                    InspectorView(viewModel: imageViewerViewModel)
+                        .transition(.move(edge: .trailing))
+                }
             }
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 0.3),
+                value: imageViewerViewModel.inspectorVisible
+            )
         }
-        .animation(
-            reduceMotion ? nil : .easeInOut(duration: 0.3),
-            value: imageViewerViewModel.inspectorVisible
-        )
     }
     
     @ViewBuilder

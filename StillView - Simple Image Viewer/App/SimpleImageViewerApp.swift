@@ -71,6 +71,9 @@ struct SimpleImageViewerApp: App {
                     }
                 }
         }
+        // Studio redesign: the unified toolbar owns the title-bar region;
+        // traffic lights render inline over it.
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .commands {
             #if DEBUG
