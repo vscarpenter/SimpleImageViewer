@@ -27,6 +27,11 @@ class ImageViewerViewModel: ObservableObject {
     @Published var inspectorVisible: Bool = false
     @Published var inspectorTab: InspectorTab = .info
 
+    // Grid toolbar state (Studio redesign, finding U10)
+    @Published var sortOrder: ImageSortOrder = .name
+    /// Minimum grid tile width in points, driven by the toolbar density slider
+    @Published var gridDensity: Double = 160
+
     // AI Insights state
     @Published private(set) var isAIAnalysisEnabled: Bool = false
     @Published private(set) var isEnhancedProcessingEnabled: Bool = false
@@ -62,6 +67,15 @@ class ImageViewerViewModel: ObservableObject {
     
     var allImageFiles: [ImageFile] {
         return imageFiles
+    }
+
+    var currentFolderURL: URL? {
+        return folderContent?.folderURL
+    }
+
+    /// Folder name shown in the toolbar breadcrumb
+    var currentFolderName: String {
+        return currentFolderURL?.lastPathComponent ?? "Photos"
     }
 
     // MARK: - Private Properties
@@ -889,6 +903,21 @@ class ImageViewerViewModel: ObservableObject {
         viewMode = mode
     }
 
+    /// Re-sort the image list, keeping the currently displayed file selected.
+    /// - Parameter order: The sort order chosen in the grid toolbar
+    func applySortOrder(_ order: ImageSortOrder) {
+        sortOrder = order
+        guard !imageFiles.isEmpty else { return }
+
+        let currentURL = currentImageFile?.url
+        imageFiles.sort { order.areInIncreasingOrder($0, $1) }
+
+        if let currentURL,
+           let newIndex = imageFiles.firstIndex(where: { $0.url == currentURL }) {
+            currentIndex = newIndex
+        }
+    }
+
     /// Jump to specific image from thumbnail selection.
     /// In grid mode this only moves the selection (the inspector follows);
     /// opening the image in Single is an explicit action (double-click/Return).
@@ -1133,6 +1162,25 @@ private class SharingDelegate: NSObject, NSSharingServiceDelegate {
                 "Image shared successfully",
                 type: .success
             )
+        }
+    }
+}
+
+// MARK: - Sort Comparators
+
+extension ImageSortOrder {
+    /// Comparator over ImageFile. "Date Captured" uses the file creation date —
+    /// scanning EXIF for a whole folder just to sort would be too costly.
+    func areInIncreasingOrder(_ lhs: ImageFile, _ rhs: ImageFile) -> Bool {
+        switch self {
+        case .name:
+            return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+        case .dateCaptured:
+            return lhs.creationDate < rhs.creationDate
+        case .dateModified:
+            return lhs.modificationDate < rhs.modificationDate
+        case .size:
+            return lhs.size > rhs.size
         }
     }
 }

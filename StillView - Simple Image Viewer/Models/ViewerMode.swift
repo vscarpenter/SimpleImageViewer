@@ -78,3 +78,25 @@ enum InspectorTab: String {
     case info
     case insights
 }
+
+/// Sort orders offered by the grid toolbar's sort menu (finding U10).
+/// Comparison over ImageFile lives with the view model; this stays pure.
+enum ImageSortOrder: String, CaseIterable {
+    case name
+    case dateCaptured
+    case dateModified
+    case size
+
+    var displayName: String {
+        switch self {
+        case .name:
+            return "Name"
+        case .dateCaptured:
+            return "Date Captured"
+        case .dateModified:
+            return "Date Modified"
+        case .size:
+            return "Size"
+        }
+    }
+}
