@@ -138,7 +138,7 @@ struct ToolbarOverflowMenu: View {
                     .foregroundColor(.appSecondaryText)
             }
         case "thumbnails":
-            if viewModel.viewMode == .thumbnailStrip {
+            if viewModel.viewMode == .strip {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.systemAccent)
@@ -191,7 +191,7 @@ struct ToolbarOverflowMenu: View {
         case "slideshow":
             return viewModel.isSlideshow ? "pause.circle.fill" : "play.circle"
         case "thumbnails":
-            return viewModel.viewMode == .thumbnailStrip ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2"
+            return viewModel.viewMode == .strip ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2"
         case "grid":
             return viewModel.viewMode == .grid ? "square.grid.3x3.fill" : "square.grid.3x3"
         case "filename":
@@ -214,7 +214,7 @@ struct ToolbarOverflowMenu: View {
         case "slideshow":
             return viewModel.isSlideshow ? .systemAccent : .appSecondaryText
         case "thumbnails":
-            return viewModel.viewMode == .thumbnailStrip ? .systemAccent : .appSecondaryText
+            return viewModel.viewMode == .strip ? .systemAccent : .appSecondaryText
         case "grid":
             return viewModel.viewMode == .grid ? .systemAccent : .appSecondaryText
         case "filename":

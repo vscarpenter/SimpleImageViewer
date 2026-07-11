@@ -318,19 +318,3 @@ struct WindowState: Codable {
     }
 }
 
-// MARK: - ViewMode Extension
-
-extension ViewMode {
-    init?(rawValue: String) {
-        switch rawValue {
-        case "normal":
-            self = .normal
-        case "thumbnailStrip":
-            self = .thumbnailStrip
-        case "grid":
-            self = .grid
-        default:
-            return nil
-        }
-    }
-}

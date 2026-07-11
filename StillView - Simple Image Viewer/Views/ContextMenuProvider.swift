@@ -140,18 +140,18 @@ struct ContextMenuProvider {
             // View mode options
             Menu("View Mode") {
                 Button(action: {
-                    ContextMenuService.shared.toggleViewMode(to: .normal, viewModel: viewModel)
+                    ContextMenuService.shared.toggleViewMode(to: .single, viewModel: viewModel)
                 }) {
                     Label("Normal View", systemImage: "photo")
                 }
-                .disabled(viewModel.viewMode == .normal)
+                .disabled(viewModel.viewMode == .single)
                 
                 Button(action: {
-                    ContextMenuService.shared.toggleViewMode(to: .thumbnailStrip, viewModel: viewModel)
+                    ContextMenuService.shared.toggleViewMode(to: .strip, viewModel: viewModel)
                 }) {
                     Label("Thumbnail Strip", systemImage: "rectangle.grid.1x2")
                 }
-                .disabled(viewModel.viewMode == .thumbnailStrip)
+                .disabled(viewModel.viewMode == .strip)
                 
                 Button(action: {
                     ContextMenuService.shared.toggleViewMode(to: .grid, viewModel: viewModel)

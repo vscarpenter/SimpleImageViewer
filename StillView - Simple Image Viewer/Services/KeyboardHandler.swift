@@ -89,9 +89,9 @@ class KeyboardHandler: ObservableObject {
         if viewModel.isFullscreen {
             viewModel.exitFullscreen()
             return true
-        } else if viewModel.viewMode != .normal {
+        } else if viewModel.viewMode != .single {
             // Exit thumbnail views back to normal view
-            viewModel.setViewMode(.normal)
+            viewModel.setViewMode(.single)
             return true
         } else {
             // Return to folder selection

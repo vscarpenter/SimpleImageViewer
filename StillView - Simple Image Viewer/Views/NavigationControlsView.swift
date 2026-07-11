@@ -507,13 +507,13 @@ struct NavigationControlsView: View {
             viewModel.toggleThumbnailStrip()
             showControlsTemporarily()
         }) {
-            Image(systemName: viewModel.viewMode == .thumbnailStrip ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2")
+            Image(systemName: viewModel.viewMode == .strip ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(viewModel.viewMode == .thumbnailStrip ? .systemAccent : .appSecondaryText)
+                .foregroundColor(viewModel.viewMode == .strip ? .systemAccent : .appSecondaryText)
         }
         .buttonStyle(ToolbarButtonStyle())
-        .help(viewModel.viewMode == .thumbnailStrip ? "Hide thumbnail strip (T)" : "Show thumbnail strip (T)")
-        .accessibilityLabel(viewModel.viewMode == .thumbnailStrip ? "Hide thumbnail strip" : "Show thumbnail strip")
+        .help(viewModel.viewMode == .strip ? "Hide thumbnail strip (T)" : "Show thumbnail strip (T)")
+        .accessibilityLabel(viewModel.viewMode == .strip ? "Hide thumbnail strip" : "Show thumbnail strip")
         .accessibilityHint("Toggle thumbnail strip for quick image navigation")
         .disabled(viewModel.totalImages < 2)
     }

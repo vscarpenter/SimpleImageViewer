@@ -70,7 +70,7 @@ struct ContentView: View {
                 .frame(width: availableWidth, height: geometry.size.height)
                 
                 // Thumbnail Strip (when in thumbnail strip mode)
-                if imageViewerViewModel.viewMode == .thumbnailStrip {
+                if imageViewerViewModel.viewMode == .strip {
                     VStack {
                         Spacer()
                         ThumbnailStripView(viewModel: imageViewerViewModel)
@@ -567,7 +567,7 @@ struct ThumbnailGridView: View {
             // Top toolbar for macOS
             HStack {
                 Button("Close") {
-                    viewModel.setViewMode(.normal)
+                    viewModel.setViewMode(.single)
                 }
                 .keyboardShortcut(.escape, modifiers: [])
                 .padding(.leading)
@@ -630,7 +630,7 @@ struct ThumbnailGridView: View {
             Color.black.opacity(0.3)
                 .ignoresSafeArea()
                 .onTapGesture {
-                    viewModel.setViewMode(.normal)
+                    viewModel.setViewMode(.single)
                 }
         )
     }

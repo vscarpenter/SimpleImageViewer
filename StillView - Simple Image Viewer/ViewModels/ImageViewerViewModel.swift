@@ -3,35 +3,6 @@ import SwiftUI
 import Combine
 import AppKit
 
-/// View modes for the image viewer
-enum ViewMode: String, CaseIterable {
-    case normal = "normal"
-    case thumbnailStrip = "thumbnailStrip"
-    case grid = "grid"
-    
-    var displayName: String {
-        switch self {
-        case .normal:
-            return "Normal View"
-        case .thumbnailStrip:
-            return "Thumbnail Strip"
-        case .grid:
-            return "Grid View"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .normal:
-            return "photo"
-        case .thumbnailStrip:
-            return "rectangle.grid.1x2"
-        case .grid:
-            return "square.grid.3x3"
-        }
-    }
-}
-
 /// ViewModel for the main image viewer interface
 @MainActor
 class ImageViewerViewModel: ObservableObject {
@@ -50,7 +21,11 @@ class ImageViewerViewModel: ObservableObject {
     @Published var showImageInfo: Bool = false
     @Published var isSlideshow: Bool = false
     @Published var slideshowInterval: Double = 3.0
-    @Published var viewMode: ViewMode = .normal
+    @Published var viewMode: ViewMode = .single
+
+    // Inspector state (Studio redesign): one docked panel, one active tab.
+    @Published var inspectorVisible: Bool = false
+    @Published var inspectorTab: InspectorTab = .info
 
     // AI Insights state
     @Published private(set) var isAIAnalysisEnabled: Bool = false
@@ -810,7 +785,9 @@ class ImageViewerViewModel: ObservableObject {
         zoomLevel = 1.0
         isFullscreen = false
         showImageInfo = false
-        viewMode = .normal
+        viewMode = .single
+        inspectorVisible = false
+        inspectorTab = .info
         
         // Reset AI Insights state
         resetAIInsightsForSessionEnd()
@@ -895,46 +872,67 @@ class ImageViewerViewModel: ObservableObject {
     }
     
     // MARK: - View Mode Methods
-    
-    /// Toggle between normal and grid view
+
+    /// Toggle between single and grid view (G key)
     func toggleGridView() {
-        switch viewMode {
-        case .normal, .thumbnailStrip:
-            viewMode = .grid
-        case .grid:
-            viewMode = .normal
-        }
+        viewMode = viewMode.togglingGrid()
     }
-    
-    /// Toggle thumbnail strip visibility
+
+    /// Toggle between single and strip view (T key)
     func toggleThumbnailStrip() {
-        switch viewMode {
-        case .normal, .grid:
-            viewMode = .thumbnailStrip
-        case .thumbnailStrip:
-            viewMode = .normal
-        }
+        viewMode = viewMode.togglingStrip()
     }
-    
+
     /// Set specific view mode
     /// - Parameter mode: The view mode to set
     func setViewMode(_ mode: ViewMode) {
         viewMode = mode
     }
-    
-    /// Jump to specific image from thumbnail selection
+
+    /// Jump to specific image from thumbnail selection.
+    /// In grid mode this only moves the selection (the inspector follows);
+    /// opening the image in Single is an explicit action (double-click/Return).
     /// - Parameter index: The index of the image to jump to
     func jumpToImage(at index: Int) {
         guard index >= 0 && index < totalImages else { return }
-        
+
         currentIndex = index
-        
+
         // Load the image
         loadCurrentImage()
-        
-        // Close grid view after selection
-        if viewMode == .grid {
-            viewMode = .normal
+    }
+
+    // MARK: - Inspector Methods
+
+    /// I key / sidebar button: toggle the inspector (keeps the current tab).
+    func toggleInspector() {
+        inspectorVisible.toggle()
+        syncInsightLifecycleWithInspector()
+    }
+
+    /// Cmd+I / Insights entry points: open the inspector on a specific tab.
+    /// - Parameter tab: The tab to show
+    func showInspector(tab: InspectorTab) {
+        inspectorTab = tab
+        inspectorVisible = true
+        syncInsightLifecycleWithInspector()
+    }
+
+    /// Select a tab in the already-visible inspector (tab bar clicks).
+    /// - Parameter tab: The tab to select
+    func selectInspectorTab(_ tab: InspectorTab) {
+        inspectorTab = tab
+        syncInsightLifecycleWithInspector()
+    }
+
+    /// Prepare insight input while the Insights tab is visible; cancel any
+    /// in-flight generation the moment it no longer is (panel closed or the
+    /// user switched to Info).
+    private func syncInsightLifecycleWithInspector() {
+        if inspectorVisible && inspectorTab == .insights {
+            prepareImageInsightForCurrentImage()
+        } else {
+            cancelImageInsightGeneration()
         }
     }
     
