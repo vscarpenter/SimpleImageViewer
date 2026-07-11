@@ -70,7 +70,7 @@ struct WindowState: Codable {
     
     /// Initialize with default values
     init() {
-        self.windowFrame = CGRect(x: 100, y: 100, width: 800, height: 600)
+        self.windowFrame = CGRect(x: 100, y: 100, width: 1180, height: 740)
         self.isVisible = true
         self.isFullscreen = false
         self.zoomLevel = 1.0

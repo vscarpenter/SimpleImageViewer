@@ -23,9 +23,10 @@ enum ViewMode: String, CaseIterable {
         }
     }
 
-    /// Filmstrip is docked in Single and Strip; Grid replaces stage + filmstrip.
+    /// Strip is the filmstrip mode; Single is a clean stage and Grid replaces
+    /// stage + filmstrip — each segment does something distinct.
     var showsFilmstrip: Bool {
-        self != .grid
+        self == .strip
     }
 
     var displayName: String {

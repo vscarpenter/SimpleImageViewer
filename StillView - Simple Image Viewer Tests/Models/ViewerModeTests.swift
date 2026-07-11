@@ -21,10 +21,10 @@ final class ViewerModeTests: XCTestCase {
         XCTAssertNil(ViewMode(rawValue: "bogus"))
     }
 
-    // MARK: - Filmstrip visibility (part of the mode, per the mocks)
+    // MARK: - Filmstrip visibility (Strip is the filmstrip mode; Single is clean)
 
-    func test_filmstripVisibleInSingleAndStripHiddenInGrid() {
-        XCTAssertTrue(ViewMode.single.showsFilmstrip)
+    func test_filmstripVisibleOnlyInStrip() {
+        XCTAssertFalse(ViewMode.single.showsFilmstrip)
         XCTAssertTrue(ViewMode.strip.showsFilmstrip)
         XCTAssertFalse(ViewMode.grid.showsFilmstrip)
     }

@@ -13,9 +13,17 @@ struct StudioToolbar: View {
     /// flow back through the .folderSelected notification ContentView handles.
     @StateObject private var folderPicker = FolderSelectionViewModel()
 
+    @State private var toolbarWidth: CGFloat = 1180
+
     private static let barHeight: CGFloat = 52
     /// Space reserved for the window's traffic lights (hidden title bar)
     private static let trafficLightInset: CGFloat = 78
+
+    /// Below this the segments go icon-only so the grid controls never crowd
+    /// the window-centered control.
+    private var showsSegmentLabels: Bool {
+        toolbarWidth >= 1020
+    }
 
     var body: some View {
         ZStack {
@@ -31,6 +39,11 @@ struct StudioToolbar: View {
         }
         .frame(height: Self.barHeight)
         .frame(maxWidth: .infinity)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { width in
+            toolbarWidth = width
+        }
         .background(Color.appChrome)
         .overlay(alignment: .bottom) {
             Rectangle()
@@ -76,6 +89,9 @@ struct StudioToolbar: View {
                     Text(viewModel.currentFolderName)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.appText)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: 180)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(.appSecondaryText)
@@ -120,8 +136,10 @@ struct StudioToolbar: View {
             HStack(spacing: 5) {
                 Image(systemName: mode.icon)
                     .font(.system(size: 13))
-                Text(mode.displayName)
-                    .font(.system(size: 12, weight: .medium))
+                if showsSegmentLabels {
+                    Text(mode.displayName)
+                        .font(.system(size: 12, weight: .medium))
+                }
             }
             .foregroundColor(isActive ? Self.segmentActiveText : Self.segmentInactiveText)
             .padding(.horizontal, 12)
