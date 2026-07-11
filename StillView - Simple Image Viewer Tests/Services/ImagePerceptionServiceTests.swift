@@ -1,40 +1,42 @@
 import XCTest
 
 final class ImagePerceptionServiceTests: XCTestCase {
-
-    // MARK: - shouldCountFace (PERCEPT-2)
-    // Extracted from the Vision face-rectangles filter so the routing-critical
-    // portrait-vs-group predicate is unit-testable. A face counts when it occupies a
-    // reasonable area OR is high-confidence.
-
-    func test_shouldCountFace_largeAreaLowConfidence_counts() {
-        // A clearly-sized foreground face (~0.8% of frame) at modest confidence — a bar photo.
+    func test_shouldCountFace_requiresUsefulAreaAndConfidence() {
         XCTAssertTrue(ImagePerceptionService.shouldCountFace(area: 0.008, confidence: 0.6))
+        XCTAssertFalse(ImagePerceptionService.shouldCountFace(area: 0.008, confidence: 0.3))
     }
 
-    func test_shouldCountFace_tinyLowConfidence_doesNotCount() {
-        // A tiny, low-confidence blob (background noise) is rejected.
-        XCTAssertFalse(ImagePerceptionService.shouldCountFace(area: 0.001, confidence: 0.4))
+    func test_shouldCountFace_rescuesTinyOnlyWhenVeryConfident() {
+        XCTAssertFalse(ImagePerceptionService.shouldCountFace(area: 0.001, confidence: 0.7))
+        XCTAssertTrue(ImagePerceptionService.shouldCountFace(area: 0.001, confidence: 0.9))
     }
 
-    func test_shouldCountFace_tinyHighConfidence_counts() {
-        // A small but high-confidence face (distant but real) is rescued by the confidence arm.
-        XCTAssertTrue(ImagePerceptionService.shouldCountFace(area: 0.001, confidence: 0.85))
+    func test_clean_dropsLowConfidenceOCR() {
+        let cleaned = OCRCleaner.clean([
+            .init(text: "TOTAL DUE", confidence: 0.92),
+            .init(text: "T0TAL DUE", confidence: 0.31)
+        ])
+
+        XCTAssertEqual(cleaned, ["TOTAL DUE"])
     }
 
-    // MARK: - OCRCleaner single-character CJK (PERCEPT-3)
+    func test_clean_deduplicatesAndLimitsOCR() {
+        let candidates = (0..<30).map {
+            OCRCleaner.Candidate(text: "Line \($0)", confidence: 0.9)
+        } + [.init(text: "line 0", confidence: 0.95)]
 
-    func test_clean_keepsSingleCharCJKSign() {
-        // OCR languages include ja/zh-Hans/ko; a single-character sign (e.g. 出 = "exit")
-        // must survive rather than be dropped by the 2-character floor.
-        let cleaned = OCRCleaner.clean(["出", "A"])
-        XCTAssertTrue(cleaned.contains("出"), "Single-character CJK signage should be kept, got: \(cleaned)")
+        let cleaned = OCRCleaner.clean(candidates)
+
+        XCTAssertEqual(cleaned.count, 16)
+        XCTAssertEqual(cleaned.first, "Line 0")
     }
 
-    func test_clean_stillDropsStraySingleLatinChar() {
-        // The relaxation is CJK-specific; a stray single Latin character is still noise.
-        let cleaned = OCRCleaner.clean(["A", "Cafe"])
-        XCTAssertFalse(cleaned.contains("A"))
-        XCTAssertTrue(cleaned.contains("Cafe"))
+    func test_clean_keepsSingleCharacterCJKSign() {
+        let cleaned = OCRCleaner.clean([
+            .init(text: "出", confidence: 0.9),
+            .init(text: "A", confidence: 0.9)
+        ])
+
+        XCTAssertEqual(cleaned, ["出"])
     }
 }

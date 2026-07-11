@@ -21,7 +21,6 @@ enum InsightEvalHarness {
         let fileName: String
         let route: ImageContentType
         let perceptionSignals: [String]
-        let validation: InsightValidation?
         let result: ImageInsightResult?
         let error: String?
     }
@@ -104,17 +103,28 @@ enum InsightEvalHarness {
             let imageFile = try ImageFile(url: imageURL)
             let input = service.makeInput(for: imageFile)
             let result = try await service.generateInsight(for: input)
-            let validation = InsightOutputValidator.validate(result, input: input)
             return markdownSection(Record(
-                fileName: fileName, route: route, perceptionSignals: perception.asSignals,
-                validation: validation, result: result, error: nil
+                fileName: fileName,
+                route: route,
+                perceptionSignals: promptLines(for: perception),
+                result: result,
+                error: nil
             ))
         } catch {
             return markdownSection(Record(
-                fileName: fileName, route: route, perceptionSignals: perception.asSignals,
-                validation: nil, result: nil, error: error.localizedDescription
+                fileName: fileName,
+                route: route,
+                perceptionSignals: promptLines(for: perception),
+                result: nil,
+                error: error.localizedDescription
             ))
         }
+    }
+
+    private static func promptLines(for perception: ImagePerceptionResult) -> [String] {
+        ImageInsightPromptBuilder.prompt(for: perception)
+            .components(separatedBy: .newlines)
+            .filter { !$0.isEmpty }
     }
 
     // MARK: - Formatting
@@ -145,15 +155,6 @@ enum InsightEvalHarness {
         if let error = record.error {
             lines.append("- **ERROR:** \(error)")
             return lines.joined(separator: "\n")
-        }
-
-        if let validation = record.validation {
-            switch validation {
-            case .passed:
-                lines.append("- Validator: PASSED")
-            case .failed(let reasons):
-                lines.append("- Validator: FAILED [\(reasons.map(\.rawValue).joined(separator: ", "))]")
-            }
         }
 
         if record.perceptionSignals.isEmpty {

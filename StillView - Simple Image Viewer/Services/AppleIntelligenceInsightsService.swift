@@ -1,6 +1,5 @@
 import Foundation
 import ImageIO
-import UniformTypeIdentifiers
 
 #if canImport(FoundationModels)
 import FoundationModels
@@ -37,20 +36,11 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
 
     func makeInput(for imageFile: ImageFile) -> ImageInsightInput {
         let metadata = ImageMetadataService().extractMetadata(from: imageFile.url)
-        let dateFormatter = Self.dateFormatter
-
         return ImageInsightInput(
-            fileName: imageFile.name,
             fileType: imageFile.type.localizedDescription ?? imageFile.type.identifier,
             dimensions: metadata.dimensions,
             fileSize: imageFile.formattedSize,
-            creationDate: dateFormatter.string(from: imageFile.creationDate),
-            modificationDate: dateFormatter.string(from: imageFile.modificationDate),
             colorProfile: colorProfileName(for: imageFile.url) ?? metadata.colorSpace,
-            metadataDescription: metadata.description,
-            keywords: metadata.keywords,
-            visualSignals: [],
-            cameraSignals: cameraSignals(from: metadata),
             imageURL: imageFile.url
         )
     }
@@ -60,104 +50,37 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
         guard currentAvailability.isAvailable else {
             throw ImageInsightError.unavailable(currentAvailability.message)
         }
-
-        // Run on-device Vision perception lazily, only when the user actually requests
-        // an insight. This avoids paying perception cost on every image navigation.
-        let perception: ImagePerceptionResult
-        let enrichedInput: ImageInsightInput
-        if let url = input.imageURL {
-            perception = await perceptionService.analyze(url: url)
-            enrichedInput = input.withVisualSignals(perception.asSignals)
-        } else {
-            perception = .empty
-            enrichedInput = input
+        guard let imageURL = input.imageURL else {
+            throw ImageInsightError.imageUnavailable
         }
 
-        let contentType = ImageContentTypeClassifier.classify(perception)
-        let profile = GenerationProfile.profile(for: contentType)
+        let perception = await perceptionService.analyze(url: imageURL)
+        try Task.checkCancellation()
 
-        #if canImport(FoundationModels)
-        if #available(macOS 26.0, *) {
-            let result = try await generate(input: enrichedInput, type: contentType, profile: profile)
-
-            let validation = InsightOutputValidator.validate(result, input: enrichedInput)
-            if case .passed = validation {
-                return result
-            }
-
-            if case .failed(let reasons) = validation {
-                Logger.warning(
-                    "AI insight validation failed; retrying reasons=\(reasons.map(\.rawValue).joined(separator: ","))",
-                    context: "AIInsights"
-                )
-                let retryResult = try await generate(
-                    input: enrichedInput,
-                    type: contentType,
-                    profile: profile.retryProfile(for: reasons),
-                    correctionHint: InsightOutputValidator.correctionHint(for: reasons)
-                )
-
-                let retryValidation = InsightOutputValidator.validate(retryResult, input: enrichedInput)
-                if case .passed = retryValidation {
-                    return retryResult
-                }
-
-                if case .failed(let retryReasons) = retryValidation {
-                    let retryReasonNames = retryReasons.map(\.rawValue).joined(separator: ",")
+        var generatedSummary: String?
+        if perception.evidence.supportsNarrativeGeneration {
+            #if canImport(FoundationModels)
+            if #available(macOS 26.0, *) {
+                do {
+                    generatedSummary = try await generateSummary(for: perception)
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
                     Logger.warning(
-                        "AI insight retry validation failed; using grounded fallback reasons=\(retryReasonNames)",
+                        "Apple Intelligence summary failed; using grounded local result",
                         context: "AIInsights"
                     )
                 }
-
-                return ImageInsightFallbackBuilder.result(
-                    for: enrichedInput,
-                    perception: perception,
-                    type: contentType
-                )
             }
-
-            return result
+            #endif
         }
-        #endif
+        try Task.checkCancellation()
 
-        throw ImageInsightError.unavailable("AI Insights require macOS 26 and the Foundation Models framework.")
-    }
-
-    /// Builds the "context only" camera/EXIF/GPS bucket. These signals must never become
-    /// the title or subject — the prompt enforces that — but they may appear in
-    /// `usefulDetails` when genuinely informative.
-    private func cameraSignals(from metadata: ImageMetadataService.ImageMetadata) -> [String] {
-        var signals: [String] = []
-
-        if let camera = metadata.camera {
-            let cameraName = [camera.make, camera.model]
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-                .joined(separator: " ")
-
-            if !cameraName.isEmpty {
-                signals.append("Camera: \(cameraName)")
-            }
-
-            if let settings = camera.settings, !settings.isEmpty {
-                signals.append("Camera settings: \(settings)")
-            }
-        }
-
-        if let captureDate = metadata.captureDate {
-            signals.append("Capture date: \(Self.dateFormatter.string(from: captureDate))")
-        }
-
-        if let location = metadata.location {
-            signals.append("GPS metadata: \(location.description)")
-        }
-
-        if let colorSpace = metadata.colorSpace, !colorSpace.isEmpty {
-            signals.append("Color space: \(colorSpace)")
-        }
-
-        return signals
+        return ImageInsightResultBuilder.build(
+            input: input,
+            perception: perception,
+            generatedSummary: generatedSummary
+        )
     }
 
     private func colorProfileName(for url: URL) -> String? {
@@ -165,16 +88,8 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
               let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [String: Any] else {
             return nil
         }
-
         return properties[kCGImagePropertyProfileName as String] as? String
     }
-
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter
-    }()
 }
 
 #if canImport(FoundationModels)
@@ -195,105 +110,28 @@ private extension AppleIntelligenceInsightsService {
         }
     }
 
-    /// Runs a single FoundationModels generation pass with the given profile and optional
-    /// correction hint. Extracted so the first attempt and validation retry share one path.
-    func generate(
-        input: ImageInsightInput,
-        type: ImageContentType,
-        profile: GenerationProfile,
-        correctionHint: String? = nil
-    ) async throws -> ImageInsightResult {
+    func generateSummary(for perception: ImagePerceptionResult) async throws -> String {
         let session = LanguageModelSession(
             model: .default,
             instructions: ImageInsightPromptBuilder.systemInstruction
         )
-
-        var prompt = ImageInsightPromptBuilder.prompt(for: input, type: type)
-        if let hint = correctionHint {
-            prompt += "\n\nCORRECTION: \(hint)"
-        }
-
-        // .random(top:) gives the model just enough freedom to weave weaker signals
-        // (lower-confidence classifications, OCR text) into its output. .greedy ignores
-        // temperature entirely and produces overly-conservative argmax descriptions
-        // that miss anything not in the top-1 classification.
         let options = GenerationOptions(
-            sampling: .random(top: profile.topK),
-            temperature: profile.temperature,
-            maximumResponseTokens: profile.maxTokens
+            sampling: .greedy,
+            maximumResponseTokens: 120
         )
-
-        do {
-            let response = try await session.respond(
-                to: prompt,
-                generating: GeneratedImageInsight.self,
-                options: options
-            )
-            return response.content.result
-        } catch let generationError as LanguageModelSession.GenerationError {
-            throw Self.mapGenerationError(generationError)
-        }
-    }
-
-    /// Maps Foundation Models generation errors to user-facing `ImageInsightError` cases.
-    /// Apple's `localizedDescription` is often technical or empty for these cases; the panel
-    /// surfaces whatever message we put here verbatim, so it needs to be reader-friendly.
-    static func mapGenerationError(_ error: LanguageModelSession.GenerationError) -> ImageInsightError {
-        switch error {
-        case .guardrailViolation:
-            return .generationFailed("Apple Intelligence won't summarize this image's content.")
-        case .unsupportedLanguageOrLocale:
-            return .generationFailed("Apple Intelligence doesn't support this language yet.")
-        case .assetsUnavailable:
-            return .generationFailed("Apple Intelligence is still preparing its on-device model. Try again in a few minutes.")
-        case .exceededContextWindowSize:
-            return .generationFailed("This image has too many visual signals for Apple Intelligence to summarize.")
-        case .rateLimited:
-            return .generationFailed("Apple Intelligence is busy. Try again in a moment.")
-        case .concurrentRequests:
-            return .generationFailed("Another insight is already being generated. Please wait for it to finish.")
-        case .decodingFailure:
-            return .invalidGeneratedContent
-        case .unsupportedGuide:
-            return .generationFailed("Apple Intelligence couldn't follow the response format.")
-        case .refusal:
-            return .generationFailed("Apple Intelligence declined to describe this image.")
-        @unknown default:
-            return .generationFailed(error.localizedDescription)
-        }
+        let response = try await session.respond(
+            to: ImageInsightPromptBuilder.prompt(for: perception),
+            generating: GeneratedImageSummary.self,
+            options: options
+        )
+        return response.content.summary
     }
 }
 
 @available(macOS 26.0, *)
-@Generable(description: "A concise image insight describing visible content from on-device Vision analysis. Camera and EXIF metadata are supplementary context only and must not drive the title or subject.")
-private struct GeneratedImageInsight {
-    @Guide(description: "A short title naming what the image shows: subject, scene, or activity. Never use camera model, lens, shooting settings, file name, or prompt examples as the title.")
-    let title: String
-
-    @Guide(description: "One or two sentences describing visible content from on-device Vision signals: scene categories, recognized text, and faces. Do not describe the camera or shooting settings.")
+@Generable(description: "One cautious sentence based only on the supplied on-device Vision observations.")
+private struct GeneratedImageSummary {
+    @Guide(description: "One sentence. Restate only supplied observations. Add no visual details or proper names.")
     let summary: String
-
-    @Guide(description: "A cautious description of what the image likely depicts, based on the primary visual signals. If the visual signals are sparse or empty, say so plainly rather than guessing from EXIF.")
-    let likelyContent: String
-
-    @Guide(description: "Up to 4 short bullet points of useful details about the image. Lead with content. Include camera or EXIF only when genuinely helpful. Never repeat the camera model as a detail.")
-    let usefulDetails: [String]
-
-    @Guide(description: "Up to 6 short content-focused tags describing the image. Avoid camera-model, file-name, prompt-example, or EXIF-only tags.")
-    let tags: [String]
-
-    @Guide(description: "Required. What this insight cannot determine from local signals, without adding unsupported specifics.")
-    let limitations: [String]
-
-    var result: ImageInsightResult {
-        ImageInsightResult(
-            title: title,
-            summary: summary,
-            likelyContent: likelyContent,
-            usefulDetails: usefulDetails,
-            tags: tags,
-            limitations: limitations
-        )
-    }
 }
 #endif

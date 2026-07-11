@@ -36,94 +36,38 @@ final class ImageInsightCoreTests: XCTestCase {
         XCTAssertTrue(availability.message.contains("preparing"))
     }
 
-    func test_promptConstruction_isGroundedAndRequiresLimitations() {
-        let prompt = ImageInsightPromptBuilder.prompt(for: Self.sampleInput())
-
-        // System instruction contains the grounding directive (no longer duplicated in user prompt).
-        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("describe the visible content"))
-        XCTAssertTrue(prompt.contains("limitations"))
-        XCTAssertTrue(prompt.contains("No on-device visual analysis was successful"))
-        XCTAssertTrue(prompt.contains("sample-landscape.jpg"))
-        // Camera/EXIF must be clearly marked as context only, never as the subject.
-        XCTAssertTrue(prompt.contains("CONTEXT ONLY"))
-        XCTAssertTrue(prompt.contains("NEVER use as the title"))
-        // The system instruction must direct the model to NAME what is in the image, not just hedge.
-        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("NAME what is in the image"))
-        // OCR text is a hard requirement when present — the model must not ignore it.
-        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("MUST incorporate"))
-        // The forbidden-title example must be present so the model has a concrete anti-pattern.
-        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("iPhone 13 Pro Max Capture"))
+    func test_promptInstructionStatesThatTheModelCannotSeePixels() {
+        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("cannot see the image pixels"))
+        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("Do not infer"))
     }
 
-    func test_promptScaffold_doesNotLeakRealEntityNames() {
-        // Regression test for a bug where prompt examples ("Northwestern Mutual", "Brewers")
-        // bled into model output on unrelated images. Few-shot examples in a prompt act like
-        // demonstrations — if they contain real, plausible entity names, the model copies them
-        // when actual evidence is weak. The scaffold (instruction + body shell) must use only
-        // abstract placeholders, never real venue/brand strings.
-        let emptyInput = ImageInsightInput(
-            fileName: "scaffold-check.jpg",
-            fileType: "JPEG image",
-            dimensions: "100x100",
-            fileSize: "1 KB"
-        )
-        let scaffold = ImageInsightPromptBuilder.systemInstruction
-            + "\n" + ImageInsightPromptBuilder.prompt(for: emptyInput)
-
-        // These exact strings have leaked into model output in the past. They must never appear
-        // in the prompt scaffold itself — they may only appear when actually in a user's image.
-        let forbiddenLeakStrings = [
-            "Northwestern Mutual",
-            "Brewers",
-            "Legends Club",
-            "REWER",
-            "Acme",
-            "Ferrari",
-            "vintage leather suitcase",
-            "classic design",
-            "well-worn texture",
-            "timeless style"
-        ]
-        for leak in forbiddenLeakStrings {
-            XCTAssertFalse(
-                scaffold.contains(leak),
-                "Prompt scaffold contains '\(leak)' — examples must use abstract placeholders, never real entities the model can parrot back"
-            )
-        }
-
-        // The anti-leak instruction itself must be present so the model knows examples in the
-        // instruction block are not observations.
-        XCTAssertTrue(
-            ImageInsightPromptBuilder.systemInstruction.contains("Do not use any text, names, places, or examples from this instruction block")
-        )
-    }
-
-    func test_promptConstruction_rendersVisualSignalsAsPrimaryEvidence() {
-        let input = ImageInsightInput(
-            fileName: "group.jpg",
-            fileType: "JPEG image",
-            dimensions: "4000 x 3000 pixels",
-            fileSize: "3.1 MB",
-            visualSignals: [
-                "Scene categories: people, indoor",
-                "Detected 12 faces (a group photo if many; a portrait if one)",
-                "Text visible in image (OCR): Northwestern Mutual | LEGENDS CLUB | BREWERS"
+    func test_promptIncludesOnlyConfidenceGatedEvidence() {
+        let perception = ImagePerceptionResult(
+            classifications: [
+                .init(identifier: "sports_car", confidence: 0.88),
+                .init(identifier: "moon", confidence: 0.14),
+                .init(identifier: "outdoor", confidence: 0.64)
             ],
-            cameraSignals: ["Camera: Apple iPhone 13 Pro Max"]
+            recognizedText: ["OPEN DAILY"],
+            faceCount: 0
         )
 
-        let prompt = ImageInsightPromptBuilder.prompt(for: input)
+        let prompt = ImageInsightPromptBuilder.prompt(for: perception)
 
-        XCTAssertTrue(prompt.contains("PRIMARY EVIDENCE"))
-        XCTAssertTrue(prompt.contains("Northwestern Mutual"))
-        XCTAssertTrue(prompt.contains("Detected 12 faces"))
-        // The camera string still appears, but only in the CONTEXT ONLY bucket.
-        if let contextRange = prompt.range(of: "CONTEXT ONLY") {
-            let trailing = prompt[contextRange.lowerBound...]
-            XCTAssertTrue(trailing.contains("iPhone 13 Pro Max"))
-        } else {
-            XCTFail("Prompt is missing the CONTEXT ONLY section")
-        }
+        XCTAssertTrue(prompt.contains("sports car"))
+        XCTAssertTrue(prompt.contains("outdoor"))
+        XCTAssertTrue(prompt.contains("OPEN DAILY"))
+        XCTAssertFalse(prompt.contains("moon"))
+    }
+
+    func test_promptDoesNotContainTechnicalOrFileMetadata() {
+        let prompt = ImageInsightPromptBuilder.prompt(for: .empty)
+
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("file name"))
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("camera"))
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("GPS"))
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("EXIF"))
+        XCTAssertFalse(prompt.contains("Return:"), "Guided generation already supplies the response schema")
     }
 
     func test_resultAlwaysIncludesALimitation() {
@@ -137,22 +81,16 @@ final class ImageInsightCoreTests: XCTestCase {
         )
 
         XCTAssertFalse(result.limitations.isEmpty)
-        XCTAssertTrue(result.limitations[0].contains("local metadata"))
+        XCTAssertTrue(result.limitations[0].contains("on-device analysis"))
     }
 
     static func sampleInput(fileName: String = "sample-landscape.jpg") -> ImageInsightInput {
-        ImageInsightInput(
-            fileName: fileName,
+        _ = fileName
+        return ImageInsightInput(
             fileType: "JPEG image",
             dimensions: "4000 x 3000 pixels",
             fileSize: "3.1 MB",
-            creationDate: "May 16, 2026 at 9:00 AM",
-            modificationDate: "May 16, 2026 at 9:05 AM",
             colorProfile: "Display P3",
-            metadataDescription: nil,
-            keywords: [],
-            visualSignals: [],
-            cameraSignals: [],
             imageURL: nil
         )
     }
