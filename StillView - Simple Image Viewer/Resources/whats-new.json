@@ -1,56 +1,15 @@
 {
-  "version": "4.3.0",
-  "releaseDate": "2026-07-11T18:00:00Z",
+  "version": "4.5.0",
+  "releaseDate": "2026-07-12T12:00:00Z",
   "sections": [
-    {
-      "title": "New Features",
-      "type": "newFeatures",
-      "items": [
-        {
-          "title": "A New Studio Layout",
-          "description": "The viewer is rebuilt around one flat toolbar with a Single, Strip, and Grid switcher. Every control now has a permanent home.",
-          "isHighlighted": true
-        },
-        {
-          "title": "Info & Insights Inspector",
-          "description": "A docked panel shows filename, dimensions, exposure settings, dates, and location. Text is selectable, and clicking a row copies its value. AI Insights lives in the second tab.",
-          "isHighlighted": true
-        },
-        {
-          "title": "Grid View, Docked",
-          "description": "The grid now lives inside the window instead of covering it. Adjust thumbnail size with the density slider and sort by name, date, or size.",
-          "isHighlighted": true
-        },
-        {
-          "title": "One Zoom Control",
-          "description": "A single zoom pill replaces five buttons. Pick a preset from its menu, or double-click the photo to jump between Fit and 100%.",
-          "isHighlighted": false
-        }
-      ]
-    },
     {
       "title": "Improvements",
       "type": "improvements",
       "items": [
         {
-          "title": "A Proper Stage for Photos",
-          "description": "Images sit on a dedicated darker canvas instead of the window background. Light mode adds a soft cast shadow.",
+          "title": "More Accurate AI Insights",
+          "description": "Insights now ground more reliably in what a photo actually shows, rather than leaning on text or camera details that don't tell the whole story.",
           "isHighlighted": true
-        },
-        {
-          "title": "A Calmer Escape Key",
-          "description": "Escape steps back one level, from grid to single. It never exits your folder; press B for that.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Cleaner Thumbnails",
-          "description": "Index badges are gone. The selected image is marked with an accent ring, nothing else.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Bigger Default Window",
-          "description": "New windows open at 1180 by 740 points, sized for the new layout.",
-          "isHighlighted": false
         }
       ]
     },
@@ -59,8 +18,18 @@
       "type": "bugFixes",
       "items": [
         {
-          "title": "Keyboard Shortcuts Stay Responsive",
-          "description": "Shortcuts no longer stop working after you interact with panels and controls.",
+          "title": "File > Open Folder Works Every Time",
+          "description": "Cmd-O now reliably opens the folder picker instead of doing nothing.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Fullscreen Shortcuts Fixed",
+          "description": "F and Esc now reliably enter and exit fullscreen.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Thumbnails Refresh on Folder Switch",
+          "description": "Thumbnails now update correctly when you switch folders.",
           "isHighlighted": false
         }
       ]
