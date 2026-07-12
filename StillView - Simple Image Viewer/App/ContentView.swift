@@ -35,6 +35,9 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .requestFolderSelection)) { _ in
                 showImageViewer = false
             }
+            .onReceive(NotificationCenter.default.publisher(for: .openFolderPanel)) { _ in
+                showImageViewer = false
+            }
             .onReceive(NotificationCenter.default.publisher(for: .restoreWindowState)) { notification in
                 handleWindowStateRestoration(notification)
             }

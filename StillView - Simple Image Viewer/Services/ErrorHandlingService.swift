@@ -356,6 +356,9 @@ struct PermissionAction {
 
 extension Notification.Name {
     static let requestFolderSelection = Notification.Name("requestFolderSelection")
+    /// File > Open Folder: navigate to the selection screen AND open the picker.
+    /// Distinct from requestFolderSelection, which only navigates (Back, ⌘B).
+    static let openFolderPanel = Notification.Name("openFolderPanel")
     static let showWhatsNew = Notification.Name("showWhatsNew")
     static let whatsNewDismissed = Notification.Name("whatsNewDismissed")
     static let openPreferences = Notification.Name("openPreferences")
