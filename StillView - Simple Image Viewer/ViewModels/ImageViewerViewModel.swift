@@ -274,19 +274,36 @@ class ImageViewerViewModel: ObservableObject {
     }
     
     // MARK: - Fullscreen Methods
-    
+
+    /// The window fullscreen commands drive. The studio window has no
+    /// dedicated fullscreen control, so the key/main window is the target.
+    private var fullscreenWindow: NSWindow? {
+        NSApp.keyWindow ?? NSApp.mainWindow
+    }
+
     /// Toggle fullscreen mode
     func toggleFullscreen() {
-        isFullscreen.toggle()
+        guard let window = fullscreenWindow else { return }
+        let entering = !window.styleMask.contains(.fullScreen)
+        window.toggleFullScreen(nil)
+        isFullscreen = entering
     }
-    
+
     /// Enter fullscreen mode
     func enterFullscreen() {
+        guard let window = fullscreenWindow else { return }
+        if !window.styleMask.contains(.fullScreen) {
+            window.toggleFullScreen(nil)
+        }
         isFullscreen = true
     }
-    
+
     /// Exit fullscreen mode
     func exitFullscreen() {
+        guard let window = fullscreenWindow else { return }
+        if window.styleMask.contains(.fullScreen) {
+            window.toggleFullScreen(nil)
+        }
         isFullscreen = false
     }
     
