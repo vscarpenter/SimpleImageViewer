@@ -48,6 +48,7 @@ struct FilmstripView: View {
                 proxy.scrollTo(viewModel.currentIndex, anchor: .center)
             }
         }
+        .id(viewModel.currentFolderURL)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Filmstrip")
     }
@@ -99,10 +100,13 @@ private struct FilmstripThumbnail: View {
         .accessibilityLabel(imageFile.displayName)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .task(id: imageFile.url) {
-            thumbnail = await StudioThumbnailLoader.load(
+            thumbnail = nil
+            let loadedThumbnail = await StudioThumbnailLoader.load(
                 from: imageFile.url,
                 maxPixelSize: Int(FilmstripView.thumbSize.width * 2)
             )
+            guard !Task.isCancelled else { return }
+            thumbnail = loadedThumbnail
         }
     }
 }

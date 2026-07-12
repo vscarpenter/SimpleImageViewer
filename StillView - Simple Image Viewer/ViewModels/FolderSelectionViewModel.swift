@@ -68,6 +68,9 @@ class FolderSelectionViewModel: ObservableObject {
     
     /// Present the folder selection dialog
     func selectFolder() {
+        // panel.begin is non-modal, so a second request (menu, button) while
+        // the panel is up would open a duplicate.
+        guard !isShowingFolderPicker else { return }
         isShowingFolderPicker = true
         currentError = nil
         

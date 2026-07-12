@@ -9,7 +9,12 @@ struct FolderSelectionView: View {
     /// Callback when an image is selected for full-screen viewing
     let onImageSelected: ((FolderContent, ImageFile) -> Void)?
     
-    var body: some View { folderSelectionContent }
+    var body: some View {
+        folderSelectionContent
+            .onReceive(NotificationCenter.default.publisher(for: .openFolderPanel)) { _ in
+                viewModel.selectFolder()
+            }
+    }
     
     private var folderSelectionContent: some View {
         ZStack {

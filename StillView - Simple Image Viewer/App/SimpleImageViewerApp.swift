@@ -107,10 +107,10 @@ struct SimpleImageViewerApp: App {
             // Add File menu commands
             CommandGroup(replacing: .newItem) {
                 Button("Open Folder...") {
-                    // Bring window to foreground and handle folder selection
+                    // Bring window to foreground and open the folder picker
                     Task { @MainActor in
                         appDelegate.showMainWindow()
-                        NotificationCenter.default.post(name: .requestFolderSelection, object: nil)
+                        NotificationCenter.default.post(name: .openFolderPanel, object: nil)
                     }
                 }
                 .keyboardShortcut("o", modifiers: .command)

@@ -30,6 +30,8 @@ class ImageViewerViewModel: ObservableObject {
     @Published var sortOrder: ImageSortOrder = .name
     /// Minimum grid tile width in points, driven by the toolbar density slider
     @Published var gridDensity: Double = 160
+    /// Published source of truth for filmstrip and grid content.
+    @Published private(set) var allImageFiles: [ImageFile] = []
 
     // AI Insights state
     @Published private(set) var isAIAnalysisEnabled: Bool = false
@@ -48,10 +50,10 @@ class ImageViewerViewModel: ObservableObject {
     }
     
     var currentImageFile: ImageFile? {
-        guard !imageFiles.isEmpty && currentIndex >= 0 && currentIndex < imageFiles.count else {
+        guard !allImageFiles.isEmpty && currentIndex >= 0 && currentIndex < allImageFiles.count else {
             return nil
         }
-        return imageFiles[currentIndex]
+        return allImageFiles[currentIndex]
     }
     
     var imageCounterText: String {
@@ -63,10 +65,6 @@ class ImageViewerViewModel: ObservableObject {
         return currentImageFile?.displayName ?? ""
     }
     
-    var allImageFiles: [ImageFile] {
-        return imageFiles
-    }
-
     var currentFolderURL: URL? {
         return folderContent?.folderURL
     }
@@ -77,7 +75,6 @@ class ImageViewerViewModel: ObservableObject {
     }
 
     // MARK: - Private Properties
-    private var imageFiles: [ImageFile] = []
     private var folderContent: FolderContent?
     private var cancellables = Set<AnyCancellable>()
     private let imageLoaderService: ImageLoaderService
@@ -159,7 +156,7 @@ class ImageViewerViewModel: ObservableObject {
     /// - Parameter folderContent: The folder content containing image files
     func loadFolderContent(_ folderContent: FolderContent) {
         self.folderContent = folderContent
-        self.imageFiles = folderContent.imageFiles
+        self.allImageFiles = folderContent.imageFiles
         self.totalImages = folderContent.totalImages
         self.currentIndex = folderContent.currentIndex
         
@@ -277,19 +274,36 @@ class ImageViewerViewModel: ObservableObject {
     }
     
     // MARK: - Fullscreen Methods
-    
+
+    /// The window fullscreen commands drive. The studio window has no
+    /// dedicated fullscreen control, so the key/main window is the target.
+    private var fullscreenWindow: NSWindow? {
+        NSApp.keyWindow ?? NSApp.mainWindow
+    }
+
     /// Toggle fullscreen mode
     func toggleFullscreen() {
-        isFullscreen.toggle()
+        guard let window = fullscreenWindow else { return }
+        let entering = !window.styleMask.contains(.fullScreen)
+        window.toggleFullScreen(nil)
+        isFullscreen = entering
     }
-    
+
     /// Enter fullscreen mode
     func enterFullscreen() {
+        guard let window = fullscreenWindow else { return }
+        if !window.styleMask.contains(.fullScreen) {
+            window.toggleFullScreen(nil)
+        }
         isFullscreen = true
     }
-    
+
     /// Exit fullscreen mode
     func exitFullscreen() {
+        guard let window = fullscreenWindow else { return }
+        if window.styleMask.contains(.fullScreen) {
+            window.toggleFullScreen(nil)
+        }
         isFullscreen = false
     }
     
@@ -658,12 +672,12 @@ class ImageViewerViewModel: ObservableObject {
         var urlsToPreload: [URL] = []
         
         // Add next image
-        if hasNext, let nextImageFile = imageFiles[safe: currentIndex + 1] {
+        if hasNext, let nextImageFile = allImageFiles[safe: currentIndex + 1] {
             urlsToPreload.append(nextImageFile.url)
         }
         
         // Add previous image
-        if hasPrevious, let previousImageFile = imageFiles[safe: currentIndex - 1] {
+        if hasPrevious, let previousImageFile = allImageFiles[safe: currentIndex - 1] {
             urlsToPreload.append(previousImageFile.url)
         }
         
@@ -703,7 +717,7 @@ class ImageViewerViewModel: ObservableObject {
         let maxAttempts = min(5, totalImages) // Limit attempts to avoid infinite loops
         
         while nextIndex < totalImages && attempts < maxAttempts {
-            let nextImageFile = imageFiles[nextIndex]
+            let nextImageFile = allImageFiles[nextIndex]
             
             // Quick check if the file exists and is readable
             if FileManager.default.fileExists(atPath: nextImageFile.url.path) {
@@ -721,7 +735,7 @@ class ImageViewerViewModel: ObservableObject {
         attempts = 0
         
         while nextIndex >= 0 && attempts < maxAttempts {
-            let previousImageFile = imageFiles[nextIndex]
+            let previousImageFile = allImageFiles[nextIndex]
             
             if FileManager.default.fileExists(atPath: previousImageFile.url.path) {
                 navigateToIndex(nextIndex)
@@ -755,7 +769,7 @@ class ImageViewerViewModel: ObservableObject {
 
         currentImage = nil
         expectedImageSize = nil
-        imageFiles = []
+        allImageFiles = []
         folderContent = nil
         currentIndex = 0
         totalImages = 0
@@ -865,13 +879,13 @@ class ImageViewerViewModel: ObservableObject {
     /// - Parameter order: The sort order chosen in the grid toolbar
     func applySortOrder(_ order: ImageSortOrder) {
         sortOrder = order
-        guard !imageFiles.isEmpty else { return }
+        guard !allImageFiles.isEmpty else { return }
 
         let currentURL = currentImageFile?.url
-        imageFiles.sort { order.areInIncreasingOrder($0, $1) }
+        allImageFiles.sort { order.areInIncreasingOrder($0, $1) }
 
         if let currentURL,
-           let newIndex = imageFiles.firstIndex(where: { $0.url == currentURL }) {
+           let newIndex = allImageFiles.firstIndex(where: { $0.url == currentURL }) {
             currentIndex = newIndex
         }
     }
@@ -1061,8 +1075,8 @@ class ImageViewerViewModel: ObservableObject {
         let deletedIndex = currentIndex
         
         // Remove the image from our array
-        imageFiles.remove(at: deletedIndex)
-        totalImages = imageFiles.count
+        allImageFiles.remove(at: deletedIndex)
+        totalImages = allImageFiles.count
         
         // Handle navigation after deletion
         if totalImages == 0 {

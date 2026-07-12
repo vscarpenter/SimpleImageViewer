@@ -1,149 +1,83 @@
 import Foundation
 
-enum ImageContentTypeClassifier {
-    private static let outdoorKeywords: Set<String> = [
-        "sky", "tree", "mountain", "beach", "ocean", "lake", "river",
-        "field", "forest", "sunset", "sunrise", "cloud", "snow",
-        "desert", "garden", "park", "landscape", "coast", "shore",
-        "waterfall", "water", "trail", "valley", "canyon", "cityscape"
-    ]
+struct ImageInsightEvidence: Equatable, Sendable {
+    let subjectLabels: [ImagePerceptionResult.Classification]
+    let sceneLabels: [ImagePerceptionResult.Classification]
+    let recognizedText: [String]
+    let faceCount: Int
 
-    private static let documentKeywords: Set<String> = [
-        "text", "document", "screenshot", "screen", "paper", "page",
-        "receipt", "menu", "book", "whiteboard", "presentation", "slide",
-        "chart", "graph", "form", "table", "webpage", "website",
-        "card", "license", "passport", "id", "badge"
-    ]
-
-    private static let nonObjectKeywords: Set<String> = [
-        "indoor", "outdoor", "inside", "outside", "room", "building",
-        "architecture", "person", "people", "adult", "man", "woman",
-        "portrait", "group", "sky", "text", "document", "screenshot",
-        "screen", "landscape", "nature"
-    ]
-
-    static func classify(_ perception: ImagePerceptionResult) -> ImageContentType {
-        if hasDocumentLikeText(perception) {
-            return .document
-        }
-
-        if perception.faceCount >= 2 {
-            return .group
-        }
-
-        if perception.faceCount == 1 {
-            return .portrait
-        }
-
-        if perception.hasHorizon && hasOutdoorClassification(perception) {
-            return .landscape
-        }
-
-        // Horizonless outdoor scenes (forest, dune, top-down snow, occluded waterline) with no
-        // distinct foreground subject are still landscapes. The salientObjectCount == 0 gate is
-        // the discriminator that keeps object-in-outdoor photos (boat on water, dog in a park)
-        // in .object rather than over-routing them here (ROUTE-1).
-        if perception.salientObjectCount == 0 && hasStrongOutdoorClassification(perception) {
-            return .landscape
-        }
-
-        if perception.salientObjectCount <= 2,
-           perception.classifications.contains(where: isStrongObjectClassification) {
-            return .object
-        }
-
-        return .general
-    }
-
-    private static func hasDocumentLikeText(_ perception: ImagePerceptionResult) -> Bool {
-        let textLineCount = perception.recognizedText.count
-        let text = perception.recognizedText.joined(separator: " ")
-        let wordCount = text
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+    var supportsNarrativeGeneration: Bool {
+        let textWordCount = recognizedText
+            .flatMap { $0.components(separatedBy: CharacterSet.alphanumerics.inverted) }
             .filter { $0.count >= 2 }
             .count
+        let hasStrongSubject = (subjectLabels.first?.confidence ?? 0) >= 0.8
+        let hasCorroboratedScene = sceneLabels.count >= 2 && (sceneLabels.first?.confidence ?? 0) >= 0.55
 
-        if textLineCount >= 8 || wordCount >= 24 || text.count >= 140 {
-            return true
-        }
-
-        return textLineCount >= 3 && hasDocumentClassification(perception)
-    }
-
-    private static func hasDocumentClassification(_ perception: ImagePerceptionResult) -> Bool {
-        perception.classifications.contains { classification in
-            classification.confidence > 0.25 && containsKeyword(classification.identifier, in: documentKeywords)
-        }
-    }
-
-    private static func hasOutdoorClassification(_ perception: ImagePerceptionResult) -> Bool {
-        perception.classifications.contains { classification in
-            classification.confidence > 0.3 && containsKeyword(classification.identifier, in: outdoorKeywords)
-        }
-    }
-
-    /// Higher-confidence outdoor check (≥0.5) used for the horizonless-landscape branch, where
-    /// there is no horizon corroborating the scene — so the classification must be stronger.
-    private static func hasStrongOutdoorClassification(_ perception: ImagePerceptionResult) -> Bool {
-        perception.classifications.contains { classification in
-            classification.confidence >= 0.5 && containsKeyword(classification.identifier, in: outdoorKeywords)
-        }
-    }
-
-    private static func isStrongObjectClassification(_ classification: ImagePerceptionResult.Classification) -> Bool {
-        classification.confidence > 0.7 && !containsKeyword(classification.identifier, in: nonObjectKeywords)
-    }
-
-    private static func containsKeyword(_ identifier: String, in keywords: Set<String>) -> Bool {
-        let normalized = identifier
-            .replacingOccurrences(of: "_", with: " ")
-            .replacingOccurrences(of: "-", with: " ")
-            .lowercased()
-
-        return keywords.contains { keyword in
-            normalized == keyword || normalized.contains(" \(keyword)") || normalized.contains("\(keyword) ")
-        }
+        return textWordCount >= 4 || faceCount > 0 || hasStrongSubject || hasCorroboratedScene
     }
 }
 
-struct GenerationProfile: Sendable, Equatable {
-    let temperature: Double
-    let topK: Int
-    let maxTokens: Int
+enum ImageContentTypeClassifier {
+    private static let sceneLabels: Set<String> = [
+        "architecture", "building", "cityscape", "cloud", "cloudy", "daytime", "desert",
+        "forest", "garden", "haze", "hill", "indoor", "inside", "land", "landscape", "night",
+        "night sky", "ocean", "outdoor", "outside", "park", "room", "sand", "shore", "sky",
+        "snow", "sunrise", "sunset", "sunset sunrise", "trail", "urban", "valley", "water"
+    ]
 
-    var retryProfile: GenerationProfile {
-        GenerationProfile(
-            temperature: max(0.1, temperature - 0.1),
-            topK: max(1, min(topK, 2)),
-            maxTokens: maxTokens
+    private static let subjectConfidence: Float = 0.65
+    private static let sceneConfidence: Float = 0.45
+
+    static func classify(_ perception: ImagePerceptionResult) -> ImageContentType {
+        let evidence = perception.evidence
+        if isTextDominant(evidence.recognizedText) {
+            return .text
+        }
+        if evidence.faceCount > 0 {
+            return .people
+        }
+        if !evidence.subjectLabels.isEmpty {
+            return .subject
+        }
+        if !evidence.sceneLabels.isEmpty {
+            return .scene
+        }
+        return .unknown
+    }
+
+    private static func isTextDominant(_ lines: [String]) -> Bool {
+        let wordCount = lines
+            .flatMap { $0.components(separatedBy: CharacterSet.alphanumerics.inverted) }
+            .filter { $0.count >= 2 }
+            .count
+        return wordCount >= 4
+    }
+
+    static func evidence(from perception: ImagePerceptionResult) -> ImageInsightEvidence {
+        let subjectLabels = perception.classifications
+            .filter { $0.confidence >= subjectConfidence && !isSceneLabel($0.identifier) }
+            .prefix(4)
+        let contextualLabels = perception.classifications
+            .filter { $0.confidence >= sceneConfidence && isSceneLabel($0.identifier) }
+            .prefix(4)
+
+        return ImageInsightEvidence(
+            subjectLabels: Array(subjectLabels),
+            sceneLabels: Array(contextualLabels),
+            recognizedText: perception.recognizedText,
+            faceCount: perception.faceCount
         )
     }
 
-    /// Under-specification failures (empty/generic output) are made WORSE by the default
-    /// tighten-on-retry, which pushes the model toward the same conservative argmax that
-    /// produced the bare answer. Hold sampling steady for those and let the correctionHint do
-    /// the work; for any hallucination/leakage failure, keep tightening. A mixed set defaults
-    /// to the safe (tightened) path (PROFILE-1).
-    func retryProfile(for failures: [ValidationFailure]) -> GenerationProfile {
-        let underSpecification: Set<ValidationFailure> = [.emptyDespiteSignals, .genericFillerTitle]
-        let allUnderSpecified = !failures.isEmpty && failures.allSatisfy { underSpecification.contains($0) }
-        return allUnderSpecified ? self : retryProfile
+    private static func isSceneLabel(_ identifier: String) -> Bool {
+        let label = displayLabel(identifier)
+        return sceneLabels.contains(label)
     }
+}
 
-    static func profile(for type: ImageContentType) -> GenerationProfile {
-        switch type {
-        case .portrait:
-            return GenerationProfile(temperature: 0.4, topK: 3, maxTokens: 500)
-        case .group:
-            return GenerationProfile(temperature: 0.4, topK: 3, maxTokens: 500)
-        case .document:
-            return GenerationProfile(temperature: 0.2, topK: 2, maxTokens: 400)
-        case .landscape:
-            return GenerationProfile(temperature: 0.6, topK: 4, maxTokens: 550)
-        case .object:
-            return GenerationProfile(temperature: 0.3, topK: 3, maxTokens: 450)
-        case .general:
-            return GenerationProfile(temperature: 0.5, topK: 3, maxTokens: 600)
-        }
+extension ImagePerceptionResult {
+    var evidence: ImageInsightEvidence {
+        ImageContentTypeClassifier.evidence(from: self)
     }
 }
