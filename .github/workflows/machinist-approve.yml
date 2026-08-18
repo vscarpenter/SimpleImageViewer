@@ -1,0 +1,50 @@
+# AgentMachinist — bind approval to the PR's exact head commit.
+#
+# Only comments from the repo owner, org members, or collaborators are
+# honored; anyone else commenting the command is ignored.
+
+name: Machinist Approve
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  approve:
+    if: >-
+      (github.event_name == 'issue_comment'
+        && github.event.issue.pull_request
+        && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
+      || (github.event_name == 'pull_request_target'
+        && github.event.label.name == 'machinist:approved')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the exact approval command
+        if: github.event_name == 'issue_comment'
+        env:
+          COMMAND: ${{ github.event.comment.body }}
+        run: |
+          NORMALIZED="$(printf '%s' "$COMMAND" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          [[ "$NORMALIZED" == "/machinist-execute" ]] || {
+            echo "Expected the exact command /machinist-execute" >&2
+            exit 1
+          }
+
+      - name: Bind approval to current PR head
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+        run: |
+          HEAD_SHA="$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid --jq .headRefOid)"
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" \
+            --body "<!-- agentmachinist:approval sha=$HEAD_SHA -->"
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" \
+              --add-label "machinist:approved"
+          fi

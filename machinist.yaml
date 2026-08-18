@@ -1,0 +1,28 @@
+# AgentMachinist configuration
+# Docs: https://github.com/vscarpenter/AgentMachinist
+# Unknown keys are rejected — typos fail loudly instead of being ignored.
+
+version: 1
+
+harness:
+  name: claude-code            # claude-code | opencode | pi | codex
+  command: null                # optional: override the harness executable path
+  timeout_minutes: 30          # Phase 3 implementation budget (1-240)
+  spec_timeout_minutes: 10     # Phase 1 spec-writing budget (1-60)
+
+github:
+  repo: null                   # "owner/repo"; null = gh derives it from origin
+  spec_source: local           # local = watch owns Phase 1 | github-actions = CI owns it
+  labels:
+    trigger: agent-task        # issues with this label enter the pipeline
+    approved: "machinist:approved"   # PRs with this label get implemented
+  poll_interval_seconds: 60    # how often `machinist watch` polls (min 10)
+
+workspace:
+  root: ~/.machinist/workspaces
+  strategy: worktree           # worktree (shared object store) | clone
+  cleanup: on_success          # always | on_success | never
+  branch_prefix: agent/        # spec branches become <prefix>issue-<number>
+
+tests:
+  command: xcodebuild test -project "StillView - Simple Image Viewer.xcodeproj" -scheme "StillView - Simple Image Viewer" -destination "platform=macOS" -quiet
