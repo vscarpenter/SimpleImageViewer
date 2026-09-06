@@ -105,6 +105,75 @@ final class ImageCacheAccountingRegressionTests: XCTestCase {
         XCTAssertFalse(manager.shouldLoadImage(size: -1))
     }
 
+    func test_fileSizeChange_invalidatesCachedPixelsAndReplacementUsesNewRevision() throws {
+        let url = try temporaryFile()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let originalDate = Date(timeIntervalSince1970: 1_700_000_000)
+        try FileManager.default.setAttributes([.modificationDate: originalDate], ofItemAtPath: url.path)
+        let manager = ImageMemoryManager(maxMemoryUsage: 1_000_000)
+        let cache = ImageCache(memoryManager: manager)
+        let original = try bitmap(width: 8, height: 3, bytesPerRow: 64)
+        cache.setImage(original, for: url)
+        XCTAssertTrue(cache.image(for: url) === original)
+        // Warm this URL's resource-value cache, then alter the file through its path. The lookup
+        // must fetch new resource values, and size alone must invalidate when the date is retained.
+        _ = try url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.truncate(atOffset: 8)
+        try handle.close()
+        try FileManager.default.setAttributes([.modificationDate: originalDate], ofItemAtPath: url.path)
+
+        XCTAssertNil(cache.image(for: url))
+        XCTAssertEqual(manager.memoryUsage.current, 0)
+        XCTAssertEqual(cache.statistics.currentCount, 0)
+        let replacement = try bitmap(width: 8, height: 5, bytesPerRow: 64)
+        cache.setImage(replacement, for: url)
+        XCTAssertTrue(cache.image(for: url) === replacement)
+        XCTAssertEqual(manager.memoryUsage.current, 320)
+    }
+
+    func test_modificationDateChange_invalidatesCachedPixelsWhenByteCountIsUnchanged() throws {
+        let url = try temporaryFile()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let originalDate = Date(timeIntervalSince1970: 1_700_000_000)
+        try FileManager.default.setAttributes([.modificationDate: originalDate], ofItemAtPath: url.path)
+        let manager = ImageMemoryManager(maxMemoryUsage: 1_000_000)
+        let cache = ImageCache(memoryManager: manager)
+        cache.setImage(try bitmap(width: 8, height: 3, bytesPerRow: 64), for: url)
+        XCTAssertNotNil(cache.image(for: url))
+        _ = try url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+        try FileManager.default.setAttributes(
+            [.modificationDate: originalDate.addingTimeInterval(1)], ofItemAtPath: url.path
+        )
+
+        XCTAssertNil(cache.image(for: url))
+        XCTAssertEqual(manager.memoryUsage.current, 0)
+        XCTAssertEqual(cache.statistics.currentCost, 0)
+    }
+
+    func test_deletedFile_invalidatesCachedPixelsAndReleasesAccountingOnce() throws {
+        let url = try temporaryFile()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let manager = ImageMemoryManager(maxMemoryUsage: 1_000_000)
+        let cache = ImageCache(memoryManager: manager)
+        cache.setImage(try bitmap(width: 8, height: 3, bytesPerRow: 64), for: url)
+        XCTAssertEqual(manager.memoryUsage.current, 192)
+        try FileManager.default.removeItem(at: url)
+
+        XCTAssertNil(cache.image(for: url))
+        XCTAssertNil(cache.image(for: url))
+        XCTAssertEqual(manager.memoryUsage.current, 0)
+        XCTAssertEqual(cache.statistics.currentCount, 0)
+    }
+
+    private func temporaryFile() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("image.fixture")
+        try Data([1, 2, 3, 4]).write(to: url)
+        return url
+    }
+
     private func bitmap(width: Int, height: Int, bytesPerRow: Int) throws -> NSImage {
         let representation = try XCTUnwrap(NSBitmapImageRep(
             bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height, bitsPerSample: 8,

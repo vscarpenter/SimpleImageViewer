@@ -29,3 +29,9 @@ Use generated fixtures, isolated preferences, and controllable asynchronous serv
 The existing review's API/logic probes establish the failing baseline. New regression tests should encode those externally meaningful behaviors. Record final commands, suite counts, runtime checks, and any unverified release behavior separately.
 
 Later backlog remains outside this focused implementation: broad preferences cleanup, full keyboard-command redesign, folder monitoring/bookmark migration/restoration, Trash flow redesign, and macOS 27 image-input experimentation.
+
+## Completion
+
+- Core viewing and app-hosted test restoration committed as `79cb25a`; 135 tests passed at that boundary, with live Fit/100%/pan/full-screen/corrupt-file checks.
+- Insights access, grounding, specificity, and result retention implemented, with follow-up protection for file revisions, stale pixels, and Info metadata. The final complete active suite passed 182 tests with zero failures. All independent review blockers were resolved.
+- Live Vision/Apple Intelligence probes and the running-app walkthrough are recorded in [the verification report](../reviews/2026-09-06-correctness-verification.md), including evidence and coverage limits. Work remains local; no push or release was requested.

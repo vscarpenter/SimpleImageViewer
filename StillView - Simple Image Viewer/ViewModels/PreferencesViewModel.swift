@@ -310,8 +310,19 @@ class PreferencesViewModel: ObservableObject {
         $enableAIAnalysis
             .dropFirst()
             .sink { [weak self] newValue in
-                self?.preferencesService.enableAIAnalysis = newValue
-                self?.preferencesService.savePreferences()
+                guard let self, self.preferencesService.enableAIAnalysis != newValue else { return }
+                self.preferencesService.enableAIAnalysis = newValue
+                self.preferencesService.savePreferences()
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .aiAnalysisPreferenceDidChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                let enabled = self.preferencesService.enableAIAnalysis
+                guard self.enableAIAnalysis != enabled else { return }
+                self.enableAIAnalysis = enabled
             }
             .store(in: &cancellables)
 

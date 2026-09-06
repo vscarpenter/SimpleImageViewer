@@ -69,9 +69,35 @@ struct InspectorView: View {
 private struct InspectorInfoTab: View {
     @ObservedObject var viewModel: ImageViewerViewModel
 
-    @State private var metadata: ImageMetadataService.ImageMetadata?
+    @State private var metadataSnapshot: MetadataSnapshot?
+
+    private struct MetadataRequestID: Hashable {
+        let url: URL?
+        let load: UUID?
+    }
+
+    private struct MetadataSnapshot {
+        let requestID: MetadataRequestID
+        let metadata: ImageMetadataService.ImageMetadata
+        let file: ImageFile?
+    }
+
+    private var metadataRequestID: MetadataRequestID {
+        MetadataRequestID(url: viewModel.currentImageFile?.url,
+                          load: viewModel.currentImageRequestID)
+    }
+
+    private var currentMetadataSnapshot: MetadataSnapshot? {
+        guard metadataSnapshot?.requestID == metadataRequestID else { return nil }
+        return metadataSnapshot
+    }
+
+    private var metadata: ImageMetadataService.ImageMetadata? {
+        currentMetadataSnapshot?.metadata
+    }
 
     var body: some View {
+        let requestID = metadataRequestID
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -85,10 +111,11 @@ private struct InspectorInfoTab: View {
                     }
 
                     if let imageFile = viewModel.currentImageFile {
-                        filenameBlock(imageFile)
+                        let currentFile = currentMetadataSnapshot?.file ?? imageFile
+                        filenameBlock(currentFile)
                         exposureStrip
                         cameraSection
-                        datesSection(imageFile)
+                        datesSection(currentFile)
                         locationSection
                     } else {
                         Text("No image selected")
@@ -102,15 +129,18 @@ private struct InspectorInfoTab: View {
 
             footer
         }
-        .task(id: viewModel.currentImageFile?.url) {
-            metadata = nil
-            guard let url = viewModel.currentImageFile?.url else { return }
+        .task(id: requestID) {
+            guard !Task.isCancelled, metadataRequestID == requestID else { return }
+            metadataSnapshot = nil
+            guard let url = requestID.url else { return }
             let service = ImageMetadataService()
             let extracted = await Task.detached(priority: .userInitiated) {
-                service.extractMetadata(from: url)
+                var freshURL = url
+                freshURL.removeAllCachedResourceValues()
+                return (metadata: service.extractMetadata(from: freshURL), file: try? ImageFile(url: freshURL))
             }.value
-            guard !Task.isCancelled, viewModel.currentImageFile?.url == url else { return }
-            metadata = extracted
+            guard !Task.isCancelled, metadataRequestID == requestID else { return }
+            metadataSnapshot = MetadataSnapshot(requestID: requestID, metadata: extracted.metadata, file: extracted.file)
         }
     }
 
@@ -343,8 +373,15 @@ private struct InspectorInsightsTab: View {
                     case .unavailable(let message):
                         unavailableSection(message)
                     case .generating:
-                        privacyNote
+                        if let result = insightViewModel.result {
+                            resultSection(result)
+                        } else {
+                            privacyNote
+                        }
                     case .result(let result):
+                        if let message = insightViewModel.generationError {
+                            refreshFailureSection(message)
+                        }
                         resultSection(result)
                     case .failed(let message):
                         failedSection(message)
@@ -363,14 +400,14 @@ private struct InspectorInsightsTab: View {
             Image(systemName: "sparkles")
                 .font(.system(size: 14))
                 .foregroundColor(.appAITint)
-            Text("Apple Intelligence · on-device")
+            Text("On-device image analysis")
                 .font(.system(size: 10.5))
                 .foregroundColor(.appSecondaryText)
         }
     }
 
     private var privacyNote: some View {
-        Text("Insights are generated on this Mac from local metadata and system analysis. Nothing leaves your device.")
+        Text("Vision detects likely subjects, faces, and text. Apple Intelligence can select excerpts from longer text. Your images stay on this Mac.")
             .font(.system(size: 12))
             .foregroundColor(.appSecondaryText)
             .lineSpacing(4)
@@ -387,6 +424,10 @@ private struct InspectorInsightsTab: View {
             } icon: {
                 Image(systemName: "exclamationmark.circle")
                     .foregroundColor(.appSecondaryText)
+            }
+
+            if isAppDisabled {
+                privacyNote
             }
 
             if case .unavailable(.appleIntelligenceDisabled) = viewModel.imageInsightAvailability {
@@ -412,6 +453,18 @@ private struct InspectorInsightsTab: View {
         }
     }
 
+    private func refreshFailureSection(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Couldn’t refresh insight", systemImage: "exclamationmark.triangle")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.appText)
+            Text("Your previous result is still shown. \(message)")
+                .font(.system(size: 11))
+                .foregroundColor(.appSecondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private func resultSection(_ result: ImageInsightResult) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
@@ -428,13 +481,43 @@ private struct InspectorInsightsTab: View {
                     .textSelection(.enabled)
             }
 
-            insightSection(title: "LIKELY CONTENT", values: [result.likelyContent])
             insightSection(title: "USEFUL DETAILS", values: result.usefulDetails)
+            recognizedTextSection(result)
             tagSection(result.tags)
 
             if !result.limitations.isEmpty {
                 InsightCaptionSection(title: "LIMITATIONS", lines: result.limitations)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func recognizedTextSection(_ result: ImageInsightResult) -> some View {
+        if result.recognizedText.count > 3 {
+            VStack(alignment: .leading, spacing: 6) {
+                insightSection(title: "TEXT HIGHLIGHTS", values: result.selectedTextLines)
+                Text(result.textSelectionSource == .appleIntelligence
+                     ? "Apple Intelligence selected these excerpts from recognized text."
+                     : "Excerpts shown in reading order.")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(.appSecondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            DisclosureGroup("Recognized text (\(result.recognizedText.count) lines)") {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(result.recognizedText.enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                }
+                .font(.system(size: 12))
+                .foregroundColor(.appText)
+                .padding(.top, 6)
+            }
+            .font(.system(size: 12))
+        } else {
+            insightSection(title: "RECOGNIZED TEXT", values: result.recognizedText)
         }
     }
 
@@ -504,7 +587,11 @@ private struct InspectorInsightsTab: View {
                     }
                 } else {
                     Button {
-                        viewModel.generateImageInsight()
+                        if isAppDisabled {
+                            viewModel.enableAIInsights()
+                        } else {
+                            viewModel.generateImageInsight()
+                        }
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "sparkles")
@@ -521,8 +608,9 @@ private struct InspectorInsightsTab: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .disabled(!viewModel.canGenerateImageInsight)
-                    .opacity(viewModel.canGenerateImageInsight ? 1.0 : 0.5)
+                    .disabled(!isAppDisabled && !viewModel.canGenerateImageInsight)
+                    .opacity(isAppDisabled || viewModel.canGenerateImageInsight ? 1.0 : 0.5)
+                    .help(isAppDisabled ? "Enable on-device Insights in StillView" : "Analyze the selected image on this Mac")
                 }
             }
             .padding(12)
@@ -530,6 +618,8 @@ private struct InspectorInsightsTab: View {
     }
 
     private var actionTitle: String {
+        if isAppDisabled { return "Enable Insights" }
+        if insightViewModel.generationError != nil { return "Try Again" }
         switch insightViewModel.state {
         case .result:
             return "Regenerate Insight"
@@ -538,6 +628,10 @@ private struct InspectorInsightsTab: View {
         default:
             return "Generate Insight"
         }
+    }
+
+    private var isAppDisabled: Bool {
+        viewModel.imageInsightAvailability == .unavailable(.appDisabled)
     }
 
     private func openAppleIntelligenceSettings() {
