@@ -1,76 +1,48 @@
-# App Store Review Notes — StillView Image Viewer
+# App Store Review Notes — StillView 4.5.1 (Build 35)
 
-Reviewer-facing context for the App Store Connect "Notes" field. Copy the relevant sections into the submission form. Updated for v4.0.0 (build 29).
+Reviewer-facing context for App Store Connect. StillView requires macOS 26 or later. It has no account system, sign-in, or test credentials.
 
-## Testing AI Insights (macOS 26 + Apple Intelligence)
+## Basic navigation
 
-AI Insights uses Apple's on-device Foundation Models framework. There is no
-account, no test credentials, and no network call to verify. Everything runs
-locally.
+1. Launch StillView and choose **Open Folder**, or use **File → Open Folder… (⌘O)**. Select a local folder containing images.
+2. Use **Single**, **Strip**, and **Grid** in the toolbar to switch viewing modes. At narrow widths the segments use icons, with accessible names and tooltips.
+3. In Grid, click a thumbnail to select it, then double-click or press Enter with the viewer focused to open it in Single. Use the inline density slider to resize thumbnails. Sorting and additional image actions move into the toolbar’s More actions menu at narrow widths.
+4. Open the inspector and choose **Info** for metadata or **Insights** for local image analysis.
+5. The folder menu and **⌘O** can open another folder. Canceling the picker preserves the current collection. **B** with the viewer focused, or **File → Back to Folder Selection**, returns to the welcome screen.
+6. Keyboard shortcuts apply to the image viewer when it has focus. Focused controls, text fields, dialogs, and other windows retain their usual key behavior. **Preferences → Shortcuts** is a read-only reference.
 
-### On an Apple Intelligence eligible Mac (M1 or later) running macOS 26+
+Supported formats are JPEG, PNG, GIF, HEIF/HEIC, WebP, TIFF, and BMP. Animated GIF/WebP show their first frame; multipage TIFF shows the first image. SVG and PDF are excluded.
 
-1. Open **System Settings → Apple Intelligence & Siri** and enable Apple Intelligence.
-2. Wait for the on-device model to finish downloading. Status is shown in
-   System Settings; this can take several minutes on first activation.
-3. Launch StillView and click **Select Folder** to open any folder with images
-   (use the supplied sample images or your own).
-4. Click any image to view it, then click the **sparkles icon** in the toolbar
-   to open the AI Insights panel.
-5. Click **Generate Insight**. After a few seconds, a content-focused
-   description appears: a short title naming what the image shows, a summary,
-   useful details, content tags, and the limitations of the analysis.
+## Testing AI Insights
 
-### On an ineligible Mac, or with Apple Intelligence disabled
+On an Apple Intelligence eligible Mac running macOS 26 or later:
 
-The AI Insights panel still opens and shows an availability message explaining
-why generation isn't available. Possible messages include:
+1. Enable **System Settings → Apple Intelligence & Siri → Apple Intelligence** and wait for the on-device model to be ready.
+2. Open a local image folder in StillView, select an image, and open the inspector’s **Insights** tab. **⌘I** opens this tab while the viewer has focus.
+3. If the feature is disabled in StillView, choose **Enable Insights**. It can also be enabled in **Preferences → General**.
+4. Choose **Generate Insight**. The result shows local visual evidence and its limitations, with recognized text when available.
+5. Try a scene photo, a sign or screenshot containing text, and a portrait. Vision reports category matches, OCR lines, and face counts; it does not identify people.
 
-- "AI Insights require macOS 26 or later."
-- "This Mac does not support Apple Intelligence."
-- "Turn on Apple Intelligence in System Settings to use AI Insights."
-  *(an "Open System Settings" button is offered here)*
-- "Apple Intelligence is preparing its on-device model. Try again later."
+The app uses Apple Vision to inspect image pixels. When suitable OCR text is present, Apple’s on-device Foundation Models framework may select up to three indices referring to existing OCR lines. The app displays those exact lines without rewriting them. The language model receives recognized text rather than image pixels; visual matches and summaries are assembled from the local evidence. If text selection fails, the app uses original reading order.
 
-Please verify the panel opens and displays the correct message rather than
-expecting generation to succeed in these states. The intent is graceful
-degradation, not feature parity.
+On an ineligible Mac, with Apple Intelligence disabled, or while its model is preparing, the panel explains why generation is unavailable. When appropriate, **Open System Settings** helps resolve that state. StillView’s normal image viewing remains available.
 
-## Privacy posture
+## Preferences and file operations
 
-- Images, metadata, prompts, generated text, and analysis results never leave
-  the device. There are no network AI APIs.
-- No telemetry. No analytics. No crash-reporting SDK. No bundled Core ML
-  models.
-- Apple Vision (classification, OCR, face detection, saliency, horizon) runs on
-  a background task at the moment the user clicks **Generate Insight**.
-- The Foundation Models call is grounded in those on-device visual signals.
-  Camera, EXIF, and GPS metadata are treated as context only and never as the
-  image's subject.
+- File-name display, opening the inspector by default, and slideshow duration apply on the next app launch.
+- AI Insights and automatic image enhancements can be enabled or disabled in General. Enhancements change the displayed image; originals are preserved.
+- Appearance controls translucent backgrounds in the preferences window.
+- Slideshows always repeat after the last image. **S** starts or stops; Space stops an active slideshow and otherwise advances to the next image.
+- Moving an image to Trash always requires confirmation of the named file. Test with a disposable image. Files can be recovered from macOS Trash.
 
-## Sandboxing & permissions
+## Privacy and permissions
 
-- App Sandbox is enabled with the Hardened Runtime.
-- Folder access is granted through `NSOpenPanel` (user-selected read-write).
-- Folder access persists across launches via security-scoped bookmarks
-  (app-scope).
-- No network entitlement.
-- No camera, microphone, photo library, or location entitlements.
+- The app does not collect user data or use analytics, tracking, or third-party crash-reporting SDKs.
+- Images, metadata, recognized text, model input, and results remain on this Mac. No network AI API or bundled custom Core ML model is used.
+- App Sandbox and Hardened Runtime are enabled. `NSOpenPanel` grants user-selected read-write folder access so a confirmed file can be moved to Trash.
+- App-scope security-scoped bookmarks are stored locally for folder access.
+- No camera, microphone, photo-library, or location entitlement is requested. The app has no network entitlement.
+- Sharing opens macOS sharing services when the user chooses Share. Privacy, support, and website links open in the user’s browser when selected.
+- Privacy policy: https://stillviewapp.com/privacy.html
 
-## Sample test images
-
-Any local folder works. For a thorough exercise that covers the AI Insights
-prompt's different evidence paths:
-
-- A scene photo (verifies visual classification)
-- A photo of a sign, storefront, or product (verifies OCR-driven titles)
-- A portrait or group photo (verifies face-count messaging)
-- A mixed-format folder containing JPEG, PNG, HEIC, TIFF, and GIF (verifies
-  format coverage)
-
-## Export compliance
-
-The app uses only HTTPS for user-initiated links to the developer's website
-and the public GitHub repository (Help menu). Encryption is limited to
-standard system-provided HTTPS. Export classification: 5D992.c (exempt).
-Declared via `ITSAppUsesNonExemptEncryption = NO`.
+The app declares `ITSAppUsesNonExemptEncryption = NO`.

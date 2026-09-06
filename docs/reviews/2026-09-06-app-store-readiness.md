@@ -1,5 +1,39 @@
 # StillView 4.5.1 App Store readiness review
 
+## Follow-up: approved fixes completed September 6, 2026
+
+**Items 2–5 are implemented and locally verified. Item 1 is complete in the app; publication of the privacy page remains with the app owner.** Version stays **4.5.1 (35)** on `codex/app-store-readiness-fixes`. The original review below is preserved as a historical snapshot, not a list of still-open code findings.
+
+| Item | Completed change | Verification |
+| --- | --- | --- |
+| 1. Privacy | About and Help link to `https://stillviewapp.com/privacy.html`; timestamp manifest includes C617.1, 3B52.1, and DDA9.1; supported NSWorkspace accessibility properties replace reads of system UserDefaults. | About's native accessibility tree exposes the exact policy URL and browser hint. The built manifest matches source; no entitlement changes. Public page publication/content and App Store Connect fields remain unverified. |
+| 2. Folder and keyboard routing | One persistent picker serves welcome, Cmd+O, toolbar, and restoration. Failed/canceled requests preserve the active collection and scope. Back stops the slideshow. Viewer shortcuts respect both SwiftUI and AppKit focus, and clicking the canvas restores viewer focus. | First Cmd+O from a loaded viewer opens the picker; Cancel preserves the same photo; B returns to welcome; Delete/S/Return do not affect hidden images. Tab-focused Grid retains Space, Tab-focused Strip activates on Space without changing selection, and clicking the canvas restores Right-arrow navigation. |
+| 3. Trash | Capture file/folder before confirmation, retain scope through completion, prevent duplicates, and reconcile by URL while preserving newer selections and collections. | Twelve controlled-service regressions cover selection, sort, folder/clear changes, scope lifetime, failure, cancellation, duplicates, and last-image slideshow cleanup. No user image was deleted during validation. Actual distribution-signed recycling remains a release smoke check. |
+| 4. Compact toolbar | Independent layout regions, adaptive overflow, explicit mode labels, and consistent 800-point minimum width. | Native Single/Strip/Grid inspection at 800 points and a wide window. Grid no longer overlaps; More actions contains slideshow/interval, Share, Trash, and sorting. Date Modified remains accessible through the submenu. |
+| 5. Truthful Settings and copy | Removed inactive settings and fake previews; shortcuts are a searchable built-in reference. Working startup settings are labeled accordingly. Help, README, submission/reviewer notes, keyboard reference, and bundled notes match current raster formats, static first-frame behavior, macOS 26+, Insights, and confirmed Trash behavior. | Native General/Appearance/Shortcuts inspection and shortcut search. Generated two-frame GIF proves first-frame display; vector scans are excluded. Normal local Insights generation succeeded on the sample canyon image. |
+
+### Final local evidence
+
+- **223 tests passed, zero failures**: [test log](/private/tmp/stillview-readiness-fixes/complete-tests.log), [result bundle](/private/tmp/stillview-readiness-fixes/complete-tests.xcresult). This adds 35 active regressions to the 188-test baseline. The membership guard still verifies 16 active test source files; legacy inactive suites were not silently claimed as coverage.
+- **Fresh universal Release build passed** with arm64 and x86_64: [build log](/private/tmp/stillview-readiness-fixes/final-release.log). The built Info.plist reports the correct bundle ID, 4.5.1 (35), and macOS 26.0 minimum; all eight bundled release-note items are present.
+- **SwiftLint passed with five pre-existing warnings and zero serious violations**: [lint log](/private/tmp/stillview-readiness-fixes/complete-lint.log). The removed Preferences preview code eliminated the previous file-length warning. Whitespace, JSON, manifest, and test-membership checks passed.
+- Native checks used `/private/tmp/stillview-readiness-fixes/ReleaseDerivedData/Build/Products/Release/StillView - Simple Image Viewer.app`, locally ad-hoc signed with the app's declared sandbox/read-write/bookmark entitlements. Signature verification passed. This is not distribution signing or Organizer validation.
+- Independent source review found two additional folder cases: duplicate expired-bookmark error UI and a late scan replacing a newer failed request. Both were reproduced by failing tests, repaired, and passed. Native testing caught SwiftUI focus not exposed through the original AppKit-only probe; explicit focused values plus a focusable canvas fixed the reproduced Tab/Space failure.
+- Local commits separate privacy/formats (`53807f7`), viewer behavior/layout (`68d17af`), and Settings/release documentation. The plan was committed as `777aff4`. No Xcode project file was edited, and pre-existing untracked workspace material was preserved.
+
+### Remaining release gates
+
+1. Publish and verify `https://stillviewapp.com/privacy.html`, then use the same URL in App Store Connect.
+2. Validate the final distribution-signed archive, run its release smoke checks (including a disposable-image Trash/recovery check), and confirm the selected processed build, metadata, screenshots, privacy answers, and review notes in App Store Connect.
+3. Push/integrate the intended release branch and verify CI on that exact commit before submission. No push, PR merge, upload, or submission was performed in this follow-up.
+
+The broader backlog and coverage limits recorded in the initial review remain outside these five approved repair groups. Full VoiceOver and dark/high-contrast walkthroughs, long-session performance, and external-volume recovery were not established by this pass. Runtime checks reused the existing sample-photo recent entry and changed the window size and last-viewed Preferences tab; original recent folders and images were preserved.
+
+---
+
+## Original review before implementation
+
+
 Reviewed September 6, 2026, at `448cd7e549c22c3c7b85f16c4519381498f503cc` on `codex/viewing-and-insights-correctness`, version **4.5.1 (35)**.
 
 **Verdict: hold submission.** The recent viewing and Insights repairs pass local verification, but privacy disclosures, navigation, Trash reconciliation, compact layout, and misleading feature/settings descriptions still need work. This review changed no application source or Xcode configuration and did not publish, push, merge, or submit a build.

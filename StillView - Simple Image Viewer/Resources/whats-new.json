@@ -15,6 +15,11 @@
           "title": "Keep Your Insights While Browsing",
           "description": "Completed insights stay available when you switch inspector tabs or return to the app. Outdated results are cleared when the image file changes.",
           "isHighlighted": false
+        },
+        {
+          "title": "Controls That Fit",
+          "description": "Compact windows keep viewing controls visible and place additional actions in a More actions menu. Preferences now includes a searchable guide to built-in shortcuts.",
+          "isHighlighted": false
         }
       ]
     },
@@ -35,6 +40,16 @@
         {
           "title": "Easier Access to Insights",
           "description": "The Insights tab now stays open when the feature is off, with a clear action to enable it.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Reliable Folder and Keyboard Controls",
+          "description": "Open Folder works from the viewer on the first try. Canceling keeps your current collection, and image shortcuts leave focused controls and dialogs their usual keys.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Consistent Trash Updates",
+          "description": "Moving an image to Trash keeps the collection and selection consistent if you navigate or sort while the operation finishes.",
           "isHighlighted": false
         }
       ]
