@@ -897,7 +897,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 34;
+				CURRENT_PROJECT_VERSION = 35;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_APP_SANDBOX = YES;
@@ -924,7 +924,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 4.5.0;
+				MARKETING_VERSION = 4.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -941,7 +941,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 34;
+				CURRENT_PROJECT_VERSION = 35;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 52HVJ3VDSM;
@@ -969,7 +969,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 4.5.0;
+				MARKETING_VERSION = 4.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
