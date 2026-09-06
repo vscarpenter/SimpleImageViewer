@@ -1,4 +1,5 @@
 import XCTest
+@testable import StillView___Simple_Image_Viewer
 
 /// Unit tests for BeforeAfterSliderView's aspect-fit sizing, which decides how the
 /// comparison fills its container without cropping either image.

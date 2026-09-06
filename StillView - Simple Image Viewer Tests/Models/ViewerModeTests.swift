@@ -1,4 +1,5 @@
 import XCTest
+@testable import StillView___Simple_Image_Viewer
 
 /// Unit tests for the Studio view-mode state machine (ViewMode + InspectorTab).
 final class ViewerModeTests: XCTestCase {

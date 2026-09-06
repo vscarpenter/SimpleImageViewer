@@ -1,4 +1,5 @@
 import XCTest
+@testable import StillView___Simple_Image_Viewer
 
 final class ImageInsightCoreTests: XCTestCase {
     func test_availabilityMapping_whenMacOSIsBelow26_isUnsupported() {

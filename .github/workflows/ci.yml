@@ -27,6 +27,9 @@ jobs:
                    build \
                    CODE_SIGN_IDENTITY="" \
                    CODE_SIGNING_REQUIRED=NO
+
+    - name: Verify regression test target
+      run: python3 scripts/check-test-target.py
     
     - name: Run Tests
       run: |

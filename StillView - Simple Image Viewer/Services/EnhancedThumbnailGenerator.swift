@@ -94,7 +94,9 @@ final class EnhancedThumbnailGenerator: EnhancedThumbnailGeneratorProtocol {
                 }
 
                 // Cache the generated thumbnail
-                self?.thumbnailCache.setObject(thumbnail, forKey: cacheKey as NSString)
+                self?.thumbnailCache.setObject(
+                    thumbnail, forKey: cacheKey as NSString, cost: ImageCache.decodedMemoryCost(of: thumbnail)
+                )
 
                 promise(.success(thumbnail))
             }
@@ -201,9 +203,8 @@ final class EnhancedThumbnailGenerator: EnhancedThumbnailGeneratorProtocol {
         let imageSize = NSSize(width: finalImage.width, height: finalImage.height)
         let nsImage = NSImage(cgImage: finalImage, size: imageSize)
         
-        // Update memory manager with estimated thumbnail size
-        let estimatedSize = Int(imageSize.width * imageSize.height * 4) // RGBA
-        memoryManager.didLoadImage(size: estimatedSize)
+        // This separate, 50 MB thumbnail cache owns its own cost bound. Do not register bytes in
+        // the main-image manager without an eviction lifetime; that used to accumulate forever.
         
         return nsImage
     }

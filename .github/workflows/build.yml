@@ -63,6 +63,9 @@ jobs:
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO
           
+    - name: Verify regression test target
+      run: python3 scripts/check-test-target.py
+
     - name: Run Unit Tests
       run: |
         xcodebuild test \
