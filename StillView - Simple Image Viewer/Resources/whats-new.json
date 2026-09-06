@@ -1,15 +1,20 @@
 {
-  "version": "4.5.0",
-  "releaseDate": "2026-07-12T12:00:00Z",
+  "version": "4.5.1",
+  "releaseDate": "2026-09-06T03:26:21Z",
   "sections": [
     {
       "title": "Improvements",
       "type": "improvements",
       "items": [
         {
-          "title": "More Accurate AI Insights",
-          "description": "Insights now ground more reliably in what a photo actually shows, rather than leaning on text or camera details that don't tell the whole story.",
+          "title": "Clearer Image Insights",
+          "description": "Photo insights use more specific visual matches. Text highlights preserve the recognized words and numbers, including short signs and multilingual text.",
           "isHighlighted": true
+        },
+        {
+          "title": "Keep Your Insights While Browsing",
+          "description": "Completed insights stay available when you switch inspector tabs or return to the app. Outdated results are cleared when the image file changes.",
+          "isHighlighted": false
         }
       ]
     },
@@ -18,18 +23,18 @@
       "type": "bugFixes",
       "items": [
         {
-          "title": "File > Open Folder Works Every Time",
-          "description": "Cmd-O now reliably opens the folder picker instead of doing nothing.",
+          "title": "Accurate Fit and Actual Size",
+          "description": "Fit to Window shows the complete image, while 100% uses the correct pixel scale. Panning stays within the image bounds.",
+          "isHighlighted": true
+        },
+        {
+          "title": "More Reliable Image Loading",
+          "description": "Stale image updates no longer interrupt navigation. Folders with unreadable images show a clear error and Retry instead of staying stuck loading.",
           "isHighlighted": false
         },
         {
-          "title": "Fullscreen Shortcuts Fixed",
-          "description": "F and Esc now reliably enter and exit fullscreen.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Thumbnails Refresh on Folder Switch",
-          "description": "Thumbnails now update correctly when you switch folders.",
+          "title": "Easier Access to Insights",
+          "description": "The Insights tab now stays open when the feature is off, with a clear action to enable it.",
           "isHighlighted": false
         }
       ]
