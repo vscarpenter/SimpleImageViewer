@@ -289,3 +289,87 @@ final class FileSystemServiceTests: XCTestCase {
         wait(for: [rootUpdate, subfolderUpdate], timeout: 5)
     }
 }
+
+final class SecurityScopedAccessPathRegressionTests: XCTestCase {
+    func test_currentFolder_acceptsSymlinkAliasWithoutReplacingScopedURL() throws {
+        let fixture = try makeAliasFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let manager = SecurityScopedAccessManager()
+        _ = manager.startAccess(for: fixture.alias)
+
+        XCTAssertTrue(manager.hasAccess(to: fixture.image))
+        XCTAssertEqual(manager.currentURL, fixture.alias, "Keep the original security-scoped URL alive")
+    }
+
+    func test_favoriteFolder_acceptsSymlinkAliasWithoutReplacingTrackedURL() throws {
+        let fixture = try makeAliasFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let manager = SecurityScopedAccessManager()
+        manager.addFavoriteFolder(fixture.alias)
+        defer { manager.removeFavoriteFolder(fixture.alias) }
+
+        XCTAssertTrue(manager.hasAccess(to: fixture.image))
+        XCTAssertTrue(manager.trackedFavoriteFolders.contains(fixture.alias))
+    }
+
+    func test_pathComparison_treatsTmpAndPrivateTmpAsTheSameFolder() {
+        let alias = URL(fileURLWithPath: "/tmp", isDirectory: true)
+        let canonical = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
+
+        XCTAssertTrue(SecurityScopedAccessManager.isSameOrDescendant(canonical, of: alias))
+        XCTAssertTrue(SecurityScopedAccessManager.isSameOrDescendant(alias, of: canonical))
+        XCTAssertTrue(SecurityScopedAccessManager.isSameOrDescendant(
+            canonical.appendingPathComponent("image.png"), of: alias
+        ))
+    }
+
+    func test_pathComparison_rejectsSiblingWithMatchingPrefix() throws {
+        let fixture = try makeAliasFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let sibling = fixture.directory.appendingPathComponent("photos-other", isDirectory: true)
+        try FileManager.default.createDirectory(at: sibling, withIntermediateDirectories: true)
+        let image = sibling.appendingPathComponent("image.png")
+        try Data([1]).write(to: image)
+
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(image, of: fixture.root))
+    }
+
+    func test_pathComparison_rejectsSymlinkEscapingTheGrantedFolder() throws {
+        let fixture = try makeAliasFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let outside = fixture.directory.appendingPathComponent("outside", isDirectory: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        try Data([1]).write(to: outside.appendingPathComponent("image.png"))
+        let escape = fixture.root.appendingPathComponent("escape", isDirectory: true)
+        try FileManager.default.createSymbolicLink(at: escape, withDestinationURL: outside)
+
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(
+            escape.appendingPathComponent("image.png"), of: fixture.root
+        ))
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(
+            escape.appendingPathComponent("image.png"), of: fixture.alias
+        ))
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(
+            escape.appendingPathComponent("missing.png"), of: fixture.root
+        ))
+    }
+
+    func test_pathComparison_rejectsNonFileURLs() throws {
+        let root = URL(fileURLWithPath: "/tmp", isDirectory: true)
+        let remote = try XCTUnwrap(URL(string: "https://example.com/tmp/image.png"))
+
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(remote, of: root))
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(root, of: remote))
+    }
+
+    private func makeAliasFixture() throws -> (directory: URL, root: URL, alias: URL, image: URL) {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let root = directory.appendingPathComponent("photos", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let alias = directory.appendingPathComponent("selected-alias", isDirectory: true)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: root)
+        let image = root.appendingPathComponent("image.png")
+        try Data([1]).write(to: image)
+        return (directory, root, alias, image)
+    }
+}
