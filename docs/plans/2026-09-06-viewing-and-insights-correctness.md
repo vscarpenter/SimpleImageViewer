@@ -34,4 +34,5 @@ Later backlog remains outside this focused implementation: broad preferences cle
 
 - Core viewing and app-hosted test restoration committed as `79cb25a`; 135 tests passed at that boundary, with live Fit/100%/pan/full-screen/corrupt-file checks.
 - Insights access, grounding, specificity, and result retention implemented, with follow-up protection for file revisions, stale pixels, and Info metadata. The final complete active suite passed 182 tests with zero failures. All independent review blockers were resolved.
+- The post-unlock visual recheck verified the final inspector changes and exposed a folder path-alias edge case. Canonical containment comparisons fixed it, six isolated regressions brought the suite to 188 passing tests, and opening the folder through `/tmp` succeeded in the final sandbox-enabled development build.
 - Live Vision/Apple Intelligence probes and the running-app walkthrough are recorded in [the verification report](../reviews/2026-09-06-correctness-verification.md), including evidence and coverage limits. Work remains local; no push or release was requested.
