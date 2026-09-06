@@ -218,6 +218,7 @@ struct EnhancedImageDisplayView: View {
                     Button("Retry") { viewModel.retryCurrentImage() }
                         .buttonStyle(.bordered)
                         .help("Try loading the selected image again")
+                        .focusedValue(\.viewerKeyboardFocus, .control)
                 }
             }
             .padding(24)

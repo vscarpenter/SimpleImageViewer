@@ -103,12 +103,9 @@ class ContextMenuService: ObservableObject {
         )
     }
     
-    /// Open preferences (placeholder for future implementation)
+    /// Open the existing preferences window.
     func openPreferences() {
-        ErrorHandlingService.shared.showNotification(
-            "Preferences window will be available in a future update",
-            type: .info
-        )
+        NotificationCenter.default.post(name: .openPreferences, object: nil)
     }
     
     // MARK: - Helper Methods

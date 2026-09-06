@@ -21,6 +21,7 @@ class ImageViewerViewModel: ObservableObject {
     @Published var isSlideshow: Bool = false
     @Published var slideshowInterval: Double = 3.0
     @Published var viewMode: ViewMode = .single
+    @Published private(set) var isDeletingImage: Bool = false
 
     // Inspector state (Studio redesign): one docked panel, one active tab.
     @Published var inspectorVisible: Bool = false
@@ -88,6 +89,7 @@ class ImageViewerViewModel: ObservableObject {
     private let expectedImageSizeLoader: (URL) async -> CGSize?
     private var preferencesService: PreferencesService
     private let errorHandlingService: ErrorHandlingService
+    private let trashService: any ImageTrashService
     private var slideshowTimer: Timer?
     private let thumbnailCache = NSCache<NSURL, NSImage>()
     private let sharingDelegate = SharingServiceDelegate()
@@ -111,6 +113,8 @@ class ImageViewerViewModel: ObservableObject {
     private(set) var fitZoomLevel: Double = 1.0
 
     // MARK: - Initialization
+    // The dependencies keep image loading, Insights, and destructive file operations independently testable.
+    // swiftlint:disable:next function_parameter_count
     init(imageLoaderService: ImageLoaderService = DefaultImageLoaderService(),
          preferencesService: PreferencesService = DefaultPreferencesService(),
          errorHandlingService: ErrorHandlingService = ErrorHandlingService.shared,
@@ -118,7 +122,8 @@ class ImageViewerViewModel: ObservableObject {
          imageEnhancer: ((NSImage) async throws -> NSImage)? = nil,
          expectedImageSizeLoader: ((URL) async -> CGSize?)? = nil,
          insightAvailabilityProvider: (() -> ImageInsightAvailability)? = nil,
-         insightInputProvider: ((ImageFile) -> ImageInsightInput)? = nil) {
+         insightInputProvider: ((ImageFile) -> ImageInsightInput)? = nil,
+         trashService: (any ImageTrashService)? = nil) {
         self.imageLoaderService = imageLoaderService
         self.imageEnhancer = imageEnhancer ?? { image in
             let features: Set<ProcessingFeature> = [.smartCropping, .colorEnhancement, .noiseReduction]
@@ -137,6 +142,7 @@ class ImageViewerViewModel: ObservableObject {
         }
         self.preferencesService = preferencesService
         self.errorHandlingService = errorHandlingService
+        self.trashService = trashService ?? SystemImageTrashService()
         self.insightAvailabilityProvider = insightAvailabilityProvider ?? AppleIntelligenceInsightsService.shared.availability
         self.insightInputProvider = insightInputProvider ?? AppleIntelligenceInsightsService.shared.makeInput
         self.imageInsightViewModel = ImageInsightViewModel(service: imageInsightService)
@@ -916,126 +922,126 @@ class ImageViewerViewModel: ObservableObject {
     
     // MARK: - Delete Methods
     
-    /// Move the current image to trash with confirmation
-    @MainActor
+    /// Confirm and recycle one captured file, retaining its folder access until recycling finishes.
     func moveCurrentImageToTrash() async {
-        guard let currentImageFile = currentImageFile else {
+        guard !isDeletingImage else { return }
+        guard let imageFile = currentImageFile, let folderURL = currentFolderURL else {
             errorHandlingService.showNotification("No image to delete", type: .warning)
             return
         }
-        
-        // Show confirmation dialog
-        let confirmed = await showDeleteConfirmation(for: currentImageFile)
-        guard confirmed else { return }
-        
-        // Ensure security-scoped access before attempting delete
-        let fileURL = currentImageFile.url
-        let parentURL = fileURL.deletingLastPathComponent()
-        
-        // Start security-scoped access for the parent directory
-        let hasAccess = parentURL.startAccessingSecurityScopedResource()
-        
-        defer {
-            if hasAccess {
-                parentURL.stopAccessingSecurityScopedResource()
-            }
-        }
-        
-        guard hasAccess else {
+
+        // Guard both the confirmation and the asynchronous file operation against repeated shortcuts.
+        isDeletingImage = true
+        defer { isDeletingImage = false }
+        guard await trashService.confirmDeletion(for: imageFile), !Task.isCancelled else { return }
+
+        // Use the selected folder's scoped URL, preserving its sandbox authority across folder changes.
+        guard trashService.startAccess(to: folderURL) else {
             errorHandlingService.showNotification(
                 "Permission denied. Please re-select the folder to grant delete permissions.",
                 type: .error
             )
             return
         }
-        
-        // Move to trash using NSWorkspace
-        NSWorkspace.shared.recycle([fileURL], completionHandler: { (trashedItems, error) in
-            DispatchQueue.main.async {
-                if let error = error {
-                    // Check for specific permission errors
-                    if error.localizedDescription.contains("permission") || 
-                       error.localizedDescription.contains("Operation not permitted") {
-                        self.errorHandlingService.showNotification(
-                            "Permission denied. The app needs write access to this folder. Please re-select the folder.",
-                            type: .error
-                        )
-                    } else {
-                        self.errorHandlingService.showNotification(
-                            "Failed to move image to trash: \(error.localizedDescription)",
-                            type: .error
-                        )
-                    }
-                } else {
-                    // Successfully moved to trash
-                    self.handleImageDeletion()
-                    self.errorHandlingService.showNotification(
-                        "Image moved to Trash",
-                        type: .success
-                    )
-                }
-            }
-        })
-    }
-    
-    /// Show confirmation dialog for deleting an image
-    @MainActor
-    private func showDeleteConfirmation(for imageFile: ImageFile) async -> Bool {
-        return await withCheckedContinuation { continuation in
-            DispatchQueue.main.async {
-                let alert = NSAlert()
-                alert.messageText = "Move to Trash"
-                alert.informativeText = "Are you sure you want to move \"\(imageFile.displayName)\" to the Trash? This action can be undone from the Trash."
-                alert.alertStyle = .warning
-                alert.addButton(withTitle: "Move to Trash")
-                alert.addButton(withTitle: "Cancel")
-                
-                // Set the trash button as the default (pressing Enter)
-                if let trashButton = alert.buttons.first {
-                    trashButton.keyEquivalent = "\r" // Enter key
-                }
-                
-                // Set cancel button shortcut
-                if alert.buttons.count > 1 {
-                    alert.buttons[1].keyEquivalent = "\u{1b}" // Escape key
-                }
-                
-                // Run the alert
-                let response = alert.runModal()
-                continuation.resume(returning: response == .alertFirstButtonReturn)
+        defer { trashService.stopAccess(to: folderURL) }
+
+        do {
+            try await trashService.recycle(imageFile.url)
+            handleImageDeletion(at: imageFile.url, in: folderURL)
+            errorHandlingService.showNotification("Image moved to Trash", type: .success)
+        } catch {
+            let cocoaError = error as NSError
+            if cocoaError.domain == NSCocoaErrorDomain && cocoaError.code == NSFileWriteNoPermissionError {
+                errorHandlingService.showNotification(
+                    "Permission denied. The app needs write access to this folder. Please re-select the folder.",
+                    type: .error
+                )
+            } else {
+                errorHandlingService.showNotification(
+                    "Failed to move image to trash: \(error.localizedDescription)",
+                    type: .error
+                )
             }
         }
     }
-    
-    /// Handle the image deletion by updating the image list and navigation
-    private func handleImageDeletion() {
-        let deletedIndex = currentIndex
-        
-        // Remove the image from our array
+
+    /// Reconcile the recycled identity only in its folder, preserving any newer selection.
+    private func handleImageDeletion(at fileURL: URL, in folderURL: URL) {
+        guard currentFolderURL == folderURL,
+              let deletedIndex = allImageFiles.firstIndex(where: { $0.url == fileURL }) else { return }
+
+        let selectedURL = currentImageFile?.url
         allImageFiles.remove(at: deletedIndex)
+        thumbnailCache.removeObject(forKey: fileURL as NSURL)
+        failedImageURLs.remove(fileURL)
         totalImages = allImageFiles.count
-        
-        // Handle navigation after deletion
-        if totalImages == 0 {
-            // No more images, invalidate any pending work before leaving the viewer.
+
+        guard totalImages > 0 else {
+            currentIndex = 0
+            stopSlideshow()
+            errorMessage = nil
             loadCurrentImage()
+            folderContent = FolderContent(folderURL: folderURL, imageFiles: [])
             shouldNavigateToFolderSelection = true
             return
         }
-        
-        // Adjust current index if necessary
-        if currentIndex >= totalImages {
-            currentIndex = totalImages - 1
+
+        if let selectedURL, selectedURL != fileURL,
+           let selectedIndex = allImageFiles.firstIndex(where: { $0.url == selectedURL }) {
+            // Index shifts do not invalidate a still-current decode or its displayed image.
+            currentIndex = selectedIndex
+        } else {
+            currentIndex = min(deletedIndex, totalImages - 1)
+            loadCurrentImage()
         }
-        
-        // Load the new current image
-        loadCurrentImage()
+        folderContent = FolderContent(folderURL: folderURL, imageFiles: allImageFiles, currentIndex: currentIndex)
     }
     
     /// Check if deletion is available for the current image
     var canDeleteCurrentImage: Bool {
-        return currentImageFile != nil
+        return currentImageFile != nil && !isDeletingImage
     }
+}
+
+/// Isolates confirmation and sandboxed recycling so completion races can be verified without deleting files.
+@MainActor
+protocol ImageTrashService: AnyObject {
+    func confirmDeletion(for imageFile: ImageFile) async -> Bool
+    func recycle(_ url: URL) async throws
+    func startAccess(to url: URL) -> Bool
+    func stopAccess(to url: URL)
+}
+
+@MainActor
+private final class SystemImageTrashService: ImageTrashService {
+    func confirmDeletion(for imageFile: ImageFile) async -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Move to Trash"
+        alert.informativeText = "Are you sure you want to move \"\(imageFile.displayName)\" to the Trash? This action can be undone from the Trash."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Move to Trash")
+        alert.addButton(withTitle: "Cancel")
+        alert.buttons.first?.keyEquivalent = "\r"
+        alert.buttons.last?.keyEquivalent = "\u{1b}"
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    func recycle(_ url: URL) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            NSWorkspace.shared.recycle([url]) { recycledURLs, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if recycledURLs[url] != nil {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: CocoaError(.fileWriteUnknown))
+                }
+            }
+        }
+    }
+
+    func startAccess(to url: URL) -> Bool { url.startAccessingSecurityScopedResource() }
+    func stopAccess(to url: URL) { url.stopAccessingSecurityScopedResource() }
 }
 
 // MARK: - Sharing Service Delegate

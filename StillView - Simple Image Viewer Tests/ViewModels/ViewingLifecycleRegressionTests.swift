@@ -290,6 +290,303 @@ final class ViewingLifecycleRegressionTests: XCTestCase {
     }
 }
 
+@MainActor
+final class TrashLifecycleRegressionTests: XCTestCase {
+    func test_trash_emptyFolderDoesNotConfirmOrRecycle() async throws {
+        let fixture = try LifecycleFixture(count: 0)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+
+        await model.moveCurrentImageToTrash()
+
+        XCTAssertTrue(trash.confirmedURLs.isEmpty)
+        XCTAssertTrue(trash.startedAccessURLs.isEmpty)
+        XCTAssertTrue(trash.recycledURLs.isEmpty)
+        XCTAssertFalse(model.isDeletingImage)
+        XCTAssertFalse(model.canDeleteCurrentImage)
+    }
+
+    func test_trash_preservesLaterSelectionAndHoldsFolderAccessUntilSuccess() async throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+
+        model.navigateToIndex(2)
+        XCTAssertEqual(trash.startedAccessURLs, [fixture.directory])
+        XCTAssertTrue(trash.stoppedAccessURLs.isEmpty)
+        XCTAssertTrue(model.isDeletingImage)
+        XCTAssertFalse(model.canDeleteCurrentImage)
+        trash.finishRecycling(.success(()))
+        await deletion.value
+
+        XCTAssertEqual(trash.recycledURLs, [fixture.files[0].url])
+        XCTAssertEqual(model.allImageFiles.map(\.url), fixture.files.dropFirst().map(\.url))
+        XCTAssertEqual(model.currentImageFile?.url, fixture.files[2].url)
+        XCTAssertEqual(model.currentIndex, 1)
+        XCTAssertEqual(model.totalImages, 2)
+        XCTAssertEqual(trash.stoppedAccessURLs, [fixture.directory])
+        XCTAssertFalse(model.isDeletingImage)
+        XCTAssertTrue(model.canDeleteCurrentImage)
+    }
+
+    func test_trash_removesCapturedFileAfterSortChangesItsIndex() async throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: Array(fixture.files.reversed())))
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+
+        model.applySortOrder(.name)
+        model.navigateToIndex(1)
+        trash.finishRecycling(.success(()))
+        await deletion.value
+
+        XCTAssertEqual(trash.recycledURLs, [fixture.files[2].url])
+        XCTAssertEqual(model.allImageFiles.map(\.url), fixture.files.prefix(2).map(\.url))
+        XCTAssertEqual(model.currentImageFile?.url, fixture.files[1].url)
+    }
+
+    func test_trash_doesNotReconcileIntoAnotherFolder() async throws {
+        let fixture = try LifecycleFixture(count: 1)
+        let other = try LifecycleFixture(count: 2)
+        defer { fixture.cleanUp(); other.cleanUp() }
+        let trash = LifecycleTrashService()
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+
+        model.loadFolderContent(other.folder)
+        trash.finishRecycling(.success(()))
+        await deletion.value
+
+        XCTAssertEqual(model.currentFolderURL, other.directory)
+        XCTAssertEqual(model.allImageFiles.map(\.url), other.files.map(\.url))
+        XCTAssertEqual(model.currentImageFile?.url, other.files[0].url)
+        XCTAssertFalse(model.shouldNavigateToFolderSelection)
+        XCTAssertEqual(trash.stoppedAccessURLs, [fixture.directory])
+    }
+
+    func test_trash_completionAfterWelcomeDoesNotRestoreContent() async throws {
+        let fixture = try LifecycleFixture(count: 1)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+
+        model.clearContent()
+        trash.finishRecycling(.success(()))
+        await deletion.value
+
+        XCTAssertTrue(model.allImageFiles.isEmpty)
+        XCTAssertNil(model.currentFolderURL)
+        XCTAssertNil(model.currentImage)
+        XCTAssertEqual(trash.stoppedAccessURLs, [fixture.directory])
+    }
+
+    func test_trash_lastImageClearsImageWorkAndStopsSlideshow() async throws {
+        let fixture = try LifecycleFixture(count: 2)
+        defer { fixture.cleanUp() }
+        let loader = LifecycleImageLoader()
+        let trash = LifecycleTrashService()
+        let model = fixture.makeViewModel(loader: loader, trashService: trash)
+        model.loadFolderContent(fixture.folder)
+        model.startSlideshow()
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: [fixture.files[0]]))
+        XCTAssertTrue(model.isSlideshow)
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+        trash.finishRecycling(.success(()))
+        await deletion.value
+
+        XCTAssertEqual(model.totalImages, 0)
+        XCTAssertEqual(model.currentIndex, 0)
+        XCTAssertNil(model.currentImageFile)
+        XCTAssertNil(model.currentImage)
+        XCTAssertNil(model.expectedImageSize)
+        XCTAssertFalse(model.isLoading)
+        XCTAssertFalse(model.isSlideshow)
+        XCTAssertTrue(model.shouldNavigateToFolderSelection)
+        XCTAssertFalse(model.canDeleteCurrentImage)
+        XCTAssertEqual(loader.cancelledURLs, [fixture.files[0].url, fixture.files[0].url])
+    }
+
+    func test_trash_currentLastFileSelectsPreviousRemainingImage() async throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+        model.navigateToIndex(2)
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+        trash.finishRecycling(.success(()))
+        await deletion.value
+
+        XCTAssertEqual(model.currentIndex, 1)
+        XCTAssertEqual(model.currentImageFile?.url, fixture.files[1].url)
+        XCTAssertEqual(model.totalImages, 2)
+    }
+
+    func test_trash_failureKeepsListAndReleasesFolderAccess() async throws {
+        let fixture = try LifecycleFixture(count: 2)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+        XCTAssertTrue(trash.stoppedAccessURLs.isEmpty)
+        trash.finishRecycling(.failure(CocoaError(.fileWriteNoPermission)))
+        await deletion.value
+
+        XCTAssertEqual(model.allImageFiles.map(\.url), fixture.files.map(\.url))
+        XCTAssertEqual(model.currentImageFile?.url, fixture.files[0].url)
+        XCTAssertEqual(trash.stoppedAccessURLs, [fixture.directory])
+        XCTAssertFalse(model.isDeletingImage)
+        XCTAssertTrue(model.canDeleteCurrentImage)
+    }
+
+    func test_trash_cancelDoesNotAcquireAccessOrRecycle() async throws {
+        let fixture = try LifecycleFixture(count: 1)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        trash.confirmed = false
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+
+        await model.moveCurrentImageToTrash()
+
+        XCTAssertEqual(trash.confirmedURLs, [fixture.files[0].url])
+        XCTAssertTrue(trash.startedAccessURLs.isEmpty)
+        XCTAssertTrue(trash.recycledURLs.isEmpty)
+        XCTAssertEqual(model.totalImages, 1)
+        XCTAssertFalse(model.isDeletingImage)
+    }
+
+    func test_trash_deniedAccessDoesNotRecycleOrReleaseUnacquiredScope() async throws {
+        let fixture = try LifecycleFixture(count: 1)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        trash.hasAccess = false
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+
+        await model.moveCurrentImageToTrash()
+
+        XCTAssertEqual(trash.startedAccessURLs, [fixture.directory])
+        XCTAssertTrue(trash.stoppedAccessURLs.isEmpty)
+        XCTAssertTrue(trash.recycledURLs.isEmpty)
+        XCTAssertEqual(model.totalImages, 1)
+        XCTAssertFalse(model.isDeletingImage)
+    }
+
+    func test_trash_duplicateInvocationDuringConfirmationAndRecyclingIsIgnored() async throws {
+        let fixture = try LifecycleFixture(count: 2)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        trash.delaysConfirmation = true
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.confirmationStarted], timeout: 1)
+        await model.moveCurrentImageToTrash()
+        XCTAssertTrue(trash.startedAccessURLs.isEmpty)
+
+        trash.finishConfirmation(true)
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+        model.navigateToIndex(1)
+        await model.moveCurrentImageToTrash()
+        trash.finishRecycling(.success(()))
+        await deletion.value
+
+        XCTAssertEqual(trash.confirmedURLs, [fixture.files[0].url])
+        XCTAssertEqual(trash.recycledURLs, [fixture.files[0].url])
+        XCTAssertEqual(model.currentImageFile?.url, fixture.files[1].url)
+    }
+
+    func test_trash_retainsConfirmedIdentityAcrossFolderChangeDuringConfirmation() async throws {
+        let fixture = try LifecycleFixture(count: 1)
+        let other = try LifecycleFixture(count: 1)
+        defer { fixture.cleanUp(); other.cleanUp() }
+        let trash = LifecycleTrashService()
+        trash.delaysConfirmation = true
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.confirmationStarted], timeout: 1)
+        model.loadFolderContent(other.folder)
+        trash.finishConfirmation(true)
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+        trash.finishRecycling(.success(()))
+        await deletion.value
+
+        XCTAssertEqual(trash.recycledURLs, [fixture.files[0].url])
+        XCTAssertEqual(trash.startedAccessURLs, [fixture.directory])
+        XCTAssertEqual(model.currentImageFile?.url, other.files[0].url)
+        XCTAssertEqual(model.totalImages, 1)
+    }
+}
+
+@MainActor
+private final class LifecycleTrashService: ImageTrashService {
+    let confirmationStarted = XCTestExpectation(description: "Trash confirmation started")
+    let recycleStarted = XCTestExpectation(description: "Recycle started")
+    var confirmed = true
+    var delaysConfirmation = false
+    var hasAccess = true
+    var confirmedURLs: [URL] = []
+    var recycledURLs: [URL] = []
+    var startedAccessURLs: [URL] = []
+    var stoppedAccessURLs: [URL] = []
+    private var confirmationContinuation: CheckedContinuation<Bool, Never>?
+    private var recycleContinuation: CheckedContinuation<Void, Error>?
+
+    func confirmDeletion(for imageFile: ImageFile) async -> Bool {
+        confirmedURLs.append(imageFile.url)
+        guard delaysConfirmation else { return confirmed }
+        return await withCheckedContinuation { continuation in
+            confirmationContinuation = continuation
+            confirmationStarted.fulfill()
+        }
+    }
+
+    func recycle(_ url: URL) async throws {
+        recycledURLs.append(url)
+        try await withCheckedThrowingContinuation { continuation in
+            recycleContinuation = continuation
+            recycleStarted.fulfill()
+        }
+    }
+
+    func startAccess(to url: URL) -> Bool {
+        startedAccessURLs.append(url)
+        return hasAccess
+    }
+
+    func stopAccess(to url: URL) { stoppedAccessURLs.append(url) }
+
+    func finishConfirmation(_ result: Bool) {
+        confirmationContinuation?.resume(returning: result)
+        confirmationContinuation = nil
+    }
+
+    func finishRecycling(_ result: Result<Void, Error>) {
+        recycleContinuation?.resume(with: result)
+        recycleContinuation = nil
+    }
+}
+
 private final class LifecycleImageLoader: ImageLoaderService {
     var cachedImages: [URL: NSImage] = [:]
     var requestedURLs: [URL] = []
@@ -351,14 +648,16 @@ private final class LifecycleFixture {
     func makeViewModel(
         loader: LifecycleImageLoader,
         imageEnhancer: ((NSImage) async throws -> NSImage)? = nil,
-        expectedImageSizeLoader: ((URL) async -> CGSize?)? = nil
+        expectedImageSizeLoader: ((URL) async -> CGSize?)? = nil,
+        trashService: (any ImageTrashService)? = nil
     ) -> ImageViewerViewModel {
         defaults.set(imageEnhancer != nil, forKey: "enableImageEnhancements")
         return ImageViewerViewModel(
             imageLoaderService: loader,
             preferencesService: preferences,
             imageEnhancer: imageEnhancer,
-            expectedImageSizeLoader: expectedImageSizeLoader
+            expectedImageSizeLoader: expectedImageSizeLoader,
+            trashService: trashService
         )
     }
 

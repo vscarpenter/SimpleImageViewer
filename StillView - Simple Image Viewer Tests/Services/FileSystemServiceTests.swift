@@ -373,3 +373,258 @@ final class SecurityScopedAccessPathRegressionTests: XCTestCase {
         return (directory, root, alias, image)
     }
 }
+
+@MainActor
+final class FolderPresentationRegressionTests: XCTestCase {
+    func test_selectFolder_ignoresDuplicateRequestsWhilePanelIsOpen() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+
+        fixture.model.selectFolder()
+        fixture.model.selectFolder()
+
+        XCTAssertTrue(fixture.model.isShowingFolderPicker)
+        XCTAssertEqual(fixture.panel.presentationCount, 1)
+        XCTAssertEqual(fixture.service.scanCount, 0)
+        fixture.panel.complete(with: nil)
+    }
+
+    func test_cancelPicker_preservesCurrentFolderAndAccess() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+
+        fixture.model.selectFolder()
+        fixture.panel.complete(with: nil)
+
+        XCTAssertFalse(fixture.model.isShowingFolderPicker)
+        XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+        XCTAssertEqual(fixture.service.scanCount, 0)
+    }
+
+    func test_acceptPicker_keepsPreviousAccessUntilScanSucceedsAndPublishesOnce() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        var publications: [URL] = []
+        let subscription = fixture.model.$selectedFolderContent.dropFirst().compactMap { $0?.folderURL }
+            .sink { publications.append($0) }
+        defer { subscription.cancel() }
+
+        fixture.model.selectFolder()
+        fixture.panel.complete(with: fixture.candidate)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+
+        XCTAssertFalse(fixture.model.isShowingFolderPicker)
+        XCTAssertTrue(fixture.model.isScanning)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        let completed = expectation(description: "Successful scan publishes content")
+        let completion = fixture.model.$isScanning.dropFirst().filter { !$0 }.prefix(1)
+            .sink { _ in completed.fulfill() }
+        fixture.service.complete(with: .success([makeImage(in: fixture.candidate)]))
+        await fulfillment(of: [completed], timeout: 2)
+        completion.cancel()
+
+        XCTAssertEqual(fixture.service.scanCount, 1)
+        XCTAssertEqual(publications, [fixture.candidate])
+        XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.candidate)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.candidate)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.candidate)
+    }
+
+    func test_failedScan_preservesCurrentFolderAndAccess() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        fixture.model.selectFolder()
+        fixture.panel.complete(with: fixture.candidate)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+        let failed = expectation(description: "Scan exposes its error")
+        let subscription = fixture.model.$currentError.compactMap { $0 }.prefix(1)
+            .sink { _ in failed.fulfill() }
+        fixture.service.complete(with: .failure(FileSystemError.noImagesFound))
+        await fulfillment(of: [failed], timeout: 2)
+        subscription.cancel()
+
+        XCTAssertFalse(fixture.model.isScanning)
+        XCTAssertNotNil(fixture.model.currentError)
+        XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+    }
+
+    func test_cancelScan_discardsLateResultAndPreservesCurrentFolder() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        fixture.model.selectFolder()
+        fixture.panel.complete(with: fixture.candidate)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+        let replaced = expectation(description: "Canceled scan must not publish")
+        replaced.isInverted = true
+        let subscription = fixture.model.$selectedFolderContent.dropFirst()
+            .sink { _ in replaced.fulfill() }
+
+        fixture.model.cancelScanning()
+        fixture.service.complete(with: .success([makeImage(in: fixture.candidate)]))
+        await fulfillment(of: [replaced], timeout: 0.1)
+        subscription.cancel()
+
+        XCTAssertFalse(fixture.model.isScanning)
+        XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+    }
+
+    func test_expiredRecentBookmark_exposesOnlyTheFolderAlert() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let preferences = DefaultPreferencesService(userDefaults: fixture.defaults)
+        preferences.recentFolders = [fixture.candidate]
+        preferences.folderBookmarks = [Data([0x01])]
+        preferences.savePreferences()
+        let duplicateDialog = expectation(description: "Folder failure must not open a second permission dialog")
+        duplicateDialog.isInverted = true
+        let subscription = ErrorHandlingService.shared.$showPermissionDialog.dropFirst()
+            .sink { _ in duplicateDialog.fulfill() }
+
+        fixture.model.selectRecentFolder(fixture.candidate)
+        await fulfillment(of: [duplicateDialog], timeout: 0.1)
+        subscription.cancel()
+
+        guard case .bookmarkResolutionFailed(let url) = fixture.model.currentError else {
+            return XCTFail("Expected the central folder alert to receive the expired bookmark error")
+        }
+        XCTAssertEqual(url, fixture.candidate)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+        XCTAssertEqual(fixture.service.scanCount, 0)
+    }
+
+    func test_invalidRecentSelection_cancelsEarlierScanBeforeItsLateResult() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        fixture.model.selectFolder()
+        fixture.panel.complete(with: fixture.candidate)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+        let replaced = expectation(description: "Earlier scan must not replace a failed later selection")
+        replaced.isInverted = true
+        let subscription = fixture.model.$selectedFolderContent.dropFirst()
+            .sink { _ in replaced.fulfill() }
+        let missing = fixture.directory.appendingPathComponent("missing", isDirectory: true)
+
+        fixture.model.selectRecentFolder(missing)
+        fixture.service.complete(with: .success([makeImage(in: fixture.candidate)]))
+        await fulfillment(of: [replaced], timeout: 0.1)
+        subscription.cancel()
+
+        XCTAssertFalse(fixture.model.isScanning)
+        guard case .folderNotFound(let url) = fixture.model.currentError else {
+            return XCTFail("Expected the later missing-folder error to remain visible")
+        }
+        XCTAssertEqual(url, missing)
+        XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+    }
+
+    private func makeImage(in folder: URL) -> ImageFile {
+        ImageFile(url: folder.appendingPathComponent("sample.jpg"), name: "sample.jpg", type: .jpeg,
+                  size: 10, creationDate: .distantPast, modificationDate: .distantPast)
+    }
+
+    private func makeFixture() throws -> FolderPresentationFixture {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let original = directory.appendingPathComponent("original", isDirectory: true)
+        let candidate = directory.appendingPathComponent("candidate", isDirectory: true)
+        try FileManager.default.createDirectory(at: original, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: candidate, withIntermediateDirectories: true)
+        let suite = "FolderPresentationRegressionTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let panel = ControlledFolderPanelPresenter()
+        let service = ControlledFolderScanService()
+        let manager = SecurityScopedAccessManager()
+        let model = FolderSelectionViewModel(
+            fileSystemService: service,
+            preferencesService: DefaultPreferencesService(userDefaults: defaults),
+            panelPresenter: panel,
+            accessManager: manager
+        )
+        model.selectedFolderURL = original
+        model.selectedFolderContent = FolderContent(folderURL: original, imageFiles: [makeImage(in: original)])
+        _ = manager.startAccess(for: original)
+        return FolderPresentationFixture(
+            model: model, panel: panel, service: service, manager: manager,
+            original: original, candidate: candidate, directory: directory, defaults: defaults, suite: suite
+        )
+    }
+}
+
+@MainActor
+private struct FolderPresentationFixture {
+    let model: FolderSelectionViewModel
+    let panel: ControlledFolderPanelPresenter
+    let service: ControlledFolderScanService
+    let manager: SecurityScopedAccessManager
+    let original: URL
+    let candidate: URL
+    let directory: URL
+    let defaults: UserDefaults
+    let suite: String
+
+    func cleanup() {
+        model.cancelScanning()
+        manager.stopCurrentAccess()
+        defaults.removePersistentDomain(forName: suite)
+        try? FileManager.default.removeItem(at: directory)
+    }
+}
+
+@MainActor
+private final class ControlledFolderPanelPresenter: FolderPanelPresenting {
+    private(set) var presentationCount = 0
+    private var completion: (@MainActor (URL?) -> Void)?
+
+    func present(initialDirectory: URL?, completion: @escaping @MainActor (URL?) -> Void) {
+        presentationCount += 1
+        self.completion = completion
+    }
+
+    func complete(with url: URL?) {
+        let callback = completion
+        completion = nil
+        callback?(url)
+    }
+}
+
+private final class ControlledFolderScanService: FileSystemService, @unchecked Sendable {
+    let scanStarted = XCTestExpectation(description: "Folder scan started")
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<[ImageFile], Error>?
+    private var requests = 0
+
+    var scanCount: Int { lock.withLock { requests } }
+
+    func scanFolder(_ url: URL, recursive: Bool) async throws -> [ImageFile] {
+        try await withCheckedThrowingContinuation { continuation in
+            lock.withLock {
+                requests += 1
+                self.continuation = continuation
+            }
+            scanStarted.fulfill()
+        }
+    }
+
+    func complete(with result: Result<[ImageFile], Error>) {
+        let pending = lock.withLock {
+            let pending = continuation
+            continuation = nil
+            return pending
+        }
+        pending?.resume(with: result)
+    }
+
+    func monitorFolder(_ url: URL) -> AnyPublisher<[ImageFile], Never> { Empty().eraseToAnyPublisher() }
+    func createSecurityScopedBookmark(for url: URL) -> Data? { nil }
+    func resolveSecurityScopedBookmark(_ bookmarkData: Data) -> URL? { nil }
+    func isSupportedImageFile(_ url: URL) -> Bool { true }
+    func getFileType(for url: URL) -> UTType? { .jpeg }
+}

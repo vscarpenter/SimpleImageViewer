@@ -33,6 +33,7 @@ struct InspectorView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
+        .focusedValue(\.viewerKeyboardFocus, .control)
     }
 
     private var tabBar: some View {

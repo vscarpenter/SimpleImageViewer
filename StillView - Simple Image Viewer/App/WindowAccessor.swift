@@ -49,7 +49,7 @@ class WindowAccessor: ObservableObject {
         window.titleVisibility = .visible
         
         // Set minimum window size
-        window.minSize = NSSize(width: 600, height: 400)
+        window.minSize = NSSize(width: 800, height: 600)
         
         // Enable full screen mode
         window.collectionBehavior = [.fullScreenPrimary]

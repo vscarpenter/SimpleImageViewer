@@ -55,6 +55,9 @@ struct SimpleImageViewerApp: App {
                 .onReceive(NotificationCenter.default.publisher(for: .showWhatsNew)) { _ in
                     showingWhatsNew = true
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .openPreferences)) { _ in
+                    preferencesCoordinator.showPreferences()
+                }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                     handleAppDidBecomeActive()
                 }
@@ -141,9 +144,9 @@ struct SimpleImageViewerApp: App {
                 .keyboardShortcut("/", modifiers: [.command, .shift])
 
                 Button("Keyboard Shortcuts") {
-                    showingHelp = true
+                    preferencesCoordinator.selectTab(.shortcuts)
+                    preferencesCoordinator.showPreferences()
                 }
-                .keyboardShortcut("?", modifiers: .command)
 
                 Divider()
 
@@ -158,6 +161,10 @@ struct SimpleImageViewerApp: App {
                 .keyboardShortcut("e", modifiers: [.command, .shift])
 
                 Divider()
+
+                if let privacyURL = URL(string: "https://stillviewapp.com/privacy.html") {
+                    Link("Privacy Policy", destination: privacyURL)
+                }
 
                 Button("Visit GitHub Repository") {
                     if let url = URL(string: "https://github.com/vscarpenter/SimpleImageViewer") {
@@ -275,4 +282,3 @@ struct SimpleImageViewerApp: App {
     }
     
 }
-
