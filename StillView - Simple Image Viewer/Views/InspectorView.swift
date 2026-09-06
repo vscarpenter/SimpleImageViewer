@@ -106,9 +106,11 @@ private struct InspectorInfoTab: View {
             metadata = nil
             guard let url = viewModel.currentImageFile?.url else { return }
             let service = ImageMetadataService()
-            metadata = await Task.detached(priority: .userInitiated) {
+            let extracted = await Task.detached(priority: .userInitiated) {
                 service.extractMetadata(from: url)
             }.value
+            guard !Task.isCancelled, viewModel.currentImageFile?.url == url else { return }
+            metadata = extracted
         }
     }
 

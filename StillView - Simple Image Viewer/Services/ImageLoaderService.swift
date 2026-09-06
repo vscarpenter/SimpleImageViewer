@@ -58,97 +58,161 @@ enum ImageLoaderError: LocalizedError {
 
 /// Default implementation of ImageLoaderService using ImageIO framework
 final class DefaultImageLoaderService: ImageLoaderService {
+    private typealias Completion = (Result<NSImage, Error>) -> Void
+
+    private final class LoadWork {
+        let url: URL
+        let cacheGeneration: UInt64
+        var subscribers: [UUID: Completion] = [:]
+        var preloadRequested = false
+
+        init(url: URL, cacheGeneration: UInt64) {
+            self.url = url
+            self.cacheGeneration = cacheGeneration
+        }
+    }
+
     private let imageCache: ImageCache
     private let memoryManager: ImageMemoryManager
-    private let accessManager = SecurityScopedAccessManager.shared
-    private let loadingQueue = DispatchQueue(label: "com.simpleimageviewer.imageloading", qos: .userInitiated)
-    private var loadingCancellables: [URL: AnyCancellable] = [:]
-    private let cancellablesQueue = DispatchQueue(label: "com.simpleimageviewer.cancellables")
-    
-    init(imageCache: ImageCache? = nil, memoryManager: ImageMemoryManager = ImageMemoryManager()) {
+    private let loadingQueue: DispatchQueue
+    private let decodeImage: ((URL) throws -> NSImage)?
+    private let stateLock = NSLock()
+    private var activeWork: [URL: LoadWork] = [:]
+    private var cacheGeneration: UInt64 = 0
+
+    init(
+        imageCache: ImageCache? = nil,
+        memoryManager: ImageMemoryManager = ImageMemoryManager(),
+        loadingQueue: DispatchQueue = DispatchQueue(label: "com.simpleimageviewer.imageloading", qos: .userInitiated),
+        decodeImage: ((URL) throws -> NSImage)? = nil
+    ) {
         self.memoryManager = memoryManager
         self.imageCache = imageCache ?? ImageCache(memoryManager: memoryManager)
+        self.loadingQueue = loadingQueue
+        self.decodeImage = decodeImage
     }
-    
+
     func loadImage(from url: URL) -> AnyPublisher<NSImage, Error> {
-        // Check cache first
-        if let cachedImage = imageCache.image(for: url) {
-            return Just(cachedImage)
-                .setFailureType(to: Error.self)
-                .eraseToAnyPublisher()
+        Deferred { [weak self] () -> AnyPublisher<NSImage, Error> in
+            guard let self else {
+                return Fail(error: ImageLoaderError.loadingCancelled as Error).eraseToAnyPublisher()
+            }
+            let subscriberID = UUID()
+            return Future<NSImage, Error> { [weak self] completion in
+                guard let self else {
+                    completion(.failure(ImageLoaderError.loadingCancelled))
+                    return
+                }
+                self.subscribe(to: url, identifier: subscriberID, completion: completion)
+            }
+            .handleEvents(receiveCancel: { [weak self] in
+                self?.cancelSubscriber(for: url, identifier: subscriberID)
+            })
+            .eraseToAnyPublisher()
         }
-        
-        return Future<NSImage, Error> { [weak self] promise in
-            guard let self = self else {
-                promise(.failure(ImageLoaderError.loadingCancelled))
-                return
-            }
-            
-            self.loadingQueue.async {
-                do {
-                    let image = try self.loadImageFromDisk(url: url)
-                    
-                    // Cache the loaded image
-                    self.imageCache.setImage(image, for: url)
-                    
-                    promise(.success(image))
-                } catch {
-                    promise(.failure(error))
-                }
-            }
-        }
-        .handleEvents(
-            receiveSubscription: { [weak self] subscription in
-                self?.cancellablesQueue.async {
-                    let cancellable = AnyCancellable(subscription)
-                    self?.loadingCancellables[url] = cancellable
-                }
-            },
-            receiveCompletion: { [weak self] _ in
-                self?.cancellablesQueue.async {
-                    self?.loadingCancellables.removeValue(forKey: url)
-                }
-            }
-        )
         .eraseToAnyPublisher()
     }
-    
+
     func preloadImage(from url: URL) {
-        // Don't preload if already cached
-        guard imageCache.image(for: url) == nil else { return }
-        
-        loadingQueue.async { [weak self] in
-            do {
-                let image = try self?.loadImageFromDisk(url: url)
-                if let image = image {
-                    self?.imageCache.setImage(image, for: url)
-                }
-            } catch {
-                // Silently fail for preloading
-            }
+        stateLock.withLock {
+            guard imageCache.image(for: url) == nil else { return }
+            work(for: url).preloadRequested = true
         }
     }
-    
+
     func cancelLoading(for url: URL) {
-        cancellablesQueue.async { [weak self] in
-            self?.loadingCancellables[url]?.cancel()
-            self?.loadingCancellables.removeValue(forKey: url)
+        let completions: [Completion] = stateLock.withLock {
+            guard let work = activeWork.removeValue(forKey: url) else { return [] }
+            return takeCompletions(from: work)
         }
+        completions.forEach { $0(.failure(ImageLoaderError.loadingCancelled)) }
     }
-    
+
     func clearCache() {
-        imageCache.clearCache()
+        let completions: [Completion] = stateLock.withLock {
+            cacheGeneration &+= 1
+            let completions = activeWork.values.flatMap { takeCompletions(from: $0) }
+            activeWork.removeAll()
+            // Purge and insertion use the same lock. Work from an earlier generation cannot
+            // insert between invalidation and purge, or restore old entries afterward.
+            imageCache.clearCache()
+            return completions
+        }
+        completions.forEach { $0(.failure(ImageLoaderError.loadingCancelled)) }
     }
-    
+
     func preloadImages(_ urls: [URL], maxCount: Int = 3) {
-        let urlsToPreload = Array(urls.prefix(maxCount))
-        
-        for url in urlsToPreload {
+        for url in urls.prefix(max(0, maxCount)) {
             preloadImage(from: url)
         }
     }
-    
-    // MARK: - Private Methods
+
+    private func subscribe(to url: URL, identifier: UUID, completion: @escaping Completion) {
+        let cachedImage: NSImage? = stateLock.withLock {
+            if let image = imageCache.image(for: url) { return image }
+            work(for: url).subscribers[identifier] = completion
+            return nil
+        }
+        if let cachedImage { completion(.success(cachedImage)) }
+    }
+
+    /// Called with stateLock held. Foreground subscribers and preloading share one decode per URL.
+    private func work(for url: URL) -> LoadWork {
+        if let work = activeWork[url] { return work }
+        let work = LoadWork(url: url, cacheGeneration: cacheGeneration)
+        activeWork[url] = work
+        loadingQueue.async { [weak self, work] in
+            guard let self else {
+                work.subscribers.values.forEach { $0(.failure(ImageLoaderError.loadingCancelled)) }
+                work.subscribers.removeAll()
+                return
+            }
+            self.perform(work)
+        }
+        return work
+    }
+
+    private func cancelSubscriber(for url: URL, identifier: UUID) {
+        stateLock.withLock {
+            guard let work = activeWork[url], work.subscribers.removeValue(forKey: identifier) != nil else { return }
+            if work.subscribers.isEmpty && !work.preloadRequested {
+                activeWork.removeValue(forKey: url)
+            }
+        }
+    }
+
+    private func perform(_ work: LoadWork) {
+        // ImageIO's synchronous decode cannot be interrupted. Skip canceled queued work and
+        // discard results if cancellation or clearing occurred while a decode was running.
+        guard stateLock.withLock({ isCurrent(work) }) else { return }
+        let result = Result { try decode(url: work.url) }
+        let completions: [Completion] = stateLock.withLock {
+            guard isCurrent(work) else { return [] }
+            if case .success(let image) = result {
+                imageCache.setImage(image, for: work.url)
+            }
+            activeWork.removeValue(forKey: work.url)
+            return takeCompletions(from: work)
+        }
+        // Completion is committed with insertion above. Invoke subscribers outside the lock so
+        // completion handlers may start or cancel other requests without deadlocking.
+        completions.forEach { $0(result) }
+    }
+
+    private func isCurrent(_ work: LoadWork) -> Bool {
+        work.cacheGeneration == cacheGeneration && activeWork[work.url] === work
+    }
+
+    private func takeCompletions(from work: LoadWork) -> [Completion] {
+        let completions = Array(work.subscribers.values)
+        work.subscribers.removeAll()
+        return completions
+    }
+
+    private func decode(url: URL) throws -> NSImage {
+        if let decodeImage { return try decodeImage(url) }
+        return try loadImageFromDisk(url: url)
+    }
     
     private func loadImageFromDisk(url: URL) throws -> NSImage {
         // Ensure we have security-scoped access
@@ -162,57 +226,82 @@ final class DefaultImageLoaderService: ImageLoaderService {
             throw ImageLoaderError.fileNotFound
         }
         
-        // Get file size for memory management
-        let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-        
-        // For very large files, do additional memory check
-        if fileSize > 100_000_000 { // Files > 100MB
-            // Check available system memory
-            let physicalMemory = ProcessInfo.processInfo.physicalMemory
-            let availableMemory = physicalMemory / 4 // Use only 25% of system memory
-            
-            if fileSize > Int(availableMemory) {
+        // Load image using ImageIO for better performance and format support
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, sourceOptions) else {
+            throw ImageLoaderError.corruptedImage
+        }
+
+        // Main images retain every source pixel so Actual Size remains truthful. Refuse a decode
+        // beyond the bitmap budget instead of silently presenting a reduced preview as 100%.
+        let budget = min(memoryManager.detailedStatistics.availableMemory,
+                         Int(ProcessInfo.processInfo.physicalMemory / 4))
+        guard memoryManager.shouldLoadImage(size: 0) else { throw ImageLoaderError.insufficientMemory }
+        let cgImage = try ImageDecoder.decode(source: imageSource, maximumDecodedBytes: budget)
+        guard memoryManager.shouldLoadImage(size: cgImage.bytesPerRow * cgImage.height) else {
+            throw ImageLoaderError.insufficientMemory
+        }
+        // The cache owns registration and release of retained decoded bytes.
+        return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+    }
+}
+
+/// Orientation-aware ImageIO decoding. The optional pixel limit is for explicitly bounded previews;
+/// omitting it preserves full source resolution, including mirrored EXIF orientations.
+enum ImageDecoder {
+    static func decode(
+        source: CGImageSource,
+        maximumPixelSize: Int? = nil,
+        maximumDecodedBytes: Int
+    ) throws -> CGImage {
+        guard CGImageSourceGetCount(source) > 0,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue,
+              let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue,
+              width > 0, height > 0 else {
+            throw ImageLoaderError.corruptedImage
+        }
+        let longestEdge = max(width, height)
+        let pixelLimit = min(maximumPixelSize ?? longestEdge, longestEdge)
+        guard pixelLimit > 0, maximumDecodedBytes > 0 else { throw ImageLoaderError.insufficientMemory }
+        let scale = Double(pixelLimit) / Double(longestEdge)
+        let scaledWidth = ceil(Double(width) * scale)
+        let scaledHeight = ceil(Double(height) * scale)
+        guard scaledWidth < Double(Int.max), scaledHeight < Double(Int.max) else {
+            throw ImageLoaderError.insufficientMemory
+        }
+        let outputWidth = max(1, Int(scaledWidth))
+        let outputHeight = max(1, Int(scaledHeight))
+        let depth = (properties[kCGImagePropertyDepth] as? NSNumber)?.intValue ?? 8
+        let bytesPerPixel = depth > 8 ? 8 : 4
+        // Budget decoded dimensions, including a conservative row-alignment allowance for either
+        // orientation. A tiny compressed PNG can otherwise request gigabytes of bitmap storage.
+        for (columns, rows) in [(outputWidth, outputHeight), (outputHeight, outputWidth)] {
+            let rowBytes = columns.multipliedReportingOverflow(by: bytesPerPixel)
+            guard !rowBytes.overflow, rowBytes.partialValue <= Int.max - 63 else {
+                throw ImageLoaderError.insufficientMemory
+            }
+            let alignedRowBytes = ((rowBytes.partialValue + 63) / 64) * 64
+            let decodedBytes = alignedRowBytes.multipliedReportingOverflow(by: rows)
+            guard !decodedBytes.overflow, decodedBytes.partialValue <= maximumDecodedBytes else {
                 throw ImageLoaderError.insufficientMemory
             }
         }
-        
-        // Check if we have enough memory based on our tracking
-        guard memoryManager.shouldLoadImage(size: fileSize) else {
+
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: pixelLimit,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceShouldAllowFloat: false
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            throw ImageLoaderError.corruptedImage
+        }
+        let actualBytes = image.bytesPerRow.multipliedReportingOverflow(by: image.height)
+        guard !actualBytes.overflow, actualBytes.partialValue <= maximumDecodedBytes else {
             throw ImageLoaderError.insufficientMemory
         }
-        
-        // Load image using ImageIO for better performance and format support
-        guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else {
-            throw ImageLoaderError.corruptedImage
-        }
-        
-        // Check if the image source contains at least one image
-        guard CGImageSourceGetCount(imageSource) > 0 else {
-            throw ImageLoaderError.corruptedImage
-        }
-        
-        // Create image with options for better performance and memory efficiency
-        var options: [CFString: Any] = [
-            kCGImageSourceShouldCache: false, // Don't cache at ImageIO level to save memory
-            kCGImageSourceShouldAllowFloat: false // Use integer values to save memory
-        ]
-
-        // For extremely large images (> 200MB), add memory-saving options
-        // Increased threshold to avoid unnecessary downsampling
-        if fileSize > 200_000_000 { // Files > 200MB
-            options[kCGImageSourceCreateThumbnailFromImageIfAbsent] = true
-            options[kCGImageSourceThumbnailMaxPixelSize] = 8192 // Limit to 8K resolution (increased from 4K)
-        }
-        
-        guard let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, options as CFDictionary) else {
-            throw ImageLoaderError.corruptedImage
-        }
-        
-        let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-        
-        // Update memory manager
-        memoryManager.didLoadImage(size: fileSize)
-        
-        return nsImage
+        return image
     }
 }

@@ -1,4 +1,5 @@
 import XCTest
+@testable import StillView___Simple_Image_Viewer
 
 final class InsightOutputValidatorTests: XCTestCase {
     func test_summaryMustReferenceSuppliedEvidence() {
