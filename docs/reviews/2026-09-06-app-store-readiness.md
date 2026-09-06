@@ -2,11 +2,11 @@
 
 ## Follow-up: approved fixes completed September 6, 2026
 
-**Items 2–5 are implemented and locally verified. Item 1 is complete in the app; publication of the privacy page remains with the app owner.** Version stays **4.5.1 (35)** on `codex/app-store-readiness-fixes`. The original review below is preserved as a historical snapshot, not a list of still-open code findings.
+**Items 2–5 are implemented and locally verified. Item 1 is complete in the app; both policy pages are published, with factual copy corrections still pending.** Version stays **4.5.1 (35)** on `codex/app-store-readiness-fixes`. The original review below is preserved as a historical snapshot, not a list of still-open code findings.
 
 | Item | Completed change | Verification |
 | --- | --- | --- |
-| 1. Privacy | About and Help link to `https://stillviewapp.com/privacy.html`; timestamp manifest includes C617.1, 3B52.1, and DDA9.1; supported NSWorkspace accessibility properties replace reads of system UserDefaults. | About's native accessibility tree exposes the exact policy URL and browser hint. The built manifest matches source; no entitlement changes. Public page publication/content and App Store Connect fields remain unverified. |
+| 1. Privacy | About and Help link to `https://stillviewapp.com/privacy.html`; timestamp manifest includes C617.1, 3B52.1, and DDA9.1; supported NSWorkspace accessibility properties replace reads of system UserDefaults. | About's native accessibility tree exposes the exact policy URL and browser hint. The built manifest matches source; no entitlement changes. Privacy and Terms both returned HTTPS 200 on September 6. Publication is verified; copy alignment and App Store Connect fields remain pending. |
 | 2. Folder and keyboard routing | One persistent picker serves welcome, Cmd+O, toolbar, and restoration. Failed/canceled requests preserve the active collection and scope. Back stops the slideshow. Viewer shortcuts respect both SwiftUI and AppKit focus, and clicking the canvas restores viewer focus. | First Cmd+O from a loaded viewer opens the picker; Cancel preserves the same photo; B returns to welcome; Delete/S/Return do not affect hidden images. Tab-focused Grid retains Space, Tab-focused Strip activates on Space without changing selection, and clicking the canvas restores Right-arrow navigation. |
 | 3. Trash | Capture file/folder before confirmation, retain scope through completion, prevent duplicates, and reconcile by URL while preserving newer selections and collections. | Twelve controlled-service regressions cover selection, sort, folder/clear changes, scope lifetime, failure, cancellation, duplicates, and last-image slideshow cleanup. No user image was deleted during validation. Actual distribution-signed recycling remains a release smoke check. |
 | 4. Compact toolbar | Independent layout regions, adaptive overflow, explicit mode labels, and consistent 800-point minimum width. | Native Single/Strip/Grid inspection at 800 points and a wide window. Grid no longer overlaps; More actions contains slideshow/interval, Share, Trash, and sorting. Date Modified remains accessible through the submenu. |
@@ -21,9 +21,13 @@
 - Independent source review found two additional folder cases: duplicate expired-bookmark error UI and a late scan replacing a newer failed request. Both were reproduced by failing tests, repaired, and passed. Native testing caught SwiftUI focus not exposed through the original AppKit-only probe; explicit focused values plus a focusable canvas fixed the reproduced Tab/Space failure.
 - Local commits separate privacy/formats (`53807f7`), viewer behavior/layout (`68d17af`), and Settings/release documentation. The plan was committed as `777aff4`. No Xcode project file was edited, and pre-existing untracked workspace material was preserved.
 
+### Public policy update
+
+The app owner published [Privacy](https://stillviewapp.com/privacy.html) and [Terms](https://stillviewapp.com/terms.html). Both returned HTTP/2 200 over HTTPS on September 6, 2026. The publication requirement is closed. A source comparison found four copy corrections covering removed Settings, explicit sharing, GitHub draft transmission, and the role of Foundation Models. Suggested wording and evidence are in the [copy review](2026-09-06-live-policy-copy.md). The website was not edited by this task.
+
 ### Remaining release gates
 
-1. Publish and verify `https://stillviewapp.com/privacy.html`, then use the same URL in App Store Connect.
+1. Apply the [live policy copy corrections](2026-09-06-live-policy-copy.md), recheck both published pages, and use `https://stillviewapp.com/privacy.html` in App Store Connect.
 2. Validate the final distribution-signed archive, run its release smoke checks (including a disposable-image Trash/recovery check), and confirm the selected processed build, metadata, screenshots, privacy answers, and review notes in App Store Connect.
 3. Push/integrate the intended release branch and verify CI on that exact commit before submission. No push, PR merge, upload, or submission was performed in this follow-up.
 

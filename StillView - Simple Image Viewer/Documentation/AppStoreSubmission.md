@@ -82,8 +82,9 @@ StillView 4.5.1 improves folder navigation, keyboard behavior, and compact windo
 | Support URL | https://github.com/vscarpenter/SimpleImageViewer/issues |
 | Marketing URL | https://stillviewapp.com/ |
 | Privacy Policy URL | https://stillviewapp.com/privacy.html |
+| Website Terms of Use | https://stillviewapp.com/terms.html |
 
-The privacy policy page is being published by the app owner. Verify that the final URL is publicly reachable and its content matches the app before submitting.
+Both pages returned HTTPS 200 on September 6, 2026. Publication is verified; factual copy corrections for current Settings, sharing, GitHub drafts, and Insights remain in `docs/reviews/2026-09-06-live-policy-copy.md`. Recheck revised live content before submission. The website Terms URL is recorded for reference, not as confirmation of an App Store Connect EULA selection.
 
 ## App Privacy and review information
 
@@ -106,7 +107,8 @@ Paste [AppStoreReviewNotes.md](AppStoreReviewNotes.md) into App Review Informati
 - [ ] Create a distribution archive in Xcode and validate it in Organizer.
 - [ ] Inspect the signed app’s entitlements with `codesign -d --entitlements - "<App>.app"`: App Sandbox, user-selected read-write files, and app-scope bookmarks are expected; `get-task-allow` must be absent from the distribution app.
 - [ ] Verify `PrivacyInfo.xcprivacy` and the app icon exist inside the archived app’s `Contents/Resources` directory.
-- [ ] Verify the privacy page is published and opens from the app.
+- [x] Verify the privacy and terms pages are publicly reachable over HTTPS.
+- [ ] Publish the factual policy-copy corrections and recheck the privacy link from the distribution-signed app.
 - [ ] Exercise opening/canceling a folder, viewer keyboard focus, Trash confirmation, narrow Grid layout, and all remaining preferences in the signed app.
 - [ ] Exercise AI Insights on eligible hardware with the on-device model ready, plus its disabled/unavailable states.
 - [ ] Upload the archive through Xcode Organizer, wait for processing, and select that build in App Store Connect.
