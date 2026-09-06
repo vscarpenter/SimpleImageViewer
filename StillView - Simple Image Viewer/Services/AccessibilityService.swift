@@ -1,5 +1,6 @@
-import SwiftUI
+import AppKit
 import Combine
+import SwiftUI
 
 /// Service for managing accessibility settings and preferences
 class AccessibilityService: ObservableObject {
@@ -13,6 +14,8 @@ class AccessibilityService: ObservableObject {
     
     /// Whether VoiceOver is currently running
     @Published var isVoiceOverEnabled: Bool = false
+
+    @Published private var reducedTransparencyEnabled: Bool = false
     
     // MARK: - Private Properties
     
@@ -84,7 +87,7 @@ class AccessibilityService: ObservableObject {
     /// Check if system prefers reduced transparency
     /// - Returns: Whether reduced transparency is enabled
     func isReducedTransparencyEnabled() -> Bool {
-        return UserDefaults.standard.bool(forKey: "ReduceTransparency")
+        return reducedTransparencyEnabled
     }
     
     /// Get background opacity that respects transparency preferences
@@ -181,24 +184,18 @@ class AccessibilityService: ObservableObject {
     // MARK: - Private Methods
     
     private func setupAccessibilityMonitoring() {
-        // Monitor for accessibility changes
-        NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
+        // Accessibility display changes are posted on the workspace's notification center.
+        NSWorkspace.shared.notificationCenter
+            .publisher(for: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification)
             .sink { [weak self] _ in
                 self?.updateAccessibilitySettings()
             }
             .store(in: &cancellables)
-        
-        // Monitor for reduced motion changes
-        NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
-            .sink { [weak self] _ in
-                self?.updateReducedMotionSetting()
-            }
-            .store(in: &cancellables)
-        
-        // Monitor VoiceOver status
-        NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
-            .sink { [weak self] _ in
-                self?.updateVoiceOverSetting()
+
+        NSWorkspace.shared.publisher(for: \.isVoiceOverEnabled, options: [.initial, .new])
+            .receive(on: RunLoop.main)
+            .sink { [weak self] isEnabled in
+                self?.isVoiceOverEnabled = isEnabled
             }
             .store(in: &cancellables)
     }
@@ -207,16 +204,12 @@ class AccessibilityService: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             self?.updateHighContrastSetting()
             self?.updateReducedMotionSetting()
-            self?.updateVoiceOverSetting()
+            self?.reducedTransparencyEnabled = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
         }
     }
     
     private func updateHighContrastSetting() {
-        // Check for high contrast mode using system preferences
-        let increaseContrast = UserDefaults.standard.bool(forKey: "AppleAquaColorVariant")
-        let differentiateWithoutColor = UserDefaults.standard.bool(forKey: "DifferentiateWithoutColor")
-        
-        isHighContrastEnabled = increaseContrast || differentiateWithoutColor
+        isHighContrastEnabled = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
     }
     
     private func updateReducedMotionSetting() {
@@ -224,10 +217,6 @@ class AccessibilityService: ObservableObject {
         isReducedMotionEnabled = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
     
-    private func updateVoiceOverSetting() {
-        // Check if VoiceOver is running using accessibility APIs
-        isVoiceOverEnabled = NSWorkspace.shared.isVoiceOverEnabled
-    }
 }
 
 // MARK: - SwiftUI Integration

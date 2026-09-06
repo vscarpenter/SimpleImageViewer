@@ -11,7 +11,7 @@ final class ImageFileTests: XCTestCase {
         // Create temporary directory for test files
         tempDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("ImageFileTests")
-            .appendingPathComponent(UUID().uuidString)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
 
         try FileManager.default.createDirectory(
             at: tempDirectory,
@@ -80,10 +80,36 @@ final class ImageFileTests: XCTestCase {
         XCTAssertTrue(ImageFile.isSupportedImageType(.tiff))
         XCTAssertTrue(ImageFile.isSupportedImageType(.bmp))
         XCTAssertFalse(ImageFile.isSupportedImageType(.pdf))
-        XCTAssertTrue(ImageFile.isSupportedImageType(.svg))
+        XCTAssertFalse(ImageFile.isSupportedImageType(.svg))
 
         // Test unsupported type
         XCTAssertFalse(ImageFile.isSupportedImageType(.plainText))
+    }
+
+    func test_scanFolder_excludesUnsupportedVectorDocuments() async throws {
+        let svgURL = tempDirectory.appendingPathComponent("unsupported.svg")
+        try "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"8\" height=\"8\"><rect width=\"8\" height=\"8\"/></svg>"
+            .write(to: svgURL, atomically: true, encoding: .utf8)
+        let pdfURL = tempDirectory.appendingPathComponent("unsupported.pdf")
+        try Data("%PDF-1.4\n%%EOF".utf8).write(to: pdfURL)
+
+        let service = DefaultFileSystemService()
+        let images = try await service.scanFolder(tempDirectory, recursive: false)
+
+        XCTAssertEqual(images.map { $0.url.resolvingSymlinksInPath() }, [testImageURL.resolvingSymlinksInPath()])
+        XCTAssertFalse(service.isSupportedImageFile(svgURL))
+        XCTAssertFalse(service.isSupportedImageFile(pdfURL))
+        XCTAssertThrowsError(try ImageFile(url: svgURL))
+        XCTAssertThrowsError(try ImageFile(url: pdfURL))
+    }
+
+    func test_supportedFileExtensions_includeEachRasterFormatAndExcludeVectorDocuments() {
+        let supportedExtensions = Set(UTType.supportedImageTypes.flatMap(\.commonFileExtensions))
+
+        XCTAssertEqual(supportedExtensions, ["jpg", "jpeg", "png", "gif", "heif", "heic", "webp", "tiff", "tif", "bmp"])
+        for fileExtension in supportedExtensions {
+            XCTAssertTrue(UTType.fromFileExtension(fileExtension)?.isSupportedImageType == true, fileExtension)
+        }
     }
 
     func testEquality() throws {

@@ -6,6 +6,47 @@ import XCTest
 @testable import StillView___Simple_Image_Viewer
 
 final class ImageDecodingRegressionTests: XCTestCase {
+    func test_mainImage_displaysFirstFrameOfAnimatedGIF() throws {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("two-frames.gif")
+        let destination = try XCTUnwrap(CGImageDestinationCreateWithURL(url as CFURL, UTType.gif.identifier as CFString, 2, nil))
+        let context = try XCTUnwrap(CGContext(
+            data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        ))
+        for color in [NSColor.red, NSColor.green] {
+            context.setFillColor(color.cgColor)
+            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+            CGImageDestinationAddImage(destination, try XCTUnwrap(context.makeImage()), nil)
+        }
+        XCTAssertTrue(CGImageDestinationFinalize(destination))
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil))
+        XCTAssertEqual(CGImageSourceGetCount(source), 2, "Fixture must contain two different frames")
+
+        let image = try load(url, memoryLimit: 10_000_000).get()
+        func sampleColor(_ cgImage: CGImage) throws -> NSColor {
+            let bitmap = NSBitmapImageRep(cgImage: cgImage)
+            return try XCTUnwrap(bitmap.colorAt(x: 4, y: 4)?.usingColorSpace(.sRGB))
+        }
+        func colorDistance(_ first: NSColor, _ second: NSColor) -> CGFloat {
+            abs(first.redComponent - second.redComponent)
+                + abs(first.greenComponent - second.greenComponent)
+                + abs(first.blueComponent - second.blueComponent)
+        }
+        let firstFrame = try sampleColor(XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)))
+        let secondFrame = try sampleColor(XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 1, nil)))
+        let displayedColor = try sampleColor(XCTUnwrap(image.cgImage(forProposedRect: nil, context: nil, hints: nil)))
+        XCTAssertGreaterThan(colorDistance(firstFrame, secondFrame), 0.5, "Fixture frames must be visibly different")
+        XCTAssertLessThan(
+            colorDistance(displayedColor, firstFrame), colorDistance(displayedColor, secondFrame) * 0.1,
+            "The displayed pixels must match the first frame, allowing for color-profile conversion"
+        )
+        XCTAssertEqual(image.representations.count, 1, "GIF viewing produces a static first-frame image")
+    }
+
     func test_mainImage_appliesAllEightEXIFOrientations() throws {
         let expectedCorners = [
             [0, 1, 2, 3], [1, 0, 3, 2], [3, 2, 1, 0], [2, 3, 0, 1],
