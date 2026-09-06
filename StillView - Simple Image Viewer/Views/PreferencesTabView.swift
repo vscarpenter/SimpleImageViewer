@@ -441,7 +441,7 @@ struct GeneralPreferencesView: View {
             PreferencesSection("Intelligence") {
                 PreferencesControl(
                     "Enable AI Insights",
-                    description: "Use Apple Intelligence on this Mac to generate short local image notes"
+                    description: "Analyze images on this Mac using Vision and Apple Intelligence"
                 ) {
                     Toggle("", isOn: $viewModel.enableAIAnalysis)
                         .labelsHidden()
@@ -453,7 +453,7 @@ struct GeneralPreferencesView: View {
                         Image(systemName: "lock.shield")
                             .foregroundColor(.secondary)
                             .font(.system(size: 12))
-                        Text("Generated on device from local metadata and available system analysis.")
+                        Text("Visual matches and recognized text stay on this Mac.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }

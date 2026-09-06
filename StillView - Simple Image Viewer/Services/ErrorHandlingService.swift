@@ -204,6 +204,12 @@ class ErrorHandlingService: ObservableObject {
         case .loadingCancelled:
             // Don't show notification for cancelled loading
             break
+
+        case .imageChanged:
+            showNotification(
+                "Image changed while loading: \(imageURL.lastPathComponent). Try again.",
+                type: .warning
+            )
             
         case .fileSystemError:
             showNotification(

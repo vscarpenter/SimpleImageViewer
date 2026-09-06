@@ -35,13 +35,21 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
     }
 
     func makeInput(for imageFile: ImageFile) -> ImageInsightInput {
+        var resourceURL = imageFile.url
+        resourceURL.removeAllCachedResourceValues()
+        let resourceValues = try? resourceURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+        let byteCount = resourceValues.flatMap { $0.fileSize }.map(Int64.init)
+        let fileSize = byteCount.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) }
+            ?? imageFile.formattedSize
         let metadata = ImageMetadataService().extractMetadata(from: imageFile.url)
         return ImageInsightInput(
             fileType: imageFile.type.localizedDescription ?? imageFile.type.identifier,
             dimensions: metadata.dimensions,
-            fileSize: imageFile.formattedSize,
+            fileSize: fileSize,
             colorProfile: colorProfileName(for: imageFile.url) ?? metadata.colorSpace,
-            imageURL: imageFile.url
+            imageURL: imageFile.url,
+            fileByteCount: byteCount,
+            fileModificationDate: resourceValues?.contentModificationDate
         )
     }
 
@@ -54,20 +62,20 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
             throw ImageInsightError.imageUnavailable
         }
 
-        let perception = await perceptionService.analyze(url: imageURL)
+        let perception = try await perceptionService.analyze(url: imageURL)
         try Task.checkCancellation()
 
-        var generatedSummary: String?
-        if perception.evidence.supportsNarrativeGeneration {
+        var selectedTextLineIndices: [Int]?
+        if perception.evidence.supportsTextSelection {
             #if canImport(FoundationModels)
             if #available(macOS 26.0, *) {
                 do {
-                    generatedSummary = try await generateSummary(for: perception)
+                    selectedTextLineIndices = try await selectTextLines(for: perception)
                 } catch is CancellationError {
                     throw CancellationError()
                 } catch {
                     Logger.warning(
-                        "Apple Intelligence summary failed; using grounded local result",
+                        "Apple Intelligence text selection failed; using original reading order",
                         context: "AIInsights"
                     )
                 }
@@ -79,7 +87,7 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
         return ImageInsightResultBuilder.build(
             input: input,
             perception: perception,
-            generatedSummary: generatedSummary
+            selectedTextLineIndices: selectedTextLineIndices
         )
     }
 
@@ -110,28 +118,28 @@ private extension AppleIntelligenceInsightsService {
         }
     }
 
-    func generateSummary(for perception: ImagePerceptionResult) async throws -> String {
+    func selectTextLines(for perception: ImagePerceptionResult) async throws -> [Int] {
         let session = LanguageModelSession(
             model: .default,
             instructions: ImageInsightPromptBuilder.systemInstruction
         )
         let options = GenerationOptions(
             sampling: .greedy,
-            maximumResponseTokens: 120
+            maximumResponseTokens: 64
         )
         let response = try await session.respond(
             to: ImageInsightPromptBuilder.prompt(for: perception),
-            generating: GeneratedImageSummary.self,
+            generating: SelectedImageTextLines.self,
             options: options
         )
-        return response.content.summary
+        return response.content.lineIndices
     }
 }
 
 @available(macOS 26.0, *)
-@Generable(description: "One cautious sentence based only on the supplied on-device Vision observations.")
-private struct GeneratedImageSummary {
-    @Guide(description: "One sentence. Restate only supplied observations. Add no visual details or proper names.")
-    let summary: String
+@Generable(description: "Indices of useful recognized text lines. Never rewritten text or a description.")
+private struct SelectedImageTextLines {
+    @Guide(description: "One to three different zero-based indices from the supplied OCR lines.", .count(1...3))
+    let lineIndices: [Int]
 }
 #endif

@@ -124,6 +124,7 @@
 		FBF6CAAE304CF62100ADFEEB /* FileSystemServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAAD304CF62100ADFEEB /* FileSystemServiceTests.swift */; };
 		FBF6CAB0304CF63200ADFEEB /* ImageDecodingRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAAF304CF63200ADFEEB /* ImageDecodingRegressionTests.swift */; };
 		FBF6CAB2304CF63E00ADFEEB /* ImageCacheAccountingRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAB1304CF63E00ADFEEB /* ImageCacheAccountingRegressionTests.swift */; };
+		FBF6CAB4304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAB3304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -257,6 +258,7 @@
 		FBF6CAAD304CF62100ADFEEB /* FileSystemServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FileSystemServiceTests.swift; path = Services/FileSystemServiceTests.swift; sourceTree = "<group>"; };
 		FBF6CAAF304CF63200ADFEEB /* ImageDecodingRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImageDecodingRegressionTests.swift; path = Services/ImageDecodingRegressionTests.swift; sourceTree = "<group>"; };
 		FBF6CAB1304CF63E00ADFEEB /* ImageCacheAccountingRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImageCacheAccountingRegressionTests.swift; path = Models/ImageCacheAccountingRegressionTests.swift; sourceTree = "<group>"; };
+		FBF6CAB3304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImageInsightLifecycleRegressionTests.swift; path = ViewModels/ImageInsightLifecycleRegressionTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -499,6 +501,7 @@
 		C0C0C0C0C0C0C0C0C0C0C0B1 /* StillView - Simple Image Viewer Tests */ = {
 			isa = PBXGroup;
 			children = (
+				FBF6CAB3304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift */,
 				FBF6CAB1304CF63E00ADFEEB /* ImageCacheAccountingRegressionTests.swift */,
 				FBF6CAAF304CF63200ADFEEB /* ImageDecodingRegressionTests.swift */,
 				FBF6CAAD304CF62100ADFEEB /* FileSystemServiceTests.swift */,
@@ -733,6 +736,7 @@
 			files = (
 				FBF6CAA6304CF59100ADFEEB /* ViewingLifecycleRegressionTests.swift in Sources */,
 				FBF6CAAC304CF61600ADFEEB /* FolderContentTests.swift in Sources */,
+				FBF6CAB4304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift in Sources */,
 				B2010000000000000000000B /* ImageInsightTests.swift in Sources */,
 				B201000000000000000000F3 /* ImageContentTypeClassifierTests.swift in Sources */,
 				FBF6CAAA304CF60B00ADFEEB /* ImageFileTests.swift in Sources */,

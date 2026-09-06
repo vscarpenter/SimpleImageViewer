@@ -182,6 +182,78 @@ final class ImageDecodingRegressionTests: XCTestCase {
         XCTAssertNil(cache.image(for: url))
     }
 
+    func test_fileChangedDuringDecode_rejectsOldPixelsAndAllowsFreshRequest() throws {
+        let url = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let (service, cache, queue, decoder) = controlledLoader()
+        var received: [NSImage] = []
+        var completions: [Subscribers.Completion<Error>] = []
+        let first = service.loadImage(from: url)
+            .sink(receiveCompletion: { completions.append($0) }, receiveValue: { received.append($0) })
+        wait(for: [decoder.started], timeout: 1)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(10)], ofItemAtPath: url.path
+        )
+        decoder.release.signal()
+        queue.sync {}
+
+        XCTAssertTrue(received.isEmpty, "Pixels decoded from the old revision must not be published")
+        XCTAssertNil(cache.image(for: url), "Old pixels must not acquire the new file revision")
+        XCTAssertEqual(cache.statistics.currentCost, 0)
+        XCTAssertEqual(completions.count, 1)
+        if case .failure(let error) = completions.first {
+            XCTAssertEqual(error.localizedDescription, "Image changed while loading. Try again.")
+        } else {
+            XCTFail("The changed file should produce an actionable retry error")
+        }
+
+        let second = service.loadImage(from: url)
+            .sink(receiveCompletion: { _ in }, receiveValue: { received.append($0) })
+        queue.sync {}
+        XCTAssertEqual(decoder.decodeCount, 2)
+        XCTAssertTrue(received.last === decoder.freshImage)
+        XCTAssertTrue(cache.image(for: url) === decoder.freshImage)
+        withExtendedLifetime((first, second)) {}
+    }
+
+    func test_fileDeletedDuringPreload_doesNotCacheDecodedPixels() throws {
+        let url = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let (service, cache, queue, decoder) = controlledLoader()
+        service.preloadImage(from: url)
+        wait(for: [decoder.started], timeout: 1)
+        try FileManager.default.removeItem(at: url)
+        decoder.release.signal()
+        queue.sync {}
+
+        XCTAssertNil(cache.image(for: url))
+        XCTAssertEqual(cache.statistics.currentCost, 0)
+    }
+
+    func test_fileChangedDuringFailedDecode_reportsRetryInsteadOfCorruptFile() throws {
+        let url = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let queue = DispatchQueue(label: "test.changed-failed-decode")
+        let decoder = GatedDecoder()
+        let service = DefaultImageLoaderService(loadingQueue: queue) { imageURL in
+            _ = try decoder.decode(imageURL)
+            throw ImageLoaderError.corruptedImage
+        }
+        var receivedError: Error?
+        let subscription = service.loadImage(from: url).sink(receiveCompletion: { completion in
+            if case .failure(let error) = completion { receivedError = error }
+        }, receiveValue: { _ in XCTFail("Failed decode must not publish pixels") })
+        wait(for: [decoder.started], timeout: 1)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(10)], ofItemAtPath: url.path
+        )
+        decoder.release.signal()
+        queue.sync {}
+
+        XCTAssertEqual(receivedError as? ImageLoaderError, .imageChanged)
+        withExtendedLifetime(subscription) {}
+    }
+
     private func controlledLoader() -> (DefaultImageLoaderService, ImageCache, DispatchQueue, GatedDecoder) {
         let cache = ImageCache()
         let queue = DispatchQueue(label: "test.controlled-decode")

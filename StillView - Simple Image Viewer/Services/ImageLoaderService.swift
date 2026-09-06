@@ -36,6 +36,7 @@ enum ImageLoaderError: LocalizedError {
     case corruptedImage
     case insufficientMemory
     case loadingCancelled
+    case imageChanged
     case fileSystemError
     
     var errorDescription: String? {
@@ -50,6 +51,8 @@ enum ImageLoaderError: LocalizedError {
             return "Not enough memory to load image"
         case .loadingCancelled:
             return "Image loading was cancelled"
+        case .imageChanged:
+            return "Image changed while loading. Try again."
         case .fileSystemError:
             return "File system error occurred while loading image"
         }
@@ -185,11 +188,19 @@ final class DefaultImageLoaderService: ImageLoaderService {
         // ImageIO's synchronous decode cannot be interrupted. Skip canceled queued work and
         // discard results if cancellation or clearing occurred while a decode was running.
         guard stateLock.withLock({ isCurrent(work) }) else { return }
-        let result = Result { try decode(url: work.url) }
+        let decodedRevision = ImageCache.fileRevision(for: work.url)
+        var result = Result { try decode(url: work.url) }
         let completions: [Completion] = stateLock.withLock {
             guard isCurrent(work) else { return [] }
-            if case .success(let image) = result {
-                imageCache.setImage(image, for: work.url)
+            switch result {
+            case .success(let image):
+                if !imageCache.setImage(image, for: work.url, expectedRevision: decodedRevision) {
+                    result = .failure(ImageLoaderError.imageChanged)
+                }
+            case .failure:
+                if decodedRevision != ImageCache.fileRevision(for: work.url) {
+                    result = .failure(ImageLoaderError.imageChanged)
+                }
             }
             activeWork.removeValue(forKey: work.url)
             return takeCompletions(from: work)

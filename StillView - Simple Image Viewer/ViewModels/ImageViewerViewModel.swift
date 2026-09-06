@@ -94,7 +94,16 @@ class ImageViewerViewModel: ObservableObject {
     
     // MARK: - macOS 26 Enhanced Services
     private let enhancedSecurity = EnhancedSecurityService.shared
-    private let imageInsightService: AppleIntelligenceInsightsService
+    private let insightAvailabilityProvider: () -> ImageInsightAvailability
+    private let insightInputProvider: (ImageFile) -> ImageInsightInput
+    private var systemInsightAvailability: ImageInsightAvailability = .unavailable(.unknown)
+    private var currentImageRevision: ImageRevision?
+
+    private struct ImageRevision: Equatable {
+        let url: URL
+        let byteCount: Int64?
+        let modificationDate: Date?
+    }
     
     // Zoom levels for quick access
     private let zoomLevels: [Double] = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 5.0]
@@ -105,9 +114,11 @@ class ImageViewerViewModel: ObservableObject {
     init(imageLoaderService: ImageLoaderService = DefaultImageLoaderService(),
          preferencesService: PreferencesService = DefaultPreferencesService(),
          errorHandlingService: ErrorHandlingService = ErrorHandlingService.shared,
-         imageInsightService: AppleIntelligenceInsightsService = .shared,
+         imageInsightService: any ImageInsightGenerating = AppleIntelligenceInsightsService.shared,
          imageEnhancer: ((NSImage) async throws -> NSImage)? = nil,
-         expectedImageSizeLoader: ((URL) async -> CGSize?)? = nil) {
+         expectedImageSizeLoader: ((URL) async -> CGSize?)? = nil,
+         insightAvailabilityProvider: (() -> ImageInsightAvailability)? = nil,
+         insightInputProvider: ((ImageFile) -> ImageInsightInput)? = nil) {
         self.imageLoaderService = imageLoaderService
         self.imageEnhancer = imageEnhancer ?? { image in
             let features: Set<ProcessingFeature> = [.smartCropping, .colorEnhancement, .noiseReduction]
@@ -126,7 +137,8 @@ class ImageViewerViewModel: ObservableObject {
         }
         self.preferencesService = preferencesService
         self.errorHandlingService = errorHandlingService
-        self.imageInsightService = imageInsightService
+        self.insightAvailabilityProvider = insightAvailabilityProvider ?? AppleIntelligenceInsightsService.shared.availability
+        self.insightInputProvider = insightInputProvider ?? AppleIntelligenceInsightsService.shared.makeInput
         self.imageInsightViewModel = ImageInsightViewModel(service: imageInsightService)
         self.isAIAnalysisEnabled = preferencesService.enableAIAnalysis
         self.isEnhancedProcessingEnabled = preferencesService.enableImageEnhancements
@@ -195,6 +207,7 @@ class ImageViewerViewModel: ObservableObject {
             loadCurrentImage()
         } else {
             currentImage = nil
+            prepareImageInsightForCurrentImage()
             errorMessage = "No images found in the selected folder"
         }
     }
@@ -357,6 +370,9 @@ class ImageViewerViewModel: ObservableObject {
         loadCurrentImage()
     }
 
+    /// Identifies the selection/load that metadata belongs to, including same-URL reloads.
+    var currentImageRequestID: UUID? { activeImageLoadID }
+
     // MARK: - AI Insights UI Methods
 
     var canGenerateImageInsight: Bool {
@@ -365,29 +381,27 @@ class ImageViewerViewModel: ObservableObject {
     
     /// Check if AI Insights is supported by the system (independent of user preference)
     var isAIInsightsSupported: Bool {
-        imageInsightAvailability.isUserVisible
+        systemInsightAvailability.isUserVisible
     }
     
     /// Update AI Insights availability based on system compatibility and preferences
     func updateAIInsightsAvailability() {
-        imageInsightAvailability = imageInsightService.availability()
-        let userEnabledAI = preferencesService.enableAIAnalysis
-        isAIInsightsAvailable = imageInsightAvailability.isUserVisible && userEnabledAI
+        systemInsightAvailability = insightAvailabilityProvider()
+        isAIAnalysisEnabled = preferencesService.enableAIAnalysis
+        imageInsightAvailability = isAIAnalysisEnabled ? systemInsightAvailability : .unavailable(.appDisabled)
+        isAIInsightsAvailable = imageInsightAvailability.isAvailable
         imageInsightViewModel.updateAvailability(imageInsightAvailability)
+    }
 
-        // Fall back to the Info tab if Insights becomes unavailable
-        if !isAIInsightsAvailable {
-            if inspectorTab == .insights {
-                inspectorTab = .info
-            }
-            cancelImageInsightGeneration()
-        }
-        
-        Logger.info("AI Insights availability updated - User: \(userEnabledAI), Available: \(isAIInsightsAvailable)", context: "AIInsights")
+    func enableAIInsights() {
+        preferencesService.enableAIAnalysis = true
+        preferencesService.savePreferences()
+        prepareImageInsightForCurrentImage()
     }
 
     func generateImageInsight() {
         prepareImageInsightForCurrentImage()
+        guard canGenerateImageInsight else { return }
         imageInsightViewModel.generate()
     }
 
@@ -444,25 +458,8 @@ class ImageViewerViewModel: ObservableObject {
 
     /// Handle AI Insights preference change notification
     private func handleAIAnalysisPreferenceChange(_ notification: Notification) {
-        // Extract the new preference value from the notification
-        let newValue: Bool
-
-        // Safely extract the preference value with fallback
-        if let notificationValue = notification.object as? Bool {
-            newValue = notificationValue
-        } else {
-            // Fallback to reading directly from preferences service
-            newValue = preferencesService.enableAIAnalysis
-            Logger.warning("Preference notification missing value, using fallback", context: "AIInsights")
-        }
-
-        // Update the local state
-        updateAIAnalysisEnabled(newValue)
-
-        // If AI Insights is disabled, ensure panel state persistence is also reset.
-        if !newValue {
-            Logger.info("AI Insights disabled - panel state will be reset", context: "AIInsights")
-        }
+        // Read the owning preference store; unrelated windows may use a different store.
+        prepareImageInsightForCurrentImage()
     }
     
     /// Handle automatic image enhancement preference change
@@ -484,21 +481,6 @@ class ImageViewerViewModel: ObservableObject {
         loadCurrentImage()
     }
     
-    /// Update the AI Insights enabled state and synchronize UI.
-    private func updateAIAnalysisEnabled(_ enabled: Bool) {
-        guard isAIAnalysisEnabled != enabled else { return }
-        
-        isAIAnalysisEnabled = enabled
-
-        // Update AI Insights availability based on new preference; it already
-        // falls back to the Info tab and cancels generation when disabled.
-        updateAIInsightsAvailability()
-
-        if enabled {
-            prepareImageInsightForCurrentImage()
-        }
-    }
-    
     /// Initialize AI Insights state for a new folder session
     private func initializeAIInsightsForNewSession() {
         // Update availability for the new session
@@ -518,23 +500,29 @@ class ImageViewerViewModel: ObservableObject {
 
     /// Reset AI Insights state when ending a session
     private func resetAIInsightsForSessionEnd() {
-        cancelImageInsightGeneration()
+        currentImageRevision = nil
+        imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
         Logger.info("AI Insights state reset for session end")
     }
 
-    private func prepareImageInsightForCurrentImage() {
+    private func prepareImageInsightForCurrentImage(reloadIfChanged: Bool = true) {
         updateAIInsightsAvailability()
-        guard isAIAnalysisEnabled else {
-            imageInsightViewModel.updateAvailability(.unavailable(.unknown))
-            return
-        }
-
         guard let imageFile = currentImageFile else {
-            imageInsightViewModel.prepareForImage(nil, availability: .unavailable(.imageUnavailable))
+            currentImageRevision = nil
+            imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
             return
         }
 
-        let input = imageInsightService.makeInput(for: imageFile)
+        let input = insightInputProvider(imageFile)
+        let revision = ImageRevision(url: imageFile.url, byteCount: input.fileByteCount,
+                                     modificationDate: input.fileModificationDate)
+        if reloadIfChanged, let previousRevision = currentImageRevision,
+           previousRevision.url == revision.url, previousRevision != revision {
+            // The stage and Insights must refer to the same file revision after an external edit.
+            loadCurrentImage()
+            return
+        }
+        currentImageRevision = revision
         imageInsightViewModel.prepareForImage(input, availability: imageInsightAvailability)
     }
 
@@ -559,7 +547,6 @@ class ImageViewerViewModel: ObservableObject {
 
     private func loadCurrentImage(resetRecovery: Bool = true) {
         cancelActiveImageLoad()
-        cancelImageInsightGeneration()
         if resetRecovery {
             failedImageURLs.removeAll()
         }
@@ -568,7 +555,8 @@ class ImageViewerViewModel: ObservableObject {
         isLoading = false
         loadingProgress = 0
         guard let imageFile = currentImageFile else {
-            imageInsightViewModel.prepareForImage(nil, availability: .unavailable(.imageUnavailable))
+            currentImageRevision = nil
+            imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
             return
         }
 
@@ -576,7 +564,7 @@ class ImageViewerViewModel: ObservableObject {
         activeImageLoadID = loadID
         activeImageLoadURL = imageFile.url
         errorMessage = nil
-        prepareImageInsightForCurrentImage()
+        prepareImageInsightForCurrentImage(reloadIfChanged: false)
         isLoading = true
         loadExpectedImageSize(for: imageFile, loadID: loadID)
 

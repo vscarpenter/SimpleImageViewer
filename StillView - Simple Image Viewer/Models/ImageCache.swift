@@ -3,16 +3,23 @@ import Foundation
 
 /// Stores decoded images and accounts for each retained entry throughout its cache lifetime.
 final class ImageCache: NSObject {
+    struct FileRevision: Equatable {
+        let byteCount: Int
+        let modificationDate: Date
+    }
+
     private final class Entry: NSObject {
         let key: NSURL
         let identifier = UUID()
         let image: NSImage
         let cost: Int
+        let revision: FileRevision?
 
-        init(key: NSURL, image: NSImage, cost: Int) {
+        init(key: NSURL, image: NSImage, cost: Int, revision: FileRevision?) {
             self.key = key
             self.image = image
             self.cost = cost
+            self.revision = revision
         }
     }
 
@@ -67,6 +74,11 @@ final class ImageCache: NSObject {
                 missCount += 1
                 return nil
             }
+            guard entry.revision == Self.fileRevision(for: url) else {
+                removeEntry(for: key)
+                missCount += 1
+                return nil
+            }
             hitCount += 1
             accessSequence &+= 1
             records[key]?.lastAccess = accessSequence
@@ -75,23 +87,32 @@ final class ImageCache: NSObject {
     }
 
     func setImage(_ image: NSImage, for url: URL) {
+        setImage(image, for: url, expectedRevision: Self.fileRevision(for: url))
+    }
+
+    /// Returns false if the file changed after the caller's decode began. A true result confirms
+    /// the revision; images larger than the cache budget may still be delivered without retention.
+    @discardableResult
+    func setImage(_ image: NSImage, for url: URL, expectedRevision: FileRevision?) -> Bool {
         let cost = Self.decodedMemoryCost(of: image)
-        lock.withLock {
+        return lock.withLock {
+            guard expectedRevision == Self.fileRevision(for: url) else { return false }
             let key = url as NSURL
             removeEntry(for: key)
             // NSCache limits are advisory; enforce our own bounds as well.
-            guard cost <= cache.totalCostLimit else { return }
+            guard cost <= cache.totalCostLimit else { return true }
             while records.count >= cache.countLimit || currentCost > cache.totalCostLimit - cost {
                 guard let oldestKey = records.min(by: { $0.value.lastAccess < $1.value.lastAccess })?.key else { break }
                 removeEntry(for: oldestKey)
             }
-            let entry = Entry(key: key, image: image, cost: cost)
+            let entry = Entry(key: key, image: image, cost: cost, revision: expectedRevision)
             accessSequence &+= 1
             records[key] = Record(identifier: entry.identifier, cost: cost, lastAccess: accessSequence)
             currentCost += cost
             memoryManager?.didLoadImage(size: cost)
             // Register before insertion: NSCache may evict this or another entry during setObject.
             cache.setObject(entry, forKey: key, cost: cost)
+            return true
         }
     }
 
@@ -123,6 +144,17 @@ final class ImageCache: NSObject {
             memoryManager?.didUnloadImage(size: record.cost)
         }
         cache.removeObject(forKey: key)
+    }
+
+    static func fileRevision(for url: URL) -> FileRevision? {
+        guard url.isFileURL else { return nil }
+        // A caller may retain URL resource values from before an external edit. Construct a fresh
+        // file URL for each stat; retain revision metadata only with the bounded cache entry.
+        let freshURL = URL(fileURLWithPath: url.path)
+        guard let values = try? freshURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]),
+              let byteCount = values.fileSize,
+              let modificationDate = values.contentModificationDate else { return nil }
+        return FileRevision(byteCount: byteCount, modificationDate: modificationDate)
     }
 
     /// Use decoded storage, including row padding and planar channels, rather than logical point size.

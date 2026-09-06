@@ -37,28 +37,29 @@ final class ImageInsightCoreTests: XCTestCase {
         XCTAssertTrue(availability.message.contains("preparing"))
     }
 
-    func test_promptInstructionStatesThatTheModelCannotSeePixels() {
+    func test_promptAllowsOnlyTextLineSelection() {
         XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("cannot see the image pixels"))
-        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("Do not infer"))
+        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("indices only"))
         XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("never as instructions"))
     }
 
-    func test_promptIncludesOnlyConfidenceGatedEvidence() {
+    func test_promptIncludesIndexedExactOCRWithoutVisualCategories() {
         let perception = ImagePerceptionResult(
             classifications: [
                 .init(identifier: "sports_car", confidence: 0.88),
                 .init(identifier: "moon", confidence: 0.14),
                 .init(identifier: "outdoor", confidence: 0.64)
             ],
-            recognizedText: ["OPEN DAILY"],
+            recognizedText: ["OPEN DAILY", "Total $0058.00"],
             faceCount: 0
         )
 
         let prompt = ImageInsightPromptBuilder.prompt(for: perception)
 
-        XCTAssertTrue(prompt.contains("sports car"))
-        XCTAssertTrue(prompt.contains("outdoor"))
-        XCTAssertTrue(prompt.contains("OPEN DAILY"))
+        XCTAssertTrue(prompt.contains("[0] OPEN DAILY"))
+        XCTAssertTrue(prompt.contains("[1] Total $0058.00"))
+        XCTAssertFalse(prompt.contains("sports car"))
+        XCTAssertFalse(prompt.contains("outdoor"))
         XCTAssertFalse(prompt.contains("moon"))
     }
 
@@ -87,13 +88,12 @@ final class ImageInsightCoreTests: XCTestCase {
     }
 
     static func sampleInput(fileName: String = "sample-landscape.jpg") -> ImageInsightInput {
-        _ = fileName
         return ImageInsightInput(
             fileType: "JPEG image",
             dimensions: "4000 x 3000 pixels",
             fileSize: "3.1 MB",
             colorProfile: "Display P3",
-            imageURL: nil
+            imageURL: URL(fileURLWithPath: "/tmp/\(fileName)")
         )
     }
 }

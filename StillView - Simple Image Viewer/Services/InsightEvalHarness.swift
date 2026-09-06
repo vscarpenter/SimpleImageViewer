@@ -3,7 +3,7 @@ import Foundation
 import AppKit
 
 /// DEBUG-only manual evaluation harness for AI Insights. Runs the real on-device pipeline
-/// (perception → classify → generate → validate) over a folder of images and writes a Markdown
+/// (perception → classify → select text → compose) over a folder of images and writes a Markdown
 /// report you can eyeball. Triggered from the Debug menu ("Run AI Insights Eval…").
 ///
 /// It runs in the app process so FoundationModels is available and everything links. The app's
@@ -95,17 +95,17 @@ enum InsightEvalHarness {
     /// and route; `generateInsight` re-runs it internally (minor redundancy) so the insight comes
     /// from the exact production path. Per-image errors are captured, not thrown.
     private static func evaluate(imageURL: URL, service: AppleIntelligenceInsightsService) async -> String {
-        let perception = await ImagePerceptionService.shared.analyze(url: imageURL)
-        let route = ImageContentTypeClassifier.classify(perception)
         let fileName = imageURL.lastPathComponent
+        var perception = ImagePerceptionResult.empty
 
         do {
+            perception = try await ImagePerceptionService.shared.analyze(url: imageURL)
             let imageFile = try ImageFile(url: imageURL)
             let input = service.makeInput(for: imageFile)
             let result = try await service.generateInsight(for: input)
             return markdownSection(Record(
                 fileName: fileName,
-                route: route,
+                route: ImageContentTypeClassifier.classify(perception),
                 perceptionSignals: promptLines(for: perception),
                 result: result,
                 error: nil
@@ -113,7 +113,7 @@ enum InsightEvalHarness {
         } catch {
             return markdownSection(Record(
                 fileName: fileName,
-                route: route,
+                route: ImageContentTypeClassifier.classify(perception),
                 perceptionSignals: promptLines(for: perception),
                 result: nil,
                 error: error.localizedDescription
@@ -122,9 +122,13 @@ enum InsightEvalHarness {
     }
 
     private static func promptLines(for perception: ImagePerceptionResult) -> [String] {
-        ImageInsightPromptBuilder.prompt(for: perception)
-            .components(separatedBy: .newlines)
-            .filter { !$0.isEmpty }
+        let evidence = perception.evidence
+        var lines = (evidence.subjectLabels + evidence.sceneLabels).map {
+            "\(displayLabel($0.identifier)): \(Int(($0.confidence * 100).rounded()))%"
+        }
+        if evidence.faceCount > 0 { lines.append("Detected faces: \(evidence.faceCount)") }
+        lines.append(contentsOf: evidence.recognizedText.map { "Recognized text: \($0)" })
+        return lines
     }
 
     // MARK: - Formatting
@@ -173,6 +177,14 @@ enum InsightEvalHarness {
                 lines.append(contentsOf: result.usefulDetails.map { "  - \($0)" })
             }
             lines.append("- Tags: \(result.tags.joined(separator: ", "))")
+            if !result.selectedTextLines.isEmpty {
+                lines.append("- Text highlights:")
+                lines.append(contentsOf: result.selectedTextLines.map { "  - \($0)" })
+            }
+            if !result.recognizedText.isEmpty {
+                lines.append("- Recognized text:")
+                lines.append(contentsOf: result.recognizedText.map { "  - \($0)" })
+            }
             if !result.limitations.isEmpty {
                 lines.append("- Limitations:")
                 lines.append(contentsOf: result.limitations.map { "  - \($0)" })

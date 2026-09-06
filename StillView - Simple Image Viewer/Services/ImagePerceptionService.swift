@@ -20,6 +20,20 @@ struct ImagePerceptionResult: Equatable, Sendable {
     )
 }
 
+enum ImagePerceptionError: LocalizedError, Equatable, Sendable {
+    case imageDecodingFailed
+    case visionRequestFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .imageDecodingFailed:
+            return "The image could not be read for analysis. Try reopening it or selecting another image."
+        case .visionRequestFailed(let reason):
+            return "Image analysis could not finish. \(reason)"
+        }
+    }
+}
+
 enum OCRCleaner {
     struct Candidate: Equatable, Sendable {
         let text: String
@@ -70,6 +84,16 @@ enum OCRCleaner {
 struct ImagePerceptionService: Sendable {
     static let shared = ImagePerceptionService()
 
+    private let performRequests: @Sendable (VNImageRequestHandler, [VNRequest]) throws -> Void
+
+    init(
+        performRequests: @escaping @Sendable (VNImageRequestHandler, [VNRequest]) throws -> Void = {
+            try $0.perform($1)
+        }
+    ) {
+        self.performRequests = performRequests
+    }
+
     /// Large low-confidence face-shaped regions are rejected. Very small detections count only
     /// when Vision is exceptionally confident, which preserves distant faces without promoting noise.
     static func shouldCountFace(area: Double, confidence: Float) -> Bool {
@@ -77,17 +101,41 @@ struct ImagePerceptionService: Sendable {
             || (area >= 0.0005 && confidence >= 0.85)
     }
 
-    func analyze(url: URL) async -> ImagePerceptionResult {
-        await Task.detached(priority: .userInitiated) {
-            guard let loaded = Self.loadCGImage(at: url) else {
+    func analyze(url: URL) async throws -> ImagePerceptionResult {
+        try Task.checkCancellation()
+        let cancellation = PerceptionCancellation()
+        let worker = Task.detached(priority: .userInitiated) {
+            try cancellation.checkCancellation()
+            let loaded = Self.loadCGImage(at: url)
+            try cancellation.checkCancellation()
+            guard let loaded else {
                 Logger.warning("Perception: could not decode image", context: "AIInsights")
-                return ImagePerceptionResult.empty
+                throw ImagePerceptionError.imageDecodingFailed
             }
 
-            let result = Self.runRequests(on: loaded.image, orientation: loaded.orientation)
+            let result = try runRequests(
+                on: loaded.image,
+                orientation: loaded.orientation,
+                cancellation: cancellation
+            )
+            try cancellation.checkCancellation()
             Self.log(result: result)
             return result
-        }.value
+        }
+
+        return try await withTaskCancellationHandler {
+            do {
+                let result = try await worker.value
+                try Task.checkCancellation()
+                return result
+            } catch {
+                try Task.checkCancellation()
+                throw error
+            }
+        } onCancel: {
+            worker.cancel()
+            cancellation.cancel()
+        }
     }
 
     private static func loadCGImage(at url: URL) -> (image: CGImage, orientation: CGImagePropertyOrientation)? {
@@ -104,10 +152,11 @@ struct ImagePerceptionService: Sendable {
         return (image, orientation)
     }
 
-    private static func runRequests(
+    private func runRequests(
         on image: CGImage,
-        orientation: CGImagePropertyOrientation
-    ) -> ImagePerceptionResult {
+        orientation: CGImagePropertyOrientation,
+        cancellation: PerceptionCancellation
+    ) throws -> ImagePerceptionResult {
         let handler = VNImageRequestHandler(cgImage: image, orientation: orientation, options: [:])
 
         let classification = VNClassifyImageRequest()
@@ -124,12 +173,19 @@ struct ImagePerceptionService: Sendable {
         let faceDetection = VNDetectFaceRectanglesRequest()
         faceDetection.revision = VNDetectFaceRectanglesRequestRevision3
 
+        let requests: [VNRequest] = [classification, textRecognition, faceDetection]
+        try cancellation.register(requests)
+        defer { cancellation.clearRequests() }
         do {
-            try handler.perform([classification, textRecognition, faceDetection])
+            try cancellation.checkCancellation()
+            try performRequests(handler, requests)
         } catch {
+            try cancellation.checkCancellation()
+            if error is CancellationError { throw error }
             Logger.warning("Perception: Vision.perform failed: \(error.localizedDescription)", context: "AIInsights")
-            return .empty
+            throw ImagePerceptionError.visionRequestFailed(error.localizedDescription)
         }
+        try cancellation.checkCancellation()
 
         let classifications = (classification.results ?? [])
             .prefix(12)
@@ -142,7 +198,7 @@ struct ImagePerceptionService: Sendable {
 
         let faceCount = (faceDetection.results ?? []).filter { observation in
             let area = observation.boundingBox.width * observation.boundingBox.height
-            return shouldCountFace(area: Double(area), confidence: observation.confidence)
+            return Self.shouldCountFace(area: Double(area), confidence: observation.confidence)
         }.count
 
         return ImagePerceptionResult(
@@ -157,5 +213,46 @@ struct ImagePerceptionService: Sendable {
             "Perception complete classifications=\(result.classifications.count) faces=\(result.faceCount) ocrLines=\(result.recognizedText.count)",
             context: "AIInsights"
         )
+    }
+}
+
+/// Holds only the requests that the worker is currently performing. All mutable state is protected
+/// by the lock; request cancellation runs outside the lock because Vision may invoke a completion.
+private final class PerceptionCancellation: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+    private var requests: [VNRequest] = []
+
+    func register(_ requests: [VNRequest]) throws {
+        lock.lock()
+        if cancelled {
+            lock.unlock()
+            requests.forEach { $0.cancel() }
+            throw CancellationError()
+        }
+        self.requests = requests
+        lock.unlock()
+    }
+
+    func clearRequests() {
+        lock.lock()
+        requests.removeAll()
+        lock.unlock()
+    }
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        let activeRequests = requests
+        lock.unlock()
+        activeRequests.forEach { $0.cancel() }
+    }
+
+    func checkCancellation() throws {
+        try Task.checkCancellation()
+        lock.lock()
+        let wasCancelled = cancelled
+        lock.unlock()
+        if wasCancelled { throw CancellationError() }
     }
 }

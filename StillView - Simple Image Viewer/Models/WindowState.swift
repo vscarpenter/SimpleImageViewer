@@ -267,9 +267,14 @@ struct WindowState: Codable {
     }
     
     /// Apply UI state to the given view model
-    /// - Parameter viewModel: The view model to apply state to
+    /// - Parameters:
+    ///   - viewModel: The view model to apply state to
+    ///   - preferencesService: The preference store controlling inspector restoration
     @MainActor
-    func applyUIState(to viewModel: ImageViewerViewModel) {
+    func applyUIState(
+        to viewModel: ImageViewerViewModel,
+        preferencesService: PreferencesService = DefaultPreferencesService()
+    ) {
         viewModel.zoomLevel = zoomLevel
         viewModel.showFileName = showFileName
 
@@ -281,13 +286,8 @@ struct WindowState: Codable {
         viewModel.slideshowInterval = slideshowInterval
 
         // Restore the inspector from the legacy showImageInfo/showAIInsights
-        // fields; the Insights tab additionally requires availability and the
-        // remember-panel-state preference.
-        let preferencesService = DefaultPreferencesService()
-        if showAIInsights,
-           viewModel.isAIAnalysisEnabled,
-           viewModel.isAIInsightsAvailable,
-           preferencesService.rememberAIInsightsPanelState {
+        // fields. The selected tab explains opt-in or system availability itself.
+        if showAIInsights, preferencesService.rememberAIInsightsPanelState {
             viewModel.showInspector(tab: .insights)
             Logger.info("Restored inspector on Insights tab")
         } else if showImageInfo {
@@ -320,4 +320,3 @@ struct WindowState: Codable {
         return lastFolderBookmark != nil && lastFolderPath != nil
     }
 }
-

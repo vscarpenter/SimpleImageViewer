@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail CI if the core regression suites stop testing the built app module."""
+"""Fail CI if viewing and Insights regression suites stop testing the built app module."""
 
 import json
 from pathlib import Path
@@ -17,6 +17,7 @@ REQUIRED_TESTS = {
     "ImageDecodingRegressionTests.swift",
     "ImageFileTests.swift",
     "ImageInsightTests.swift",
+    "ImageInsightLifecycleRegressionTests.swift",
     "ImageMetadataFormattingTests.swift",
     "ImagePerceptionServiceTests.swift",
     "ImageViewportTests.swift",
@@ -57,7 +58,7 @@ def main():
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
-    print(f"Verified {len(source_names)} test sources, including all required core suites, against the app host.")
+    print(f"Verified {len(source_names)} test sources, including all required viewing and Insights suites, against the app host.")
     return 0
 
 
