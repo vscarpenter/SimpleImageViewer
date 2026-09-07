@@ -98,7 +98,7 @@ struct SimpleImageViewerApp: App {
             
             // Add Preferences menu command
             CommandGroup(after: .appInfo) {
-                Button("Preferences...") {
+                Button("Settings…") {
                     Task { @MainActor in
                         preferencesCoordinator.showPreferences()
                     }

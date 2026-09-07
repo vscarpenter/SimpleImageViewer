@@ -1,4 +1,4 @@
-# App Store Submission Package — v4.5.1 (Build 35)
+# App Store Submission Package — v4.6.0 (Build 36)
 
 Draft metadata for this checkout. Verify the signed archive, App Store Connect fields, and public privacy page before submission; this document does not confirm upload or approval.
 
@@ -8,12 +8,12 @@ Draft metadata for this checkout. Verify the signed archive, App Store Connect f
 |---|---|
 | Bundle ID | `com.vinny.StillView-Image-Viewer` |
 | App Name | StillView - Image Viewer |
-| Marketing Version | 4.5.1 |
-| Build Number | 35 |
+| Marketing Version | 4.6.0 |
+| Build Number | 36 |
 | Primary Category | Photography |
 | Minimum macOS | 26.0 |
 
-Build 35 must exceed the previous uploaded build for this version. If another build number is needed, update the target’s Version and Build fields in Xcode and rebuild.
+Build 36 must exceed the previous uploaded build for this version. If another build number is needed, update the target’s Version and Build fields in Xcode and rebuild.
 
 ## Metadata fields
 
@@ -66,13 +66,13 @@ image,viewer,photo,slideshow,JPEG,HEIC,thumbnail,EXIF,OCR,macOS,offline,sandbox
 ### What’s New
 
 ```
-StillView 4.5.1 improves folder navigation, keyboard behavior, and compact window controls.
+StillView 4.6.0 introduces a compact, native Mac Settings window and improves folder navigation, keyboard behavior, and compact window controls.
 
 • Open Folder works from the welcome screen and image viewer, preserving the current image when you cancel.
 • Image shortcuts respect viewer focus and leave controls, text fields, dialogs, and other windows their usual keys.
 • Moving an image to Trash keeps the collection and selection consistent when navigation changes during the operation.
 • The toolbar adapts to narrow windows, including Grid controls.
-• Preferences and Help now describe the supported settings, built-in shortcuts, image formats, and on-device Insights behavior.
+• Settings and Help now describe the supported settings, built-in shortcuts, image formats, and on-device Insights behavior.
 ```
 
 ### URLs
@@ -102,7 +102,7 @@ Paste [AppStoreReviewNotes.md](AppStoreReviewNotes.md) into App Review Informati
 
 ## Pre-submission checks
 
-- [ ] Verify version 4.5.1, build 35, bundle ID, and macOS 26 deployment target against the selected archive and App Store Connect.
+- [ ] Verify version 4.6.0, build 36, bundle ID, and macOS 26 deployment target against the selected archive and App Store Connect.
 - [ ] Run the repository’s lint and tests, and confirm CI for the exact submission commit.
 - [ ] Create a distribution archive in Xcode and validate it in Organizer.
 - [ ] Inspect the signed app’s entitlements with `codesign -d --entitlements - "<App>.app"`: App Sandbox, user-selected read-write files, and app-scope bookmarks are expected; `get-task-allow` must be absent from the distribution app.

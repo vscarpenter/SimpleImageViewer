@@ -368,7 +368,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Enable or Disable Insights",
-                description: "Use Preferences → General → Enable AI Insights, or enable them from the Insights panel. Disabling them cancels generation; the panel can still explain how to enable the feature.",
+                description: "Use Settings → Intelligence → AI Insights, or enable them from the Insights panel. Disabling them cancels generation; the panel can still explain how to enable the feature.",
                 type: .information
             ),
             HelpContentItem(
@@ -385,12 +385,12 @@ extension HelpSection {
     )
 
     static let preferences = HelpSection(
-        title: "Preferences",
+        title: "Settings",
         icon: "gearshape",
         items: [
             HelpContentItem(
-                title: "Opening Preferences",
-                description: "Press ⌘, (Command-Comma) or choose Preferences from the StillView menu. General, Appearance, and Shortcuts organize the available settings.",
+                title: "Opening Settings",
+                description: "Press ⌘, (Command-Comma) or choose Settings from the StillView menu. General, Intelligence, and Shortcuts organize the available settings.",
                 type: .information
             ),
             HelpContentItem(
@@ -405,12 +405,12 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Insights and Enhancements",
-                description: "Enable or disable AI Insights and automatic image enhancements in General. Enhancements affect the displayed image and preserve the original file.",
+                description: "Enable or disable AI Insights and automatic image enhancements in Intelligence. Enhancements affect the displayed image and preserve the original file.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Appearance",
-                description: "The Appearance tab controls translucent backgrounds in the preferences window. StillView follows your Mac’s appearance and respects Reduce Motion.",
+                description: "Settings follows your Mac’s light or dark appearance, accessibility options, and system control colors.",
                 type: .information
             ),
             HelpContentItem(
@@ -548,7 +548,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "AI Privacy Commitment",
-                description: "AI Insights uses on-device Vision for visual matches, OCR, and face counts. Apple Intelligence can select exact existing OCR lines without receiving image pixels. Inputs and results stay on this Mac. You can disable Insights in Preferences.",
+                description: "AI Insights uses on-device Vision for visual matches, OCR, and face counts. Apple Intelligence can select exact existing OCR lines without receiving image pixels. Inputs and results stay on this Mac. You can disable Insights in Settings → Intelligence.",
                 type: .information
             ),
             HelpContentItem(

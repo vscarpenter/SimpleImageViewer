@@ -539,6 +539,86 @@ final class TrashLifecycleRegressionTests: XCTestCase {
 }
 
 @MainActor
+final class PreferencesWindowLifecycleRegressionTests: XCTestCase {
+    private let lastSelectedTabKey = "PreferencesLastSelectedTab"
+    private var originalLastSelectedTab: Any?
+
+    override func setUp() async throws {
+        try await super.setUp()
+        originalLastSelectedTab = UserDefaults.standard.object(forKey: lastSelectedTabKey)
+    }
+
+    override func tearDown() async throws {
+        if let originalLastSelectedTab {
+            UserDefaults.standard.set(originalLastSelectedTab, forKey: lastSelectedTabKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: lastSelectedTabKey)
+        }
+        originalLastSelectedTab = nil
+        try await super.tearDown()
+    }
+
+    func test_windowConstruction_preservesRestoredIntelligencePane() throws {
+        UserDefaults.standard.set("intelligence", forKey: lastSelectedTabKey)
+        let coordinator = PreferencesCoordinator()
+        let windowController = PreferencesWindowController(coordinator: coordinator)
+        defer { windowController.close() }
+        let paneController = try XCTUnwrap(
+            windowController.window?.contentViewController as? PreferencesPaneController
+        )
+
+        XCTAssertEqual(coordinator.selectedTab, .intelligence)
+        XCTAssertEqual(paneController.selectedTabViewItemIndex, Preferences.Tab.intelligence.order)
+        XCTAssertEqual(paneController.tabView.selectedTabViewItem?.identifier as? String, "intelligence")
+        XCTAssertEqual(UserDefaults.standard.string(forKey: lastSelectedTabKey), "intelligence")
+    }
+
+    func test_tabSelection_synchronizesProgrammaticAndNativeChangesWithoutReentry() throws {
+        UserDefaults.standard.set("general", forKey: lastSelectedTabKey)
+        let coordinator = PreferencesCoordinator()
+        let windowController = PreferencesWindowController(coordinator: coordinator)
+        defer { windowController.close() }
+        let paneController = try XCTUnwrap(
+            windowController.window?.contentViewController as? PreferencesPaneController
+        )
+        var publishedSelections: [Preferences.Tab] = []
+        let subscription = coordinator.$selectedTab.dropFirst().sink { publishedSelections.append($0) }
+        defer { subscription.cancel() }
+
+        coordinator.selectTab(.shortcuts)
+
+        XCTAssertEqual(paneController.selectedTabViewItemIndex, Preferences.Tab.shortcuts.order)
+        XCTAssertEqual(paneController.tabView.selectedTabViewItem?.identifier as? String, "shortcuts")
+        XCTAssertEqual(UserDefaults.standard.string(forKey: lastSelectedTabKey), "shortcuts")
+        XCTAssertEqual(publishedSelections, [.shortcuts])
+
+        paneController.selectedTabViewItemIndex = Preferences.Tab.intelligence.order
+
+        XCTAssertEqual(coordinator.selectedTab, .intelligence)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: lastSelectedTabKey), "intelligence")
+        XCTAssertEqual(publishedSelections, [.shortcuts, .intelligence])
+    }
+
+    func test_removedAppearancePane_fallsBackToGeneral() throws {
+        UserDefaults.standard.set("appearance", forKey: lastSelectedTabKey)
+        let coordinator = PreferencesCoordinator()
+        let windowController = PreferencesWindowController(coordinator: coordinator)
+        defer { windowController.close() }
+        let paneController = try XCTUnwrap(
+            windowController.window?.contentViewController as? PreferencesPaneController
+        )
+
+        XCTAssertEqual(coordinator.selectedTab, .general)
+        XCTAssertEqual(paneController.selectedTabViewItemIndex, Preferences.Tab.general.order)
+        XCTAssertEqual(paneController.tabView.selectedTabViewItem?.identifier as? String, "general")
+
+        coordinator.windowWillClose()
+
+        XCTAssertEqual(UserDefaults.standard.string(forKey: lastSelectedTabKey), "general")
+    }
+}
+
+@MainActor
 private final class LifecycleTrashService: ImageTrashService {
     let confirmationStarted = XCTestExpectation(description: "Trash confirmation started")
     let recycleStarted = XCTestExpectation(description: "Recycle started")

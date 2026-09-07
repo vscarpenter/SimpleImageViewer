@@ -356,7 +356,7 @@ func resolveSecurityScopedBookmark(_ bookmarkData: Data) -> URL? {
 
 ## ⌨️ Keyboard Navigation
 
-Built-in image shortcuts work while the viewer has focus. Text fields, controls, dialogs, and other windows keep their usual keys. Preferences → Shortcuts provides a searchable, read-only reference. App commands remain available in the menu bar.
+Built-in image shortcuts work while the viewer has focus. Text fields, controls, dialogs, and other windows keep their usual keys. Settings → Shortcuts provides a searchable, read-only reference. App commands remain available in the menu bar.
 
 ### Navigation Commands
 | Key | Action | Description |

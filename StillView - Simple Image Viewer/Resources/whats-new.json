@@ -1,11 +1,16 @@
 {
-  "version": "4.5.1",
+  "version": "4.6.0",
   "releaseDate": "2026-09-06T03:26:21Z",
   "sections": [
     {
       "title": "Improvements",
       "type": "improvements",
       "items": [
+        {
+          "title": "Native Mac Settings",
+          "description": "A compact Settings window brings familiar Mac controls, clear General and Intelligence panes, and searchable keyboard shortcuts. Colors and keyboard focus follow your Mac.",
+          "isHighlighted": true
+        },
         {
           "title": "Clearer Image Insights",
           "description": "Photo insights use more specific visual matches. Text highlights preserve the recognized words and numbers, including short signs and multilingual text.",
@@ -18,7 +23,7 @@
         },
         {
           "title": "Controls That Fit",
-          "description": "Compact windows keep viewing controls visible and place additional actions in a More actions menu. Preferences now includes a searchable guide to built-in shortcuts.",
+          "description": "Compact windows keep viewing controls visible and place additional actions in a More actions menu. Settings includes a searchable guide to built-in shortcuts.",
           "isHighlighted": false
         }
       ]

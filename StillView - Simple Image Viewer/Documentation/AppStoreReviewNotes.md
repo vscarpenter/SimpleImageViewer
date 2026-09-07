@@ -1,4 +1,4 @@
-# App Store Review Notes — StillView 4.5.1 (Build 35)
+# App Store Review Notes — StillView 4.6.0 (Build 36)
 
 Reviewer-facing context for App Store Connect. StillView requires macOS 26 or later. It has no account system, sign-in, or test credentials.
 
@@ -9,7 +9,7 @@ Reviewer-facing context for App Store Connect. StillView requires macOS 26 or la
 3. In Grid, click a thumbnail to select it, then double-click or press Enter with the viewer focused to open it in Single. Use the inline density slider to resize thumbnails. Sorting and additional image actions move into the toolbar’s More actions menu at narrow widths.
 4. Open the inspector and choose **Info** for metadata or **Insights** for local image analysis.
 5. The folder menu and **⌘O** can open another folder. Canceling the picker preserves the current collection. **B** with the viewer focused, or **File → Back to Folder Selection**, returns to the welcome screen.
-6. Keyboard shortcuts apply to the image viewer when it has focus. Focused controls, text fields, dialogs, and other windows retain their usual key behavior. **Preferences → Shortcuts** is a read-only reference.
+6. Keyboard shortcuts apply to the image viewer when it has focus. Focused controls, text fields, dialogs, and other windows retain their usual key behavior. **Settings → Shortcuts** is a read-only reference.
 
 Supported formats are JPEG, PNG, GIF, HEIF/HEIC, WebP, TIFF, and BMP. Animated GIF/WebP show their first frame; multipage TIFF shows the first image. SVG and PDF are excluded.
 
@@ -19,7 +19,7 @@ On an Apple Intelligence eligible Mac running macOS 26 or later:
 
 1. Enable **System Settings → Apple Intelligence & Siri → Apple Intelligence** and wait for the on-device model to be ready.
 2. Open a local image folder in StillView, select an image, and open the inspector’s **Insights** tab. **⌘I** opens this tab while the viewer has focus.
-3. If the feature is disabled in StillView, choose **Enable Insights**. It can also be enabled in **Preferences → General**.
+3. If the feature is disabled in StillView, choose **Enable Insights**. It can also be enabled in **Settings → Intelligence**.
 4. Choose **Generate Insight**. The result shows local visual evidence and its limitations, with recognized text when available.
 5. Try a scene photo, a sign or screenshot containing text, and a portrait. Vision reports category matches, OCR lines, and face counts; it does not identify people.
 
@@ -27,11 +27,11 @@ The app uses Apple Vision to inspect image pixels. When suitable OCR text is pre
 
 On an ineligible Mac, with Apple Intelligence disabled, or while its model is preparing, the panel explains why generation is unavailable. When appropriate, **Open System Settings** helps resolve that state. StillView’s normal image viewing remains available.
 
-## Preferences and file operations
+## Settings and file operations
 
 - File-name display, opening the inspector by default, and slideshow duration apply on the next app launch.
-- AI Insights and automatic image enhancements can be enabled or disabled in General. Enhancements change the displayed image; originals are preserved.
-- Appearance controls translucent backgrounds in the preferences window.
+- AI Insights and automatic image enhancements can be enabled or disabled in Intelligence. Enhancements change the displayed image; originals are preserved.
+- Settings uses native macOS panes for General, Intelligence, and Shortcuts. The toolbar and controls follow system appearance and accessibility options. Command–Comma opens the most recently used pane.
 - Slideshows always repeat after the last image. **S** starts or stops; Space stops an active slideshow and otherwise advances to the next image.
 - Moving an image to Trash always requires confirmation of the named file. Test with a disposable image. Files can be recovered from macOS Trash.
 

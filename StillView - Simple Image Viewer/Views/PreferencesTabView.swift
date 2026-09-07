@@ -1,450 +1,109 @@
+import AppKit
 import SwiftUI
 
-/// Main tabbed interface for the preferences window with enhanced visual polish
+/// Pane content hosted by the native macOS settings tab controller.
 struct PreferencesTabView: View {
-    
-    // MARK: - Properties
-    
-    @ObservedObject var coordinator: PreferencesCoordinator
-    @StateObject private var focusManager = PreferencesFocusManager()
-    @StateObject private var preferencesViewModel = PreferencesViewModel()
-    @State private var hasAppeared = false
-    
-    // MARK: - Body
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Tab selector with enhanced styling
-            TabSelector(
-                selectedTab: $coordinator.selectedTab,
-                onTabSelected: { tab in
-                    coordinator.selectTab(tab)
-                }
-            )
-            .background(tabSelectorBackground)
-            .opacity(hasAppeared ? 1.0 : 0.0)
-            .offset(y: hasAppeared ? 0 : -20)
-            
-            // Enhanced divider between tabs and content
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.appBorder.opacity(0.8),
-                            Color.appBorder.opacity(0.3)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .frame(height: 1)
-                .opacity(hasAppeared ? 1.0 : 0.0)
-                .scaleEffect(x: hasAppeared ? 1.0 : 0.0, anchor: .leading)
-            
-            // Tab content with enhanced background
-            TabContent(selectedTab: coordinator.selectedTab)
-                .background(contentBackground)
-                .opacity(hasAppeared ? 1.0 : 0.0)
-                .offset(y: hasAppeared ? 0 : 20)
-        }
-        // Provide sensible minimums; allow window to grow without hard caps
-        .frame(minWidth: 800, minHeight: 600)
-        .background(windowBackground)
-        .environmentObject(focusManager)
-        .environmentObject(preferencesViewModel)
-        .environment(\.preferencesViewModel, preferencesViewModel)
-        .preferencesKeyboardShortcuts()
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Preferences window")
-        .onAppear {
-            // Add staggered entrance animation
-            withAnimation(
-                AnimationPresets.adaptiveSpring(.gentle)?
-                    .delay(0.1)
-            ) {
-                hasAppeared = true
-            }
-        }
-        .onDisappear {
-            // Reset for next appearance
-            hasAppeared = false
-        }
-    }
-    
-    // MARK: - Computed Properties
-    
-    private var windowBackground: some View {
-        Group {
-            if preferencesViewModel.enableGlassEffects {
-                Color.appSurface
-                    .overlay(
-                        Rectangle()
-                            .fill(.ultraThinMaterial)
-                            .opacity(0.2)
-                    )
-            } else {
-                Color.appSurface
-            }
-        }
-    }
-    
-    private var tabSelectorBackground: some View {
-        Group {
-            if preferencesViewModel.enableGlassEffects {
-                Rectangle()
-                    .fill(.regularMaterial)
-                    .overlay(
-                        Rectangle()
-                            .fill(Color.appGlassSecondary)
-                    )
-            } else {
-                Color.appSecondarySurface
-            }
-        }
-    }
-    
-    private var contentBackground: some View {
-        Group {
-            if preferencesViewModel.enableGlassEffects {
-                Color.appSurface
-                    .overlay(
-                        Rectangle()
-                            .fill(.thinMaterial)
-                            .opacity(0.15)
-                    )
-            } else {
-                Color.appSurface
-            }
-        }
-    }
-}
-
-/// Tab selector component showing available preference tabs
-struct TabSelector: View {
-    
-    // MARK: - Properties
-    
-    @Binding var selectedTab: Preferences.Tab
-    let onTabSelected: (Preferences.Tab) -> Void
-    @StateObject private var focusManager = PreferencesFocusManager()
-    
-    // MARK: - Body
-    
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Preferences.Tab.allCases) { tab in
-                KeyboardNavigableTabButton(
-                    tab: tab,
-                    isSelected: selectedTab == tab,
-                    onTap: {
-                        withAnimation(AnimationPresets.adaptiveTransition()) {
-                            onTabSelected(tab)
-                        }
-                    }
-                )
-            }
-            
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(Color.appSecondarySurface)
-        .environmentObject(focusManager)
-        .preferencesKeyboardNavigation(selectedTab: $selectedTab, onTabSelected: onTabSelected)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Preference tabs")
-        .accessibilityHint("Use left and right arrow keys to navigate between tabs")
-    }
-}
-
-/// Individual tab button with enhanced visual feedback
-struct TabButton: View {
-    
-    // MARK: - Properties
-    
-    let tab: Preferences.Tab
-    let isSelected: Bool
-    let onTap: () -> Void
-    
-    @State private var isHovered = false
-    @State private var isPressed = false
-    
-    // MARK: - Body
-    
-    var body: some View {
-        Button(action: {
-            // Add haptic feedback for tab selection
-            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
-            
-            withAnimation(AnimationPresets.adaptiveSpring(.snappy)) {
-                isPressed = true
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(AnimationPresets.adaptiveSpring(.gentle)) {
-                    isPressed = false
-                }
-                onTap()
-            }
-        }) {
-            HStack(spacing: 8) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(iconColor)
-                    // symbolEffect is only available in macOS 14.0+
-                    // .symbolEffect(.bounce, value: isSelected)
-                
-                Text(tab.title)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(textColor)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(backgroundView)
-            .overlay(selectionIndicator)
-        }
-        .buttonStyle(.plain)
-        .hoverEffect(
-            intensity: .subtle,
-            scaleEffect: !isSelected,
-            customScale: 1.02
-        )
-        .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(AnimationPresets.adaptiveSpring(.snappy), value: isPressed)
-        .accessibilityLabel(tab.accessibilityLabel)
-        .accessibilityHint(isSelected ? "Currently selected" : "Tap to switch to this tab")
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-    }
-    
-    // MARK: - Computed Properties
-    
-    private var iconColor: Color {
-        if isSelected {
-            return .accentColor
-        } else if isHovered {
-            return .appText
-        } else {
-            return .appSecondaryText
-        }
-    }
-    
-    private var textColor: Color {
-        if isSelected {
-            return .appText
-        } else if isHovered {
-            return .appText
-        } else {
-            return .appSecondaryText
-        }
-    }
-    
-    private var backgroundView: some View {
-        RoundedRectangle(cornerRadius: 8)
-            .fill(backgroundColor)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(borderColor, lineWidth: 1)
-            )
-            .animation(AnimationPresets.adaptiveTransition(), value: isSelected)
-            .animation(AnimationPresets.adaptiveHover(), value: isHovered)
-    }
-    
-    private var backgroundColor: Color {
-        if isSelected {
-            return Color.accentColor.opacity(0.12)
-        } else if isHovered {
-            return Color.appHoverBackground
-        } else {
-            return Color.clear
-        }
-    }
-    
-    private var borderColor: Color {
-        if isSelected {
-            return Color.accentColor.opacity(0.3)
-        } else if isHovered {
-            return Color.appBorder.opacity(0.5)
-        } else {
-            return Color.clear
-        }
-    }
-    
-    private var selectionIndicator: some View {
-        VStack {
-            Spacer()
-            Rectangle()
-                .fill(Color.accentColor)
-                .frame(height: 2)
-                .opacity(isSelected ? 1.0 : 0.0)
-                .animation(AnimationPresets.adaptiveTransition(), value: isSelected)
-        }
-    }
-}
-
-/// Container for tab content with smooth transitions
-struct TabContent: View {
-    
-    // MARK: - Properties
-    
     let selectedTab: Preferences.Tab
-    @State private var previousTab: Preferences.Tab?
-    
-    // MARK: - Body
-    
+
     var body: some View {
-        ZStack {
-            Group {
-                switch selectedTab {
-                case .general:
-                    GeneralPreferencesView()
-                        .id("general")
-                case .appearance:
-                    AppearancePreferencesView()
-                        .id("appearance")
-                case .shortcuts:
-                    ShortcutsPreferencesView()
-                        .id("shortcuts")
-                }
+        Group {
+            switch selectedTab {
+            case .general:
+                GeneralPreferencesView()
+            case .intelligence:
+                IntelligencePreferencesView()
+            case .shortcuts:
+                ShortcutsPreferencesView()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .transition(transitionForTab(selectedTab))
         }
-        .animation(AnimationPresets.adaptiveTransition(), value: selectedTab)
-        .onChange(of: selectedTab) { _, _ in
-            previousTab = selectedTab
-        }
-    }
-    
-    // MARK: - Private Methods
-    
-    private func transitionForTab(_ tab: Preferences.Tab) -> AnyTransition {
-        guard let previous = previousTab else {
-            return .asymmetric(
-                insertion: .scale(scale: 0.95).combined(with: .opacity),
-                removal: .scale(scale: 1.05).combined(with: .opacity)
-            )
-        }
-        
-        let isMovingForward = tab.order > previous.order
-        
-        return .asymmetric(
-            insertion: .move(edge: isMovingForward ? .trailing : .leading)
-                .combined(with: .opacity)
-                .combined(with: .scale(scale: 0.98)),
-            removal: .move(edge: isMovingForward ? .leading : .trailing)
-                .combined(with: .opacity)
-                .combined(with: .scale(scale: 1.02))
-        )
+        .frame(width: 560, height: selectedTab.contentHeight)
     }
 }
 
-// MARK: - Preferences Tabs
-
-/// Settings with runtime consumers in the current viewer.
+/// Startup defaults are kept together so their timing is explicit.
 struct GeneralPreferencesView: View {
     @EnvironmentObject private var viewModel: PreferencesViewModel
 
     var body: some View {
-        PreferencesTabContainer {
-            PreferencesSection("Image Display") {
-                PreferencesControl(
-                    "Show file names at launch",
-                    description: "Display the current file name when you next open StillView"
-                ) {
-                    Toggle("Show file names at launch", isOn: $viewModel.showFileName)
-                        .labelsHidden()
-                }
-
-                PreferencesControl(
-                    "Open inspector at launch",
-                    description: "Show image details by default when you next open StillView"
-                ) {
-                    Toggle("Open inspector at launch", isOn: $viewModel.showImageInfo)
-                        .labelsHidden()
-                }
+        Form {
+            Section {
+                Toggle("Show file names", isOn: $viewModel.showFileName)
+                Toggle("Open the image inspector", isOn: $viewModel.showImageInfo)
+            } header: {
+                Text("At launch")
+            } footer: {
+                Text("Choose what appears when you open StillView.")
             }
 
-            PreferencesSection("Slideshow") {
-                PreferencesControl(
-                    "Slide duration",
-                    description: "Time per image, applied when you next open StillView"
-                ) {
-                    HStack(spacing: AppSpacing.md) {
-                        Slider(value: $viewModel.slideshowInterval, in: 1...30, step: 1)
-                            .frame(width: 100)
-                            .accessibilityLabel("Slide duration")
-                            .accessibilityValue("\(Int(viewModel.slideshowInterval)) seconds")
-
-                        Text("\(Int(viewModel.slideshowInterval))s")
-                            .font(.caption.monospacedDigit())
-                            .frame(width: 30, alignment: .trailing)
-                            .foregroundColor(.appSecondaryText)
-                            .accessibilityHidden(true)
+            Section {
+                LabeledContent("Slide duration") {
+                    Stepper(value: $viewModel.slideshowInterval, in: 1...30, step: 1) {
+                        Text("\(Int(viewModel.slideshowInterval)) seconds")
+                            .monospacedDigit()
                     }
+                    .fixedSize()
+                    .accessibilityLabel("Slide duration")
+                    .accessibilityValue("\(Int(viewModel.slideshowInterval)) seconds")
                 }
-
-                Text("Slideshows repeat from the first image after the last image.")
-                    .font(.caption)
-                    .foregroundColor(.appSecondaryText)
-            }
-
-            PreferencesSection("Intelligence") {
-                PreferencesControl(
-                    "Enable AI Insights",
-                    description: "Analyze images on this Mac using Vision and Apple Intelligence"
-                ) {
-                    Toggle("Enable AI Insights", isOn: $viewModel.enableAIAnalysis)
-                        .labelsHidden()
-                }
-
-                if viewModel.enableAIAnalysis {
-                    Label("Visual matches and recognized text stay on this Mac.", systemImage: "lock.shield")
-                        .font(.caption)
-                        .foregroundColor(.appSecondaryText)
-                }
-
-                PreferencesControl(
-                    "Enhance images automatically",
-                    description: "Apply noise reduction, smart cropping, and color tuning when images load"
-                ) {
-                    Toggle("Enhance images automatically", isOn: $viewModel.enableImageEnhancements)
-                        .labelsHidden()
-                }
-                .help("Enhancements change the displayed image only. Your original file is preserved.")
+            } header: {
+                Text("Slideshow")
+            } footer: {
+                Text("Slideshows repeat after the last image. Duration changes apply the next time you open StillView.")
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("General preferences")
+        .formStyle(.grouped)
+        .toggleStyle(.switch)
     }
 }
 
-/// Appearance options that affect the preferences window.
-struct AppearancePreferencesView: View {
+/// Live image-processing preferences and their privacy implications.
+struct IntelligencePreferencesView: View {
     @EnvironmentObject private var viewModel: PreferencesViewModel
 
     var body: some View {
-        PreferencesTabContainer {
-            PreferencesSection("Preferences Window") {
-                PreferencesControl(
-                    "Translucent backgrounds",
-                    description: "Use translucent materials in the preferences window"
-                ) {
-                    Toggle("Translucent backgrounds", isOn: $viewModel.enableGlassEffects)
-                        .labelsHidden()
+        Form {
+            Section {
+                Toggle(isOn: $viewModel.enableAIAnalysis) {
+                    Text("AI Insights")
+                    Text("Find visual matches and recognize text in your images.")
                 }
+                .accessibilityLabel("AI Insights")
+                .accessibilityHint("Find visual matches and recognize text in your images.")
+            } header: {
+                Text("Image analysis")
+            } footer: {
+                Text("Uses Vision and Apple Intelligence on this Mac. Requires Apple Intelligence to be enabled.")
             }
 
-            Text("StillView follows your Mac’s appearance. Reduce Motion is available in System Settings → Accessibility → Display.")
-                .font(.callout)
-                .foregroundColor(.appSecondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+            Section {
+                Toggle(isOn: $viewModel.enableImageEnhancements) {
+                    Text("Enhance images automatically")
+                    Text("Reduce noise, adjust color, and refine cropping when images load.")
+                }
+                .accessibilityLabel("Enhance images automatically")
+                .accessibilityHint("Reduce noise, adjust color, and refine cropping when images load.")
+            } header: {
+                Text("Image enhancements")
+            } footer: {
+                Text("Only the displayed image changes. Your original files are preserved.")
+            }
+
+            Section {
+                LabeledContent {
+                    if let privacyURL = URL(string: "https://stillviewapp.com/privacy.html") {
+                        Link("Privacy Policy", destination: privacyURL)
+                    }
+                } label: {
+                    Label("Analysis stays on this Mac", systemImage: "lock.shield")
+                }
+            }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Appearance preferences")
+        .formStyle(.grouped)
+        .toggleStyle(.switch)
     }
 }
 
-/// Read-only reference generated from the active keyboard handler's built-in bindings.
+/// Searchable reference generated from the active keyboard handler.
 struct ShortcutsPreferencesView: View {
     @State private var searchText = ""
 
@@ -453,71 +112,102 @@ struct ShortcutsPreferencesView: View {
     }
 
     private var filteredKeys: [String] {
-        shortcuts.keys.filter { key in
-            searchText.isEmpty
-                || key.localizedCaseInsensitiveContains(searchText)
-                || (shortcuts[key]?.localizedCaseInsensitiveContains(searchText) ?? false)
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return shortcuts.keys.filter { key in
+            query.isEmpty
+                || key.localizedCaseInsensitiveContains(query)
+                || (shortcuts[key]?.localizedCaseInsensitiveContains(query) ?? false)
         }.sorted {
             (shortcuts[$0] ?? $0).localizedStandardCompare(shortcuts[$1] ?? $1) == .orderedAscending
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                Text("Built-in keyboard shortcuts")
-                    .font(.headline)
-                    .accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Image commands work when the viewer has focus. Use the menu bar for app commands.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
-                Text("Image commands work while the viewer has focus. Controls, text fields, dialogs, and other windows keep their usual keys. Use the menu bar for app commands.")
-                    .font(.callout)
-                    .foregroundColor(.appSecondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
+            ShortcutSearchField(text: $searchText)
+                .frame(height: 24)
 
-                TextField("Search shortcuts", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityLabel("Search built-in shortcuts")
-            }
-            .padding(AppSpacing.xxl)
-
-            Divider()
-
-            if filteredKeys.isEmpty {
-                ContentUnavailableView.search(text: searchText)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
+            Group {
+                if filteredKeys.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(nsColor: .controlBackgroundColor))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("No shortcuts match \(searchText)")
+                        .accessibilityHint("Try a different action or key.")
+                } else {
+                    List {
                         ForEach(filteredKeys, id: \.self) { key in
-                            HStack(alignment: .firstTextBaseline, spacing: AppSpacing.xl) {
+                            HStack(alignment: .firstTextBaseline, spacing: 16) {
                                 Text(shortcuts[key] ?? "")
-                                    .font(.body)
                                     .fixedSize(horizontal: false, vertical: true)
-                                Spacer(minLength: AppSpacing.xl)
+                                Spacer(minLength: 16)
                                 Text(key)
                                     .font(.system(.body, design: .monospaced))
-                                    .foregroundColor(.appSecondaryText)
+                                    .foregroundStyle(.secondary)
                                     .fixedSize()
                             }
-                            .padding(.vertical, AppSpacing.lg)
+                            .padding(.vertical, 4)
                             .accessibilityElement(children: .combine)
-
-                            Divider()
                         }
                     }
-                    .padding(.horizontal, AppSpacing.xxl)
+                    .listStyle(.inset(alternatesRowBackgrounds: false))
+                    .accessibilityLabel("Built-in keyboard shortcuts")
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
-        .background(Color.appSurface)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Built-in keyboard shortcuts")
+        .padding(20)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
-// MARK: - Preview
-struct PreferencesTabView_Previews: PreviewProvider {
-    static var previews: some View {
-        PreferencesTabView(coordinator: PreferencesCoordinator())
+/// Native search provides the standard focus ring, clear button, and Escape behavior.
+private struct ShortcutSearchField: NSViewRepresentable {
+    @Binding var text: String
+
+    func makeNSView(context: Context) -> NSSearchField {
+        let field = NSSearchField()
+        field.placeholderString = "Search shortcuts"
+        field.setAccessibilityLabel("Search shortcuts")
+        field.sendsSearchStringImmediately = true
+        field.delegate = context.coordinator
+        return field
     }
+
+    func updateNSView(_ field: NSSearchField, context: Context) {
+        context.coordinator.parent = self
+        if field.stringValue != text {
+            field.stringValue = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    final class Coordinator: NSObject, NSSearchFieldDelegate {
+        var parent: ShortcutSearchField
+
+        init(parent: ShortcutSearchField) { self.parent = parent }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSSearchField else { return }
+            parent.text = field.stringValue
+        }
+    }
+}
+
+#Preview("General · Light") {
+    PreferencesTabView(selectedTab: .general)
+        .environmentObject(PreferencesViewModel())
+        .preferredColorScheme(.light)
+}
+
+#Preview("Intelligence · Dark") {
+    PreferencesTabView(selectedTab: .intelligence)
+        .environmentObject(PreferencesViewModel())
+        .preferredColorScheme(.dark)
 }
