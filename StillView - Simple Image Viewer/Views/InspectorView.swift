@@ -489,8 +489,7 @@ private struct InspectorInsightsTab: View {
             Group {
                 if case .generating = insightViewModel.state {
                     HStack(spacing: 10) {
-                        ProgressView()
-                            .controlSize(.small)
+                        ThinkingIndicatorView()
                         Text("Generating insight…")
                             .font(.system(size: 12))
                             .foregroundColor(.appSecondaryText)
