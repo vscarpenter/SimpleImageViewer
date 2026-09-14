@@ -362,37 +362,76 @@ private struct InspectorInsightsTab: View {
     @ObservedObject var viewModel: ImageViewerViewModel
     @ObservedObject var insightViewModel: ImageInsightViewModel
 
+    @State private var isTextExpanded = false
+    @State private var areTagsExpanded = false
+    @State private var isAboutExpanded = false
+    @State private var copyConfirmation: CopyConfirmation?
+
+    private enum CopyTarget: Equatable {
+        case description
+        case recognizedText
+    }
+
+    private struct CopyConfirmation: Equatable {
+        let id = UUID()
+        let target: CopyTarget
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     attributionRow
-
-                    switch insightViewModel.state {
-                    case .idle:
-                        privacyNote
-                    case .unavailable(let message):
-                        unavailableSection(message)
-                    case .generating:
-                        if let result = insightViewModel.result {
-                            resultSection(result)
-                        } else {
-                            privacyNote
-                        }
-                    case .result(let result):
-                        if let message = insightViewModel.generationError {
-                            refreshFailureSection(message)
-                        }
-                        resultSection(result)
-                    case .failed(let message):
-                        failedSection(message)
-                    }
+                    stateContent
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
             }
 
             bottomAction
+        }
+        .onChange(of: viewModel.currentImageFile?.url) { _, _ in resetPresentation() }
+        .onChange(of: viewModel.currentImageRequestID) { _, _ in resetPresentation() }
+        .onChange(of: insightViewModel.result) { _, _ in copyConfirmation = nil }
+        .task(id: copyConfirmation) {
+            guard copyConfirmation != nil else { return }
+            do {
+                try await Task.sleep(for: .seconds(2))
+                copyConfirmation = nil
+            } catch {
+                // A new copy or image change cancels the previous confirmation.
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var stateContent: some View {
+        switch insightViewModel.state {
+        case .idle:
+            privacyNote
+        case .unavailable(let message):
+            unavailableSection(message)
+        case .generating:
+            if let result = insightViewModel.result {
+                resultSection(result)
+            } else {
+                privacyNote
+            }
+        case .result(let result):
+            if let message = insightViewModel.generationError {
+                refreshFailureSection(message)
+            }
+            resultSection(result)
+        case .failed(let message):
+            failedSection(message)
+        }
+    }
+
+    private var displayedResult: ImageInsightResult? {
+        switch insightViewModel.state {
+        case .result(let result): return result
+        case .generating: return insightViewModel.result
+        default: return nil
         }
     }
 
@@ -401,21 +440,21 @@ private struct InspectorInsightsTab: View {
             Image(systemName: "sparkles")
                 .font(.system(size: 14))
                 .foregroundColor(.appAITint)
-            Text("On-device image analysis")
-                .font(.system(size: 10.5))
+                .accessibilityHidden(true)
+            Text(displayedResult == nil ? "On-device image analysis" : "Analyzed on this Mac")
+                .font(.system(size: 11))
                 .foregroundColor(.appSecondaryText)
         }
     }
 
     private var privacyNote: some View {
-        Text("Vision detects likely subjects, faces, and text. Apple Intelligence can select excerpts from longer text. Your images stay on this Mac.")
+        Text("Apple Intelligence describes the image and highlights useful details. Your images and analysis stay on this Mac.")
             .font(.system(size: 12))
             .foregroundColor(.appSecondaryText)
             .lineSpacing(4)
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    @ViewBuilder
     private func unavailableSection(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Label {
@@ -425,6 +464,7 @@ private struct InspectorInsightsTab: View {
             } icon: {
                 Image(systemName: "exclamationmark.circle")
                     .foregroundColor(.appSecondaryText)
+                    .accessibilityHidden(true)
             }
 
             if isAppDisabled {
@@ -444,11 +484,12 @@ private struct InspectorInsightsTab: View {
 
     private func failedSection(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Generation failed", systemImage: "exclamationmark.triangle")
+            Label("Couldn’t analyze image", systemImage: "exclamationmark.triangle")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.orange)
+                .foregroundColor(.appText)
+                .accessibilityAddTraits(.isHeader)
             Text(message)
-                .font(.system(size: 11))
+                .font(.system(size: 12))
                 .foregroundColor(.appSecondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -456,11 +497,12 @@ private struct InspectorInsightsTab: View {
 
     private func refreshFailureSection(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Couldn’t refresh insight", systemImage: "exclamationmark.triangle")
+            Label("Couldn’t refresh analysis", systemImage: "exclamationmark.triangle")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.appText)
+                .accessibilityAddTraits(.isHeader)
             Text("Your previous result is still shown. \(message)")
-                .font(.system(size: 11))
+                .font(.system(size: 12))
                 .foregroundColor(.appSecondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -468,176 +510,259 @@ private struct InspectorInsightsTab: View {
 
     private func resultSection(_ result: ImageInsightResult) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(result.title)
                     .font(.system(size: 14, weight: .semibold))
                     .tracking(-0.14)
                     .foregroundColor(.appText)
                     .textSelection(.enabled)
+                    .accessibilityAddTraits(.isHeader)
                 Text(result.summary)
                     .font(.system(size: 12))
-                    .foregroundColor(.appSecondaryText)
+                    .foregroundColor(.appText)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
+                    .accessibilityIdentifier("insights.description")
+                specificLimitations(result.limitations)
             }
 
-            insightSection(title: "USEFUL DETAILS", values: result.usefulDetails)
-            recognizedTextSection(result)
+            notableDetailsSection(result.usefulDetails)
+            recognizedTextSection(result.recognizedText)
             tagSection(result.tags)
-
-            if !result.limitations.isEmpty {
-                InsightCaptionSection(title: "LIMITATIONS", lines: result.limitations)
-            }
+            aboutSection
         }
     }
 
     @ViewBuilder
-    private func recognizedTextSection(_ result: ImageInsightResult) -> some View {
-        if result.recognizedText.count > 3 {
-            VStack(alignment: .leading, spacing: 6) {
-                insightSection(title: "TEXT HIGHLIGHTS", values: result.selectedTextLines)
-                Text(result.textSelectionSource == .appleIntelligence
-                     ? "Apple Intelligence selected these excerpts from recognized text."
-                     : "Excerpts shown in reading order.")
-                    .font(.system(size: 10.5))
-                    .foregroundColor(.appSecondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            DisclosureGroup("Recognized text (\(result.recognizedText.count) lines)") {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(result.recognizedText.enumerated()), id: \.offset) { _, line in
-                        Text(line)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+    private func notableDetailsSection(_ details: [String]) -> some View {
+        if !details.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Notable details")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.appText)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(Array(details.enumerated()), id: \.offset) { _, detail in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("•")
+                            .foregroundColor(.appSecondaryText)
+                            .accessibilityHidden(true)
+                        Text(detail)
+                            .foregroundColor(.appText)
+                            .fixedSize(horizontal: false, vertical: true)
                             .textSelection(.enabled)
                     }
+                    .font(.system(size: 12))
                 }
-                .font(.system(size: 12))
-                .foregroundColor(.appText)
-                .padding(.top, 6)
             }
-            .font(.system(size: 12))
-        } else {
-            insightSection(title: "RECOGNIZED TEXT", values: result.recognizedText)
         }
     }
 
     @ViewBuilder
-    private func insightSection(title: String, values: [String]) -> some View {
-        let filtered = values.filter { !$0.isEmpty }
-        if !filtered.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                sectionHeader(title)
-                ForEach(filtered, id: \.self) { value in
-                    Text(value)
+    private func recognizedTextSection(_ lines: [String]) -> some View {
+        if !lines.isEmpty {
+            DisclosureGroup(isExpanded: $isTextExpanded) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Recognized text may contain errors. It is shown without correction.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.appSecondaryText)
+                    Text(lines.joined(separator: "\n"))
                         .font(.system(size: 12))
                         .foregroundColor(.appText)
+                        .lineSpacing(4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
+                        .accessibilityIdentifier("insights.recognizedText")
+                    Button {
+                        copy(lines.joined(separator: "\n"), target: .recognizedText)
+                    } label: {
+                        Label(copyConfirmation?.target == .recognizedText ? "Copied" : "Copy text",
+                              systemImage: copyConfirmation?.target == .recognizedText ? "checkmark" : "doc.on.doc")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Copy text")
+                    .accessibilityValue(copyConfirmation?.target == .recognizedText ? "Copied" : "")
+                    .accessibilityIdentifier("insights.copyText")
+                    .help("Copy all recognized text in its original reading order")
+                }
+                .padding(.top, 8)
+            } label: {
+                HStack {
+                    Text("Text in image")
+                    Spacer()
+                    Text("\(lines.count) \(lines.count == 1 ? "line" : "lines")")
+                        .font(.system(size: 11))
+                        .foregroundColor(.appSecondaryText)
                 }
             }
+            .font(.system(size: 12))
+            .foregroundColor(.appText)
+            .accessibilityIdentifier("insights.textDisclosure")
         }
     }
 
     @ViewBuilder
     private func tagSection(_ tags: [String]) -> some View {
         if !tags.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                sectionHeader("TAGS")
-                InsightFlowLayout(spacing: 6) {
-                    ForEach(tags, id: \.self) { tag in
-                        Text(tag)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.appText)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.appPillFill))
-                    }
-                }
+            DisclosureGroup("Suggested tags", isExpanded: $areTagsExpanded) {
+                Text(tags.joined(separator: ", "))
+                    .foregroundColor(.appSecondaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                    .padding(.top, 6)
             }
+            .font(.system(size: 12))
+            .foregroundColor(.appText)
         }
-    }
-
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.system(size: 10, weight: .semibold))
-            .tracking(1.0)
-            .foregroundColor(.appSecondaryText)
     }
 
     @ViewBuilder
+    private func specificLimitations(_ limitations: [String]) -> some View {
+        if !limitations.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(Array(limitations.enumerated()), id: \.offset) { _, limitation in
+                    Text(limitation)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
+            }
+            .font(.system(size: 11))
+            .foregroundColor(.appSecondaryText)
+            .padding(.top, 2)
+            .accessibilityIdentifier("insights.analysisNotes")
+        }
+    }
+
+    private var aboutSection: some View {
+        DisclosureGroup("About this analysis", isExpanded: $isAboutExpanded) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Apple Intelligence can miss details or misinterpret an image.")
+                Text("Your images and analysis stay on this Mac.")
+            }
+            .font(.system(size: 11))
+            .foregroundColor(.appSecondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 6)
+        }
+        .font(.system(size: 12))
+        .foregroundColor(.appSecondaryText)
+    }
+
     private var bottomAction: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 12) {
+            if case .generating = insightViewModel.state {
+                generationProgress
+            }
+
+            if let result = displayedResult {
+                HStack(spacing: 8) {
+                    copyDescriptionButton(result.summary)
+                    Spacer(minLength: 0)
+                    if !isGenerating {
+                        analyzeButton
+                    }
+                }
+            } else if !isGenerating {
+                analyzeButton
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .overlay(alignment: .top) {
             Rectangle()
                 .fill(Color.appHairline)
                 .frame(height: 1)
-
-            Group {
-                if case .generating = insightViewModel.state {
-                    HStack(spacing: 10) {
-                        ThinkingIndicatorView()
-                        Text("Generating insight…")
-                            .font(.system(size: 12))
-                            .foregroundColor(.appSecondaryText)
-                        Spacer()
-                        Button("Cancel") {
-                            viewModel.cancelImageInsightGeneration()
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-                } else {
-                    Button {
-                        if isAppDisabled {
-                            viewModel.enableAIInsights()
-                        } else {
-                            viewModel.generateImageInsight()
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 13))
-                            Text(actionTitle)
-                                .font(.system(size: 12.5, weight: .medium))
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 32)
-                        .background(
-                            RoundedRectangle(cornerRadius: 7)
-                                .fill(Color.systemAccent)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!isAppDisabled && !viewModel.canGenerateImageInsight)
-                    .opacity(isAppDisabled || viewModel.canGenerateImageInsight ? 1.0 : 0.5)
-                    .help(isAppDisabled ? "Enable on-device Insights in StillView" : "Analyze the selected image on this Mac")
-                }
-            }
-            .padding(12)
         }
+    }
+
+    private var generationProgress: some View {
+        HStack(spacing: 8) {
+            ThinkingIndicatorView()
+                .accessibilityHidden(true)
+            Text(displayedResult == nil ? "Analyzing image…" : "Refreshing analysis…")
+                .font(.system(size: 12))
+                .foregroundColor(.appSecondaryText)
+                .accessibilityIdentifier("insights.progress")
+            Spacer(minLength: 0)
+            Button("Cancel") {
+                viewModel.cancelImageInsightGeneration()
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Cancel image analysis")
+            .accessibilityIdentifier("insights.cancel")
+        }
+    }
+
+    private func copyDescriptionButton(_ description: String) -> some View {
+        Button {
+            copy(description, target: .description)
+        } label: {
+            Label(copyConfirmation?.target == .description ? "Copied" : "Copy description",
+                  systemImage: copyConfirmation?.target == .description ? "checkmark" : "doc.on.doc")
+        }
+        .buttonStyle(.bordered)
+        .accessibilityLabel("Copy description")
+        .accessibilityValue(copyConfirmation?.target == .description ? "Copied" : "")
+        .accessibilityIdentifier("insights.copyDescription")
+        .help("Copy the image description")
+    }
+
+    private var analyzeButton: some View {
+        Button {
+            if isAppDisabled {
+                viewModel.enableAIInsights()
+            } else {
+                viewModel.generateImageInsight()
+            }
+        } label: {
+            Label(actionTitle, systemImage: displayedResult == nil ? "sparkles" : "arrow.clockwise")
+        }
+        .buttonStyle(.bordered)
+        .disabled(!isAppDisabled && !viewModel.canGenerateImageInsight)
+        .accessibilityIdentifier("insights.analyze")
+        .help(isAppDisabled ? "Enable on-device Insights in StillView" : "Analyze the selected image on this Mac")
     }
 
     private var actionTitle: String {
         if isAppDisabled { return "Enable Insights" }
-        if insightViewModel.generationError != nil { return "Try Again" }
-        switch insightViewModel.state {
-        case .result:
-            return "Regenerate Insight"
-        case .failed:
-            return "Try Again"
-        default:
-            return "Generate Insight"
-        }
+        return displayedResult == nil ? "Analyze image" : "Refresh"
+    }
+
+    private var isGenerating: Bool {
+        if case .generating = insightViewModel.state { return true }
+        return false
     }
 
     private var isAppDisabled: Bool {
         viewModel.imageInsightAvailability == .unavailable(.appDisabled)
     }
 
+    private func copy(_ text: String, target: CopyTarget) {
+        NSPasteboard.general.clearContents()
+        guard NSPasteboard.general.setString(text, forType: .string) else { return }
+        copyConfirmation = CopyConfirmation(target: target)
+        let message = target == .description ? "Description copied" : "Recognized text copied"
+        if let window = NSApp.keyWindow {
+            NSAccessibility.post(element: window, notification: .announcementRequested, userInfo: [
+                .announcement: message,
+                .priority: NSAccessibilityPriorityLevel.medium.rawValue
+            ])
+        }
+    }
+
+    private func resetPresentation() {
+        copyConfirmation = nil
+        isTextExpanded = false
+        areTagsExpanded = false
+        isAboutExpanded = false
+    }
+
     private func openAppleIntelligenceSettings() {
-        // Apple Intelligence preferences pane on macOS 26. If the deep link is
-        // rejected, fall back to the root System Settings app.
+        // System Settings can decline a pane URL; opening its root remains useful.
         let deepLinkCandidates = [
             "x-apple.systempreferences:com.apple.preference.intelligence",
             "x-apple.systempreferences:com.apple.Siri-Settings.extension"
@@ -649,74 +774,6 @@ private struct InspectorInsightsTab: View {
         }
         if let fallback = URL(string: "x-apple.systempreferences:") {
             NSWorkspace.shared.open(fallback)
-        }
-    }
-}
-
-/// Muted caption section (LIMITATIONS).
-private struct InsightCaptionSection: View {
-    let title: String
-    let lines: [String]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.system(size: 10, weight: .semibold))
-                .tracking(1.0)
-                .foregroundColor(.appSecondaryText)
-            ForEach(lines, id: \.self) { line in
-                Text(line)
-                    .font(.system(size: 11))
-                    .foregroundColor(.appText.opacity(0.5))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-}
-
-/// Simple wrapping layout for tag capsules.
-private struct InsightFlowLayout: Layout {
-    var spacing: CGFloat = 6
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let maxWidth = proposal.width ?? 268
-        var width: CGFloat = 0
-        var height: CGFloat = 0
-        var rowWidth: CGFloat = 0
-        var rowHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if rowWidth + size.width > maxWidth, rowWidth > 0 {
-                width = max(width, rowWidth - spacing)
-                height += rowHeight + spacing
-                rowWidth = 0
-                rowHeight = 0
-            }
-            rowWidth += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-
-        width = max(width, rowWidth - spacing)
-        height += rowHeight
-        return CGSize(width: width, height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
-        var rowHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > bounds.maxX, x > bounds.minX {
-                x = bounds.minX
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
         }
     }
 }
