@@ -1,10 +1,10 @@
 # Keyboard Navigation
 
-StillView’s image commands use built-in bindings. Preferences → Shortcuts displays a searchable, read-only reference from `KeyboardHandler.getKeyboardShortcuts()`.
+StillView’s image commands use built-in bindings. Settings → Shortcuts displays a searchable, read-only reference from `KeyboardHandler.getKeyboardShortcuts()`.
 
 ## Focus and scope
 
-Image commands apply while an image collection is visible and the viewer owns keyboard focus. They do not target a hidden collection from the welcome screen. Text fields, focused controls, dialogs, and other windows retain their normal key behavior. App commands such as Open Folder (⌘O), Preferences (⌘,), and Help (⌘?) remain available through the menu bar.
+Image commands apply while an image collection is visible and the viewer owns keyboard focus. They do not target a hidden collection from the welcome screen. Text fields, focused controls, dialogs, and other windows retain their normal key behavior. App commands such as Open Folder (⌘O), Settings (⌘,), and Help (⌘?) remain available through the menu bar.
 
 | Key | Action |
 |---|---|
@@ -37,6 +37,6 @@ The displayed built-in shortcut reference and event dispatcher live in `Keyboard
 
 ## Verification
 
-Check commands with the viewer focused in Single, Strip, and Grid. Then check that the same keys preserve native behavior in search fields, sliders, buttons, modal dialogs, Preferences, and Help. From the welcome screen, Delete must not act on the previous collection. Test Open Folder from both welcome and viewer, including cancellation.
+Check commands with the viewer focused in Single, Strip, and Grid. Then check that the same keys preserve native behavior in search fields, sliders, buttons, modal dialogs, Settings, and Help. From the welcome screen, Delete must not act on the previous collection. Test Open Folder from both welcome and viewer, including cancellation.
 
 `KeyboardHandlerTests` and viewer interaction tests cover dispatch and focus boundaries. A running-app check is still required for AppKit responder behavior and menu interaction.

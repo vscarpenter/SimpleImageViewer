@@ -80,7 +80,7 @@ View all your images with crystal-clear quality:
 
 ## 💻 System Requirements
 
-This development checkout targets macOS 27. Public releases may have different system requirements.
+StillView 5.0 requires macOS 27 on Apple silicon. Earlier releases on the Mac App Store supported earlier systems.
 
 - **Operating System**: macOS 27.0 or later
 - **Architecture**: Apple silicon (arm64)

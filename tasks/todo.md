@@ -1,24 +1,40 @@
-# Add BeforeAfterSliderView (ShipSwift SWBeforeAfterSlider) — 2026-09-02
+# macOS 27 App Store launch polish (5.0.0 build 40), 2026-09-15
 
-Tier: Standard (component add). Branch: feat/before-after-slider (from main; independent of feat/thinking-indicator).
-Source: signerlabs/ShipSwift `ShipSwift/SWPackage/SWAnimation/SWBeforeAfterSlider.swift` (no SWUtil dependency).
+Tier: Standard. Branch: main (solo repo; CI green on 9470f6b). Review-first, then bounded fixes.
 
-- [x] RED: `Tests/Views/BeforeAfterSliderViewTests.swift` for `fittedSize(of:in:)`; wire test into test target; `xcodebuild test` fails with "cannot find 'BeforeAfterSliderView' in scope"
-- [x] GREEN: `Views/BeforeAfterSliderView.swift` (NSImage inputs, aspect-fit to container, cornerRadius default 0, Reduce Motion holds divider, VoiceOver label, preview with generated swatches); wire into app + test targets; build + test pass
-- [x] Commit on feature branch (no push)
-- [x] Ask user whether to wire a Compare mode (answer 2026-09-02: component only, no Compare mode) (needs original image retained in view model + toolbar toggle + stage layout) — non-trivial, needs design approval
+## Verified green before changes
+- Release build (Xcode 27.0, SDK 27.0): succeeded, arm64 only, zero compiler warnings.
+- Debug test suite: 228 tests, 0 failures. Test-target membership check passed.
+- SwiftLint: 5 pre-existing warnings, 0 errors.
+- Info.plist: 5.0.0 (40), LSMinimumSystemVersion 27.0, photography category, non-exempt encryption NO.
+- Entitlements: sandbox, user-selected read-write, app-scope bookmarks; no get-task-allow.
+- Privacy manifest, AppIcon.icns, whats-new.json all present in the built bundle.
+- GitHub: no open PRs or issues; all checks green on HEAD.
 
-Assumptions:
-- Fixed-width iOS API replaced by container sizing; the stage is GeometryReader-driven and shows images with no corner radius.
-- `after` is scaledToFill into `before`'s fitted rect (smart-crop may change its aspect); same behavior as the ShipSwift original.
+## Fixes (this pass)
+- [x] Copyright year 2025 -> 2026 in Info.plist key; About reads it from the bundle (test first in SmokeTests)
+- [x] Privacy manifest: declare SystemBootTime (35F9.1) for ProcessInfo.systemUptime in AppleIntelligenceInsightsService
+- [x] Menu and UI strings: true ellipsis, "Settings…" instead of "Preferences…", "System Settings"
+- [x] Remove the permanently disabled "Remove from View" placeholder context menu item and its dead service action
+- [x] Inspector metadata rows: add an accessibility Copy action and button trait
+- [x] Welcome screen: honor Reduce Motion for the two scale animations
+- [x] Lint: four aspectRatio(contentMode:) calls -> scaledToFit/scaledToFill
+- [x] Docs: AppStoreSubmission.md and AppStoreReviewNotes.md to 5.0.0 (40); KeyboardNavigation.md Settings wording; README requirement hedge; CHANGELOG heading
+- [x] Record review: docs/reviews/2026-09-15-macos27-launch-readiness.md with remaining external gates (live privacy copy, screenshots, signed archive)
+- [x] Rebuild Release, rerun tests and lint; commit per logical unit
+
+## Assumptions
+- Copyright year is the current year (2026); the earlier 2025 line stays only in source-file header comments.
+- Release date in whats-new.json (2026-09-06) is left for the owner to set at submission time.
+- Deleting merged local branches and the stale .claude worktree needs owner confirmation; listed, not done.
+
+## Verified green after changes
+- Release build: succeeded, arm64, zero compiler warnings; bundle shows 5.0.0 (40), copyright 2026, manifest with 35F9.1.
+- Tests: 229 passed, 0 failed (new copyright-year smoke test included).
+- SwiftLint: 1 pre-existing complexity warning, 0 errors.
 
 ## Resuming From Here
-- Done: BeforeAfterSliderView added (TDD on fittedSize), wired into app + test targets, build + 55 tests green, committed on `feat/before-after-slider`.
-- Next: nothing pending. User declined a Compare mode on 2026-09-02. If revisited later: (1) keep original NSImage in ImageViewerViewModel when enhancement runs, (2) toolbar toggle enabled only when enhanced != original, (3) EnhancedImageDisplayView swaps stage content for the slider, (4) reset on image change. Needs a short design approval first.
-- Blockers: none.
-- Note: feat/thinking-indicator is a sibling branch off main, unpushed.
-
-## Push / PR — 2026-09-02
-- [x] Pushed `feat/before-after-slider` → PR #18 https://github.com/vscarpenter/SimpleImageViewer/pull/18
-- [x] Pushed `feat/thinking-indicator` → PR #19 https://github.com/vscarpenter/SimpleImageViewer/pull/19
-- Untracked `.agents/`, `.machinist/runs/`, `skills-lock.json`, `tasks/` intentionally left out of both commits.
+- Done: all fix items above, committed as 3088a0e, 127a0c6, c6f09d0, plus the docs commit. Nothing pushed.
+- Next (owner): publish the AI Insights policy copy from docs/reviews/2026-09-15-macos27-launch-readiness.md, recapture 5.0 screenshots, archive and validate in Organizer, set whats-new.json releaseDate at submission, push main.
+- Blockers: none in-repo.
+- Note: xcode-select points at CommandLineTools on this Mac; prefix xcodebuild and swiftlint with DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer.

@@ -1,6 +1,6 @@
-# App Store Review Notes: macOS 27 development draft
+# App Store Review Notes: StillView 5.0.0 (40)
 
-Draft reviewer context for the next App Store submission. Assign a new release version and build before use. StillView requires macOS 27 or later. It has no account system, sign-in, or test credentials.
+Reviewer context for the macOS 27 release. StillView requires macOS 27 or later on Apple silicon. It has no account system, sign-in, or test credentials.
 
 ## Basic navigation
 
