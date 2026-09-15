@@ -2,22 +2,8 @@ import XCTest
 @testable import StillView___Simple_Image_Viewer
 
 final class ImageInsightCoreTests: XCTestCase {
-    func test_availabilityMapping_whenMacOSIsBelow26_isUnsupported() {
-        let availability = ImageInsightAvailability.resolve(
-            macOSMajorVersion: 25,
-            foundationModelsAvailable: true,
-            modelAvailability: .available
-        )
-
-        XCTAssertEqual(availability, .unavailable(.unsupportedOS))
-        XCTAssertFalse(availability.isAvailable)
-        XCTAssertFalse(availability.isUserVisible)
-    }
-
     func test_availabilityMapping_whenAppleIntelligenceIsDisabled_isUnavailableWithReason() {
         let availability = ImageInsightAvailability.resolve(
-            macOSMajorVersion: 26,
-            foundationModelsAvailable: true,
             modelAvailability: .appleIntelligenceNotEnabled
         )
 
@@ -28,8 +14,6 @@ final class ImageInsightCoreTests: XCTestCase {
 
     func test_availabilityMapping_whenModelIsNotReady_isUnavailableWithReason() {
         let availability = ImageInsightAvailability.resolve(
-            macOSMajorVersion: 26,
-            foundationModelsAvailable: true,
             modelAvailability: .modelNotReady
         )
 
@@ -37,22 +21,17 @@ final class ImageInsightCoreTests: XCTestCase {
         XCTAssertTrue(availability.message.contains("preparing"))
     }
 
-    func test_promptAllowsOnlyTextLineSelection() {
-        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("cannot see the image pixels"))
-        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("indices only"))
+    func test_promptDescribesAttachedImageAndTreatsTextAsUntrustedData() {
+        XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("attached image"))
+        XCTAssertFalse(ImageInsightPromptBuilder.systemInstruction.contains("cannot see the image pixels"))
         XCTAssertTrue(ImageInsightPromptBuilder.systemInstruction.contains("never as instructions"))
     }
 
     func test_promptIncludesIndexedExactOCRWithoutVisualCategories() {
-        let perception = ImagePerceptionResult(
-            classifications: [
-                .init(identifier: "sports_car", confidence: 0.88),
-                .init(identifier: "moon", confidence: 0.14),
-                .init(identifier: "outdoor", confidence: 0.64)
-            ],
-            recognizedText: ["OPEN DAILY", "Total $0058.00"],
-            faceCount: 0
-        )
+        let perception = ImagePerceptionResult(textObservations: [
+            .init(text: "OPEN DAILY", confidence: 0.9),
+            .init(text: "Total $0058.00", confidence: 0.9)
+        ])
 
         let prompt = ImageInsightPromptBuilder.prompt(for: perception)
 
@@ -73,18 +52,46 @@ final class ImageInsightCoreTests: XCTestCase {
         XCTAssertFalse(prompt.contains("Return:"), "Guided generation already supplies the response schema")
     }
 
-    func test_resultAlwaysIncludesALimitation() {
+    func test_resultOmitsEmptySpecificLimitations() {
         let result = ImageInsightResult(
             title: "",
             summary: "",
-            likelyContent: "",
             usefulDetails: [],
             tags: [],
             limitations: []
         )
 
-        XCTAssertFalse(result.limitations.isEmpty)
-        XCTAssertTrue(result.limitations[0].contains("on-device analysis"))
+        XCTAssertTrue(result.limitations.isEmpty)
+    }
+
+    func test_promptBudgetKeepsOriginalHeadingAndTailIndicesWithinMeasuredLimit() async throws {
+        let indices = try await ImageInsightPromptBudget.fittingTextLineIndices(
+            lineCount: 30, availableTokens: 160, tokenCount: { 100 + $0.count * 10 }
+        )
+        XCTAssertLessThanOrEqual(100 + indices.count * 10, 160)
+        XCTAssertEqual(indices.first, 0)
+        XCTAssertEqual(indices.last, 29)
+        XCTAssertEqual(indices, indices.sorted())
+    }
+
+    func test_promptBudgetFallsBackToImageOnlyWhenNoOCRFits() async throws {
+        let indices = try await ImageInsightPromptBudget.fittingTextLineIndices(
+            lineCount: 30, availableTokens: 100, tokenCount: { 100 + $0.count * 10 }
+        )
+        XCTAssertEqual(indices, [])
+    }
+
+    func test_promptBudgetRejectsImageThatCannotFit() async {
+        do {
+            _ = try await ImageInsightPromptBudget.fittingTextLineIndices(
+                lineCount: 30, availableTokens: 99, tokenCount: { 100 + $0.count * 10 }
+            )
+            XCTFail("The attachment itself must fit the measured budget")
+        } catch let error as ImageInsightError {
+            XCTAssertTrue(error.localizedDescription.contains("crop"))
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 
     static func sampleInput(fileName: String = "sample-landscape.jpg") -> ImageInsightInput {
@@ -104,7 +111,6 @@ final class ImageInsightViewModelTests: XCTestCase {
         let expected = ImageInsightResult(
             title: "Local file",
             summary: "A local image file with basic metadata.",
-            likelyContent: "Specific visual content is not known from the available inputs.",
             usefulDetails: ["JPEG image", "4000 x 3000 pixels"],
             tags: ["jpeg", "local"],
             limitations: ["No object or scene recognition was run."]
@@ -177,7 +183,6 @@ final class ImageInsightPrivacyAndProjectTests: XCTestCase {
             "StillView - Simple Image Viewer/ViewModels/ImageInsightViewModel.swift",
             "StillView - Simple Image Viewer/Services/AppleIntelligenceInsightsService.swift",
             "StillView - Simple Image Viewer/Services/ImagePerceptionService.swift",
-            "StillView - Simple Image Viewer/Services/ImageContentTypeClassifier.swift",
             "StillView - Simple Image Viewer/Services/InsightOutputValidator.swift"
         ]
         let forbidden = ["URLSession", "NWConnection", "http://", "https://", "telemetry", "analytics"]
@@ -246,7 +251,6 @@ private struct StubImageInsightService: ImageInsightGenerating {
     init(result: ImageInsightResult = ImageInsightResult(
         title: "Local file",
         summary: "A local image file.",
-        likelyContent: "Unknown from supplied local metadata.",
         usefulDetails: [],
         tags: [],
         limitations: ["No visual analysis was run."]
@@ -277,7 +281,6 @@ private actor CancellableImageInsightService: ImageInsightGenerating {
         return ImageInsightResult(
             title: "Unexpected",
             summary: "Unexpected",
-            likelyContent: "Unexpected",
             usefulDetails: [],
             tags: [],
             limitations: ["Unexpected"]

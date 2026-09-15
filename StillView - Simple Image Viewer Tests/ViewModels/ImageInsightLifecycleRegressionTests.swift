@@ -252,6 +252,48 @@ final class ImageInsightLifecycleRegressionTests: XCTestCase {
         XCTAssertEqual(count, 0)
     }
 
+    func test_modelAndPromptChangesInvalidateCompletedImageCache() async {
+        let started = expectation(description: "Generation started")
+        let service = InsightLifecycleService { _ in started.fulfill() }
+        let model = ImageInsightViewModel(service: service)
+        let url = URL(fileURLWithPath: "/tmp/insight-lifecycle/same-image.jpg")
+        let original = ImageInsightInput(fileType: "JPEG", dimensions: "100 × 80", fileSize: "1 KB",
+                                         imageURL: url, modelName: "Model A", contextSize: 4096, promptVersion: 1)
+        model.prepareForImage(original, availability: .available)
+        model.generate()
+        await fulfillment(of: [started], timeout: 1)
+        await service.completeRequest(0, with: .success(Self.result("Old model result")))
+        await drainMainQueue()
+        XCTAssertNotNil(model.result)
+
+        let updated = ImageInsightInput(fileType: "JPEG", dimensions: "100 × 80", fileSize: "1 KB",
+                                        imageURL: url, modelName: "Model B", contextSize: 8192, promptVersion: 2)
+        model.prepareForImage(updated, availability: .available)
+        XCTAssertNil(model.result)
+        XCTAssertEqual(model.state, .idle)
+        model.prepareForImage(original, availability: .available)
+        XCTAssertNil(model.result, "The superseded analysis must be evicted for this file revision")
+    }
+
+    func test_promptChangeRejectsInFlightCompletionForSameImage() async {
+        let started = expectation(description: "Generation started")
+        let service = InsightLifecycleService { _ in started.fulfill() }
+        let model = ImageInsightViewModel(service: service)
+        let url = URL(fileURLWithPath: "/tmp/insight-lifecycle/same-image.jpg")
+        let original = ImageInsightInput(fileType: "JPEG", dimensions: "100 × 80", fileSize: "1 KB",
+                                         imageURL: url, modelName: "Model A", promptVersion: 1)
+        let updated = ImageInsightInput(fileType: "JPEG", dimensions: "100 × 80", fileSize: "1 KB",
+                                        imageURL: url, modelName: "Model A", promptVersion: 2)
+        model.prepareForImage(original, availability: .available)
+        model.generate()
+        await fulfillment(of: [started], timeout: 1)
+        model.prepareForImage(updated, availability: .available)
+        await service.completeRequest(0, with: .success(Self.result("Old prompt result")))
+        await drainMainQueue()
+        XCTAssertNil(model.result)
+        XCTAssertEqual(model.state, .idle)
+    }
+
     private func drainMainQueue() async {
         // Service continuations return through the actor executor before publishing on MainActor.
         for _ in 0..<8 {
@@ -273,7 +315,7 @@ final class ImageInsightLifecycleRegressionTests: XCTestCase {
     }
 
     private static func result(_ title: String) -> ImageInsightResult {
-        ImageInsightResult(title: title, summary: "Observed image content.", likelyContent: "Image content",
+        ImageInsightResult(title: title, summary: "Observed image content.",
                            usefulDetails: [], tags: [], limitations: ["Based on local observations."])
     }
 }
@@ -310,8 +352,7 @@ final class ImageInsightAccessRegressionTests: XCTestCase {
 
     func test_enablingApp_doesNotBypassSystemAvailability() async {
         let reasons: [ImageInsightUnavailableReason] = [
-            .deviceNotEligible, .appleIntelligenceDisabled, .modelNotReady,
-            .unsupportedOS, .foundationModelsUnavailable
+            .deviceNotEligible, .appleIntelligenceDisabled, .modelNotReady, .unknown
         ]
         for reason in reasons {
             let service = InsightLifecycleService { _ in XCTFail("Unavailable platform must not generate") }
@@ -524,7 +565,7 @@ private final class InsightViewerFixture {
     let imageLoader: InsightLifecycleImageLoader
     let model: ImageViewerViewModel
     static let result = ImageInsightResult(
-        title: "Waterfall", summary: "A likely waterfall.", likelyContent: "Waterfall",
+        title: "Waterfall", summary: "A likely waterfall.",
         usefulDetails: [], tags: ["waterfall"], limitations: ["Based on local observations."]
     )
 

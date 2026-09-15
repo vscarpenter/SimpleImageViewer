@@ -4,20 +4,29 @@ import ImageIO
 import Vision
 
 struct ImagePerceptionResult: Equatable, Sendable {
-    struct Classification: Equatable, Sendable {
-        let identifier: String
+    struct TextObservation: Equatable, Sendable {
+        let text: String
         let confidence: Float
+        /// Normalized coordinates in the oriented image, with the origin at the bottom left.
+        let boundingBox: CGRect
+
+        init(text: String, confidence: Float, boundingBox: CGRect = .zero) {
+            self.text = text
+            self.confidence = confidence
+            self.boundingBox = boundingBox
+        }
     }
 
-    let classifications: [Classification]
-    let recognizedText: [String]
-    let faceCount: Int
+    let textObservations: [TextObservation]
+    let textWasTruncated: Bool
+    var recognizedText: [String] { textObservations.map(\.text) }
 
-    static let empty = ImagePerceptionResult(
-        classifications: [],
-        recognizedText: [],
-        faceCount: 0
-    )
+    init(textObservations: [TextObservation], textWasTruncated: Bool = false) {
+        self.textObservations = textObservations
+        self.textWasTruncated = textWasTruncated
+    }
+
+    static let empty = ImagePerceptionResult(textObservations: [])
 }
 
 enum ImagePerceptionError: LocalizedError, Equatable, Sendable {
@@ -29,61 +38,44 @@ enum ImagePerceptionError: LocalizedError, Equatable, Sendable {
         case .imageDecodingFailed:
             return "The image could not be read for analysis. Try reopening it or selecting another image."
         case .visionRequestFailed(let reason):
-            return "Image analysis could not finish. \(reason)"
+            return "Text recognition could not finish. \(reason)"
         }
     }
 }
 
 enum OCRCleaner {
-    struct Candidate: Equatable, Sendable {
-        let text: String
-        let confidence: Float
-    }
-
+    typealias Candidate = ImagePerceptionResult.TextObservation
+    static let maximumLines = 128
+    static let maximumCharacters = 6_000
     private static let minimumConfidence: Float = 0.5
-    private static let maximumLines = 16
 
     static func clean(_ candidates: [Candidate]) -> [String] {
-        var seen = Set<String>()
-        var output: [String] = []
-
-        for candidate in candidates where candidate.confidence >= minimumConfidence {
-            let trimmed = candidate.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmed.count >= 2 || isStandaloneCJK(trimmed) else { continue }
-
-            let semanticCount = trimmed.unicodeScalars
-                .filter { CharacterSet.alphanumerics.contains($0) }
-                .count
-            let semanticRatio = Double(semanticCount) / Double(trimmed.count)
-            guard semanticCount >= 2 || isStandaloneCJK(trimmed), semanticRatio >= 0.5 else { continue }
-
-            let key = trimmed.lowercased()
-            guard seen.insert(key).inserted else { continue }
-            output.append(trimmed)
-
-            if output.count == maximumLines {
-                break
-            }
-        }
-
-        return output
+        evidence(from: candidates).recognizedText
     }
 
-    private static func isStandaloneCJK(_ token: String) -> Bool {
-        guard token.count == 1, let scalar = token.unicodeScalars.first else { return false }
-        let value = scalar.value
-        return (0x4E00...0x9FFF).contains(value)
-            || (0x3400...0x4DBF).contains(value)
-            || (0x3040...0x30FF).contains(value)
-            || (0xAC00...0xD7A3).contains(value)
+    /// Preserve original text, positions, and repetition. Drop whole observations at the budget
+    /// boundary so an amount or quoted line is never presented as a clipped transcription.
+    static func evidence(from candidates: [Candidate]) -> ImagePerceptionResult {
+        var output: [Candidate] = []
+        var characterCount = 0
+        var wasTruncated = false
+        for candidate in candidates where candidate.confidence >= minimumConfidence {
+            guard !candidate.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            guard output.count < maximumLines, characterCount + candidate.text.count <= maximumCharacters else {
+                wasTruncated = true
+                continue
+            }
+            output.append(candidate)
+            characterCount += candidate.text.count
+        }
+        return ImagePerceptionResult(textObservations: output, textWasTruncated: wasTruncated)
     }
 }
 
-/// Extracts only observations that can be made reliably with public, on-device Vision APIs.
-/// Foundation Models on macOS 26 receives the filtered text representation, not image pixels.
+/// Decodes one bounded, oriented first frame for both the model attachment and exact OCR evidence.
 struct ImagePerceptionService: Sendable {
     static let shared = ImagePerceptionService()
-
+    static let maximumImageDimension = 2_048
     private let performRequests: @Sendable (VNImageRequestHandler, [VNRequest]) throws -> Void
 
     init(
@@ -94,35 +86,51 @@ struct ImagePerceptionService: Sendable {
         self.performRequests = performRequests
     }
 
-    /// Large low-confidence face-shaped regions are rejected. Very small detections count only
-    /// when Vision is exceptionally confident, which preserves distant faces without promoting noise.
-    static func shouldCountFace(area: Double, confidence: Float) -> Bool {
-        (area >= 0.003 && confidence >= 0.5)
-            || (area >= 0.0005 && confidence >= 0.85)
+    static func loadImage(at url: URL) async throws -> CGImage {
+        try Task.checkCancellation()
+        let worker = Task.detached(priority: .userInitiated) {
+            try Task.checkCancellation()
+            let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+            let thumbnailOptions = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: maximumImageDimension,
+                kCGImageSourceShouldCacheImmediately: true
+            ] as CFDictionary
+            guard let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions),
+                  let image = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions) else {
+                throw ImagePerceptionError.imageDecodingFailed
+            }
+            try Task.checkCancellation()
+            return image
+        }
+        return try await withTaskCancellationHandler {
+            do {
+                let image = try await worker.value
+                try Task.checkCancellation()
+                return image
+            } catch {
+                try Task.checkCancellation()
+                throw error
+            }
+        } onCancel: {
+            worker.cancel()
+        }
     }
 
     func analyze(url: URL) async throws -> ImagePerceptionResult {
+        try await analyze(image: Self.loadImage(at: url))
+    }
+
+    func analyze(image: CGImage) async throws -> ImagePerceptionResult {
         try Task.checkCancellation()
         let cancellation = PerceptionCancellation()
         let worker = Task.detached(priority: .userInitiated) {
             try cancellation.checkCancellation()
-            let loaded = Self.loadCGImage(at: url)
+            let result = try runRequests(on: image, cancellation: cancellation)
             try cancellation.checkCancellation()
-            guard let loaded else {
-                Logger.warning("Perception: could not decode image", context: "AIInsights")
-                throw ImagePerceptionError.imageDecodingFailed
-            }
-
-            let result = try runRequests(
-                on: loaded.image,
-                orientation: loaded.orientation,
-                cancellation: cancellation
-            )
-            try cancellation.checkCancellation()
-            Self.log(result: result)
             return result
         }
-
         return try await withTaskCancellationHandler {
             do {
                 let result = try await worker.value
@@ -138,42 +146,16 @@ struct ImagePerceptionService: Sendable {
         }
     }
 
-    private static func loadCGImage(at url: URL) -> (image: CGImage, orientation: CGImagePropertyOrientation)? {
-        let options: [CFString: Any] = [kCGImageSourceShouldCacheImmediately: false]
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, options as CFDictionary),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
-            return nil
-        }
-
-        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
-        let rawOrientation = (properties?[kCGImagePropertyOrientation] as? Int)
-            .flatMap { UInt32(exactly: $0) } ?? 1
-        let orientation = CGImagePropertyOrientation(rawValue: rawOrientation) ?? .up
-        return (image, orientation)
-    }
-
     private func runRequests(
         on image: CGImage,
-        orientation: CGImagePropertyOrientation,
         cancellation: PerceptionCancellation
     ) throws -> ImagePerceptionResult {
-        let handler = VNImageRequestHandler(cgImage: image, orientation: orientation, options: [:])
-
-        let classification = VNClassifyImageRequest()
-        classification.revision = VNClassifyImageRequestRevision2
-
+        let handler = VNImageRequestHandler(cgImage: image, orientation: .up, options: [:])
         let textRecognition = VNRecognizeTextRequest()
         textRecognition.recognitionLevel = .accurate
-        textRecognition.usesLanguageCorrection = true
+        textRecognition.usesLanguageCorrection = false
         textRecognition.automaticallyDetectsLanguage = true
-        textRecognition.recognitionLanguages = [
-            "en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "pt-BR", "ja", "zh-Hans", "ko"
-        ]
-
-        let faceDetection = VNDetectFaceRectanglesRequest()
-        faceDetection.revision = VNDetectFaceRectanglesRequestRevision3
-
-        let requests: [VNRequest] = [classification, textRecognition, faceDetection]
+        let requests: [VNRequest] = [textRecognition]
         try cancellation.register(requests)
         defer { cancellation.clearRequests() }
         do {
@@ -182,42 +164,23 @@ struct ImagePerceptionService: Sendable {
         } catch {
             try cancellation.checkCancellation()
             if error is CancellationError { throw error }
-            Logger.warning("Perception: Vision.perform failed: \(error.localizedDescription)", context: "AIInsights")
             throw ImagePerceptionError.visionRequestFailed(error.localizedDescription)
         }
         try cancellation.checkCancellation()
-
-        let classifications = (classification.results ?? [])
-            .prefix(12)
-            .map { ImagePerceptionResult.Classification(identifier: $0.identifier, confidence: $0.confidence) }
-
-        let textCandidates = (textRecognition.results ?? []).compactMap { observation -> OCRCleaner.Candidate? in
+        let candidates = (textRecognition.results ?? []).compactMap { observation -> OCRCleaner.Candidate? in
             guard let candidate = observation.topCandidates(1).first else { return nil }
-            return OCRCleaner.Candidate(text: candidate.string, confidence: candidate.confidence)
+            return OCRCleaner.Candidate(
+                text: candidate.string,
+                confidence: candidate.confidence,
+                boundingBox: observation.boundingBox
+            )
         }
-
-        let faceCount = (faceDetection.results ?? []).filter { observation in
-            let area = observation.boundingBox.width * observation.boundingBox.height
-            return Self.shouldCountFace(area: Double(area), confidence: observation.confidence)
-        }.count
-
-        return ImagePerceptionResult(
-            classifications: classifications,
-            recognizedText: OCRCleaner.clean(textCandidates),
-            faceCount: faceCount
-        )
-    }
-
-    private static func log(result: ImagePerceptionResult) {
-        Logger.info(
-            "Perception complete classifications=\(result.classifications.count) faces=\(result.faceCount) ocrLines=\(result.recognizedText.count)",
-            context: "AIInsights"
-        )
+        return OCRCleaner.evidence(from: candidates)
     }
 }
 
-/// Holds only the requests that the worker is currently performing. All mutable state is protected
-/// by the lock; request cancellation runs outside the lock because Vision may invoke a completion.
+/// All mutable state is protected by the lock; request cancellation runs outside the lock
+/// because Vision may invoke a completion while cancelling.
 private final class PerceptionCancellation: @unchecked Sendable {
     private let lock = NSLock()
     private var cancelled = false
