@@ -75,28 +75,15 @@ AI INSIGHTS, REBUILT
 • Results include notable visual details, suggested tags, and anything the model is unsure about.
 • Text in image shows the original recognized text, keeps repeated lines, and says when it was cut short.
 • Copy the description, refresh it, or cancel a run. A failed refresh keeps the previous result.
-• Completed insights stay available when you switch inspector tabs or return to the app.
 
-NATIVE MAC SETTINGS
-• Settings replaces Preferences with General, Intelligence, and Shortcuts panes.
-• Search the built-in keyboard shortcuts by name.
-• Colors and keyboard focus follow your Mac.
-
-VIEWING
-• Fit to Window shows the whole image, and 100% uses the true pixel scale.
-• Panning stays inside the image.
-• Narrow windows keep the viewing controls visible and move extra actions into a More actions menu.
-
-FIXES
-• Stale image loads no longer interrupt navigation.
-• Folders with unreadable images show an error and a Retry button instead of loading forever.
-• The Insights tab stays open when the feature is off and offers to enable it.
-• Open Folder works from the viewer on the first try, and canceling keeps your current folder.
-• Image shortcuts leave focused controls and dialogs alone.
-• Moving an image to Trash keeps the collection and selection consistent while you keep browsing.
+ALSO IN THIS RELEASE
+• Inspector rows offer a VoiceOver Copy action.
+• The welcome screen honors Reduce Motion.
 
 Images, recognized text, and results stay on this Mac.
 ```
+
+The Mac App Store shipped 4.6.0 (36) on September 6, 2026, with native Settings, the compact toolbar, and the folder, keyboard, Trash, zoom, and loading fixes, so this text covers only what changed after it.
 
 ### URLs
 
