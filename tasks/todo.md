@@ -55,5 +55,6 @@ Assumptions: Suggested tags stayed collapsed in the Insights frame (automation c
 
 ## Resuming From Here (2026-09-15, afternoon)
 - Done: legal copy (site 8397f05), landing swap (site 98b5941), marketing/screenshots-5.0.0 (27964c6), docs pointers (69cb99f). Working trees clean in both repos. App quit, appearance back to Light, scratch recent entry removed.
-- Next (Vinny): `./deploy.sh` in ~/Projects/stillviewapp.com, then recheck privacy.html#ai and the feature rows; push both repos; archive and validate in Organizer; set whats-new.json releaseDate at submission.
+- Done later the same day: both repos pushed to origin; site deployed (invalidation IC8CKD58V2LTM08A295P2XLQDW completed) and verified live.
+- Next (Vinny): archive and validate in Organizer; upload; set whats-new.json releaseDate at submission; confirm the privacy URL and screenshots in App Store Connect.
 - Blockers: none in-repo.
