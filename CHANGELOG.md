@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.0.0 (40)
+## 5.0.0 (44)
 
 - Require macOS 27 and Apple silicon, with no older-OS compatibility path.
 - Describe image pixels directly with Apple's on-device model, including concise visible details and optional suggested tags.

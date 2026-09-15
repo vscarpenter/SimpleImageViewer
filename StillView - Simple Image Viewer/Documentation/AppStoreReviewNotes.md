@@ -1,4 +1,4 @@
-# App Store Review Notes: StillView 5.0.0 (40)
+# App Store Review Notes: StillView 5.0.0 (44)
 
 Reviewer context for the macOS 27 release. StillView requires macOS 27 or later on Apple silicon. It has no account system, sign-in, or test credentials.
 

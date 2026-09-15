@@ -1,4 +1,4 @@
-# App Store Submission Package: StillView 5.0.0 (40)
+# App Store Submission Package: StillView 5.0.0 (44)
 
 Metadata for the macOS 27 release. The project identity below matches the current Xcode project. Verify the signed archive, App Store Connect fields, and public privacy page before submission; this document does not confirm upload or approval.
 
@@ -13,7 +13,7 @@ Metadata for the macOS 27 release. The project identity below matches the curren
 | Primary Category | Photography |
 | Minimum macOS | 27.0 |
 
-Build 40 must exceed the last build uploaded to App Store Connect. If another build number is needed, run `scripts/update-version.sh --bump-build` and rebuild.
+Build 44 must exceed the last build uploaded to App Store Connect. If another build number is needed, run `scripts/update-version.sh --bump-build` and rebuild.
 
 ## Metadata fields
 
@@ -100,7 +100,7 @@ Paste [AppStoreReviewNotes.md](AppStoreReviewNotes.md) into App Review Informati
 
 ## Pre-submission checks
 
-- [ ] Verify 5.0.0 (40), the bundle ID, and the macOS 27 deployment target against the selected archive and App Store Connect.
+- [ ] Verify 5.0.0 (44), the bundle ID, and the macOS 27 deployment target against the selected archive and App Store Connect.
 - [ ] Set `releaseDate` in `Resources/whats-new.json` to the submission date so the in-app What's New sheet shows the right day.
 - [ ] Run the repository’s lint and tests, and confirm CI for the exact submission commit.
 - [ ] Create a distribution archive in Xcode and validate it in Organizer.
