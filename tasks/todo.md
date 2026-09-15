@@ -58,3 +58,19 @@ Assumptions: Suggested tags stayed collapsed in the Insights frame (automation c
 - Done later the same day: both repos pushed to origin; site deployed (invalidation IC8CKD58V2LTM08A295P2XLQDW completed) and verified live.
 - Next (Vinny): archive and validate in Organizer; upload; set whats-new.json releaseDate at submission; confirm the privacy URL and screenshots in App Store Connect.
 - Blockers: none in-repo.
+
+# Build 44 sync after the Xcode archive, 2026-09-15
+
+Tier: Trivial. Branch: main.
+
+- [x] Commit the build number change (40 to 44) that Xcode wrote before the 10:55 AM archive
+- [x] CHANGELOG, AppStoreSubmission.md, and AppStoreReviewNotes.md name 5.0.0 (44)
+- [x] README shows the command line test run with the CI signing flags; the local CLAUDE.md (gitignored) says the same
+- [x] Tests: 229 passed, 0 failed
+
+## Resuming From Here (2026-09-15, late morning)
+- Done: 0b23665 syncs the project and release docs to the 5.0.0 (44) archive; the next commit fixes the test command in the docs. Nothing pushed.
+- Next (Vinny): upload build 44 from Organizer, confirm 5.0.0 (44) and the privacy URL in App Store Connect, then push main.
+- Decision (Vinny): whats-new.json inside build 44 still says releaseDate 2026-09-06. Changing it means build 45 and a fresh archive.
+- Blockers: none in-repo.
+- Note: local `xcodebuild test` needs CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO, as in ci.yml. Without them the ad-hoc test bundle fails to load into the team-signed app.
