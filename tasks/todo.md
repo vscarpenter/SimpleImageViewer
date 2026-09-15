@@ -48,7 +48,12 @@ Tier: Standard. Two repos: this one (marketing/screenshots-5.0.0) and ~/Projects
 - [x] Capture eight 2880x1800 frames: hero, zoom, immersive, navigation, info (dark); grid, insights, Settings/Shortcuts (light)
 - [x] finalize.swift + caption_bake.swift for 2x output into marketing/screenshots-5.0.0
 - [x] Swap the three landing page feature images to stillview50-* and bump sitemap index lastmod
-- [ ] Revert the rig from SimpleImageViewerApp.swift; restore Light appearance; quit app; remove scratch Landscapes recent entry
-- [ ] Commit marketing set (app repo) and landing swap (site repo); ask before deploy.sh and push
+- [x] Revert the rig from SimpleImageViewerApp.swift; restore Light appearance; quit app; remove scratch Landscapes recent entry
+- [x] Commit marketing set (app repo, 27964c6) and landing swap (site repo, 98b5941); deploy.sh and push wait for Vinny's go-ahead
 
 Assumptions: Suggested tags stayed collapsed in the Insights frame (automation could not toggle the disclosure). Website keeps only the three feature images it already uses.
+
+## Resuming From Here (2026-09-15, afternoon)
+- Done: legal copy (site 8397f05), landing swap (site 98b5941), marketing/screenshots-5.0.0 (27964c6), docs pointers (69cb99f). Working trees clean in both repos. App quit, appearance back to Light, scratch recent entry removed.
+- Next (Vinny): `./deploy.sh` in ~/Projects/stillviewapp.com, then recheck privacy.html#ai and the feature rows; push both repos; archive and validate in Organizer; set whats-new.json releaseDate at submission.
+- Blockers: none in-repo.
