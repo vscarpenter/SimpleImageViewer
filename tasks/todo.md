@@ -38,3 +38,17 @@ Tier: Standard. Branch: main (solo repo; CI green on 9470f6b). Review-first, the
 - Next (owner): publish the AI Insights policy copy from docs/reviews/2026-09-15-macos27-launch-readiness.md, recapture 5.0 screenshots, archive and validate in Organizer, set whats-new.json releaseDate at submission, push main.
 - Blockers: none in-repo.
 - Note: xcode-select points at CommandLineTools on this Mac; prefix xcodebuild and swiftlint with DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer.
+
+# Legal pages and 5.0 marketing screenshots, 2026-09-15
+
+Tier: Standard. Two repos: this one (marketing/screenshots-5.0.0) and ~/Projects/stillviewapp.com.
+
+- [x] stillviewapp.com: rewrite AI Insights sections on privacy.html and terms.html, effective date Sept. 15, sitemap lastmod; committed 8397f05 (not pushed, not deployed)
+- [x] Re-apply window snapshot rig by hand (patch no longer applied); Debug build ad-hoc signed with entitlements
+- [x] Capture eight 2880x1800 frames: hero, zoom, immersive, navigation, info (dark); grid, insights, Settings/Shortcuts (light)
+- [x] finalize.swift + caption_bake.swift for 2x output into marketing/screenshots-5.0.0
+- [x] Swap the three landing page feature images to stillview50-* and bump sitemap index lastmod
+- [ ] Revert the rig from SimpleImageViewerApp.swift; restore Light appearance; quit app; remove scratch Landscapes recent entry
+- [ ] Commit marketing set (app repo) and landing swap (site repo); ask before deploy.sh and push
+
+Assumptions: Suggested tags stayed collapsed in the Insights frame (automation could not toggle the disclosure). Website keeps only the three feature images it already uses.

@@ -94,7 +94,7 @@ The project declares `ITSAppUsesNonExemptEncryption = NO`. Recheck the export-co
 
 ## Screenshots and reviewer notes
 
-Use current screenshots showing the actual app: Single, Strip, Grid, Info, Insights, and the read-only Shortcuts reference. The checked-in set in `marketing/screenshots-4.3.0/` predates native Settings and the Insights actions, so recapture before upload. Include an Insights result from an eligible Mac and an availability state if useful. Use dimensions accepted by the current App Store Connect uploader and avoid personal images.
+Upload the 5.0.0 set from `marketing/screenshots-5.0.0/appstore-captioned/` (or the clean `appstore/` set, not both): eight 2880×1800 PNGs captured on September 15, 2026, covering Single, Insights with a real on-device result, Grid, Strip, Info, 100% zoom, and the Shortcuts reference. Both pages of `marketing/screenshots-5.0.0/README.md` list the order and captions.
 
 Paste [AppStoreReviewNotes.md](AppStoreReviewNotes.md) into App Review Information → Notes. The app has no sign-in or demo credentials. Reviewers can use a local image folder.
 
