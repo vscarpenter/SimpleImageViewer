@@ -1,5 +1,6 @@
-import SwiftUI
 import AppKit
+import Combine
+import SwiftUI
 
 /// Coordinator for managing preferences window navigation and state
 @MainActor
@@ -54,7 +55,9 @@ class PreferencesCoordinator: ObservableObject {
     /// Select a specific preferences tab
     /// - Parameter tab: The tab to select
     func selectTab(_ tab: Preferences.Tab) {
-        selectedTab = tab
+        if selectedTab != tab {
+            selectedTab = tab
+        }
         saveLastSelectedTab()
     }
     
@@ -98,8 +101,8 @@ class PreferencesWindowController: NSWindowController {
         
         // Create the window with proper configuration
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 700), // Match PreferencesTabView size
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: coordinator.selectedTab.contentHeight),
+            styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
@@ -128,18 +131,18 @@ class PreferencesWindowController: NSWindowController {
         guard let window = window else { return }
         
         // Configure window properties
-        window.title = "StillView Preferences"
+        window.title = coordinator?.selectedTab.title ?? "StillView Settings"
         window.isReleasedWhenClosed = false
         window.delegate = self
         
         // Center the window on screen
         window.center()
         
-        // Set minimum size and allow free resizing (no artificial maximum)
-        window.minSize = NSSize(width: 800, height: 600)
+        window.toolbarStyle = .preference
+        window.collectionBehavior = [.fullScreenNone]
         
         // Configure window behavior
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
         window.titlebarAppearsTransparent = false
         
         // Ensure proper window level
@@ -149,25 +152,85 @@ class PreferencesWindowController: NSWindowController {
     private func setupContentView() {
         guard let window = window, let coordinator = coordinator else { return }
         
-        // Create the SwiftUI content view
-        let contentView = PreferencesTabView(coordinator: coordinator)
-        
-        // Set up the hosting view
-        let hostingView = NSHostingView(rootView: contentView)
-        hostingView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Set the content view
-        window.contentView = hostingView
-        
-        // Set up constraints
-        if let contentView = window.contentView {
-            NSLayoutConstraint.activate([
-                hostingView.topAnchor.constraint(equalTo: contentView.topAnchor),
-                hostingView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-                hostingView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-                hostingView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
-            ])
+        window.contentViewController = PreferencesPaneController(coordinator: coordinator)
+    }
+}
+
+/// AppKit owns the toolbar, selection highlight, and standard keyboard navigation.
+@MainActor
+final class PreferencesPaneController: NSTabViewController {
+    private weak var coordinator: PreferencesCoordinator?
+    private let preferencesViewModel = PreferencesViewModel()
+    private var selectionSubscription: AnyCancellable?
+    private var isConfiguring = true
+    private var isSynchronizingSelection = false
+
+    init(coordinator: PreferencesCoordinator) {
+        self.coordinator = coordinator
+        super.init(nibName: nil, bundle: nil)
+        tabStyle = .toolbar
+        transitionOptions = []
+
+        for tab in Preferences.Tab.allCases {
+            let pane = NSHostingController(rootView: PreferencesTabView(selectedTab: tab)
+                .environmentObject(preferencesViewModel))
+            pane.title = tab.title
+            let item = NSTabViewItem(viewController: pane)
+            item.identifier = tab.rawValue
+            item.label = tab.title
+            item.image = NSImage(systemSymbolName: tab.icon, accessibilityDescription: tab.title)
+            item.toolTip = tab.description
+            addTabViewItem(item)
         }
+        // Loading NSTabView initially selects its first item. Do that before restoring
+        // the saved pane, while delegate callbacks are still suppressed.
+        _ = view
+        selectedTabViewItemIndex = coordinator.selectedTab.order
+        isConfiguring = false
+        selectionSubscription = coordinator.$selectedTab.removeDuplicates().sink { [weak self] tab in
+            guard let self, self.selectedTabViewItemIndex != tab.order else { return }
+            self.isSynchronizingSelection = true
+            self.selectedTabViewItemIndex = tab.order
+            self.isSynchronizingSelection = false
+        }
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        view.window?.toolbar?.allowsUserCustomization = false
+        view.window?.toolbar?.autosavesConfiguration = false
+        view.window?.toolbar?.displayMode = .iconAndLabel
+        updateWindowForSelection()
+    }
+
+    override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
+        super.tabView(tabView, didSelect: tabViewItem)
+        guard !isConfiguring,
+              let rawValue = tabViewItem?.identifier as? String,
+              let tab = Preferences.Tab(rawValue: rawValue) else { return }
+        if !isSynchronizingSelection {
+            coordinator?.selectTab(tab)
+        }
+        updateWindowForSelection()
+    }
+
+    override func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.flexibleSpace] + super.toolbarDefaultItemIdentifiers(toolbar) + [.flexibleSpace]
+    }
+
+    private func updateWindowForSelection() {
+        guard let window = view.window,
+              let rawValue = tabViewItems[selectedTabViewItemIndex].identifier as? String,
+              let tab = Preferences.Tab(rawValue: rawValue) else { return }
+        window.title = tab.title
+        let contentRect = NSRect(x: 0, y: 0, width: 560, height: tab.contentHeight)
+        var frame = window.frameRect(forContentRect: contentRect)
+        frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
+        window.setFrame(frame, display: true)
     }
 }
 

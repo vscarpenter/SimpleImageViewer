@@ -1,207 +1,42 @@
-# Keyboard Navigation System
+# Keyboard Navigation
 
-## Overview
+StillView’s image commands use built-in bindings. Preferences → Shortcuts displays a searchable, read-only reference from `KeyboardHandler.getKeyboardShortcuts()`.
 
-The Simple Image Viewer implements a comprehensive keyboard navigation system that allows users to browse images and control the application entirely through keyboard shortcuts. This system is designed to be intuitive and follows common conventions used in image viewing applications.
+## Focus and scope
 
-## Architecture
+Image commands apply while an image collection is visible and the viewer owns keyboard focus. They do not target a hidden collection from the welcome screen. Text fields, focused controls, dialogs, and other windows retain their normal key behavior. App commands such as Open Folder (⌘O), Preferences (⌘,), and Help (⌘?) remain available through the menu bar.
 
-### KeyboardHandler Class
+| Key | Action |
+|---|---|
+| ← / → | Previous / next image |
+| Page Up / Page Down | Previous / next image |
+| Home / End | First / last image |
+| Space | Stop an active slideshow; otherwise next image |
+| + / = | Zoom in |
+| - | Zoom out |
+| 0 | Fit image to window |
+| 1 | Actual size |
+| F | Toggle fullscreen |
+| Enter | Open the selected image in Single from Grid; otherwise toggle fullscreen |
+| Escape | Exit fullscreen, or return from Grid/Strip to Single |
+| I | Toggle the Info and Insights inspector |
+| ⌘I | Open the inspector on Insights |
+| S | Start / stop slideshow |
+| T | Toggle Strip view |
+| G | Toggle Grid view |
+| B | Return to folder selection |
+| Delete / Backspace | Confirm moving the current image to Trash |
 
-The `KeyboardHandler` class is the central component that manages all keyboard input:
+Escape never returns to folder selection. Use B with the viewer focused or File → Back to Folder Selection. Slideshows always repeat after the last image; Space stops them, and S starts them again.
 
-- **Purpose**: Translates keyboard events into application actions
-- **Integration**: Works with `ImageViewerViewModel` to execute navigation and zoom commands
-- **Platform**: Uses AppKit's `NSEvent` system for reliable key detection
+## Implementation
 
-### Key Components
+`ContentView` owns collection visibility and enables viewer keyboard capture only for the visible viewer. `KeyCaptureViewRepresentable` provides AppKit event capture and responder checks. `KeyboardHandler` maps eligible events to `ImageViewerViewModel` actions. Application commands belong to the SwiftUI menu system.
 
-1. **KeyboardHandler**: Main service class that processes keyboard events
-2. **KeyCaptureView**: Custom NSView for reliable key event capture
-3. **KeyCaptureViewRepresentable**: SwiftUI wrapper for the NSView
-4. **ContentView Integration**: Main UI integration point
+The displayed built-in shortcut reference and event dispatcher live in `KeyboardHandler.swift`. Changing a binding requires updating its dispatch and its reference together. Saved custom shortcut definitions are not an active viewer feature.
 
-## Supported Keyboard Shortcuts
+## Verification
 
-### Navigation
-- **← / →**: Navigate between images (previous/next)
-- **Spacebar**: Next image (common convention)
-- **Page Up/Down**: Navigate between images (alternative)
-- **Home**: Go to first image in folder
-- **End**: Go to last image in folder
+Check commands with the viewer focused in Single, Strip, and Grid. Then check that the same keys preserve native behavior in search fields, sliders, buttons, modal dialogs, Preferences, and Help. From the welcome screen, Delete must not act on the previous collection. Test Open Folder from both welcome and viewer, including cancellation.
 
-### Zoom Controls
-- **+ / =**: Zoom in
-- **-**: Zoom out
-- **0**: Fit image to window
-- **1**: Actual size (100% zoom)
-
-### View Controls
-- **F / Enter**: Toggle fullscreen mode
-- **Escape**: Exit fullscreen mode
-- **I**: Toggle image info overlay
-- **S**: Start/stop slideshow
-- **T**: Toggle thumbnail strip
-- **G**: Toggle grid view
-- **B**: Back to folder selection
-
-### File Management
-- **Delete / Backspace**: Move current image to Trash (with confirmation)
-
-## Implementation Details
-
-### Event Handling Flow
-
-1. User presses a key
-2. `KeyCaptureView` receives the `NSEvent`
-3. Event is passed to `KeyboardHandler.handleKeyPress()`
-4. Handler identifies the key and calls appropriate `ImageViewerViewModel` method
-5. ViewModel updates the UI state
-6. SwiftUI automatically updates the interface
-
-### Key Code Mapping
-
-The system uses both key codes and character recognition:
-
-```swift
-// Special keys (by key code)
-case 123: // Left arrow
-case 124: // Right arrow
-case 115: // Home
-case 119: // End
-case 116: // Page Up
-case 121: // Page Down
-case 53:  // Escape
-case 36:  // Enter/Return
-case 49:  // Spacebar
-case 51:  // Delete key
-case 117: // Backspace key
-
-// Character keys (by character)
-case "f": // Fullscreen toggle
-case "+", "=": // Zoom in
-case "-": // Zoom out
-case "0": // Fit to window
-case "1": // Actual size
-case "i": // Toggle image info
-case "s": // Toggle slideshow
-case "t": // Toggle thumbnail strip
-case "g": // Toggle grid view
-case "b": // Back to folder selection
-```
-
-### Focus Management
-
-The system ensures proper keyboard focus through:
-
-1. **KeyCaptureView**: Custom NSView that accepts first responder status
-2. **Focus Maintenance**: Automatically maintains focus when needed
-3. **Hit Testing**: Configured to not interfere with mouse interactions
-
-## Integration with SwiftUI
-
-### ContentView Integration
-
-```swift
-.background(
-    KeyCaptureViewRepresentable { event in
-        return keyboardHandler.handleKeyPress(event)
-    }
-    .allowsHitTesting(false)
-)
-```
-
-### ViewModel Connection
-
-```swift
-private func setupKeyboardHandling() {
-    keyboardHandler.setImageViewerViewModel(imageViewerViewModel)
-}
-```
-
-## Testing
-
-The keyboard navigation system includes comprehensive unit tests:
-
-### Test Coverage
-- Individual key press handling
-- Navigation commands (next, previous, first, last)
-- Zoom commands (in, out, fit, actual size)
-- Fullscreen toggle and escape handling
-- View mode toggles (info, slideshow, thumbnails, grid)
-- File management (delete with confirmation)
-- Edge cases (no view model, unknown keys)
-- Integration with real view model
-
-### Mock Objects
-- `MockImageViewerViewModel`: Tracks method calls for verification
-- Test helper methods for creating `NSEvent` objects
-
-## User Experience Considerations
-
-### Discoverability
-- Keyboard shortcuts are documented in the app's Help menu (⌘?)
-- Tooltips on toolbar buttons show keyboard shortcuts
-- Shortcuts follow common conventions
-- Consolidated toolbar groups related functions logically
-
-### Responsiveness
-- All keyboard actions execute immediately
-- No delays or animation blocking
-- Smooth transitions between images
-
-### Accessibility
-- Works with VoiceOver and other assistive technologies
-- Follows macOS accessibility guidelines
-- Keyboard navigation covers all functionality
-
-## Performance
-
-### Efficiency
-- Direct event handling without intermediate layers
-- Minimal processing overhead
-- No memory leaks or retain cycles
-
-### Resource Usage
-- Lightweight key capture mechanism
-- Efficient event filtering
-- Proper cleanup on view destruction
-
-## Recent Updates
-
-### Consolidated Toolbar (Latest Version)
-- All controls moved to single top toolbar
-- Three logical sections: Navigation, View Modes, Image Actions
-- Delete functionality added with proper confirmation
-- Improved visual organization with separators
-
-### Delete Functionality
-- Safe deletion to Trash (recoverable)
-- Confirmation dialog with keyboard shortcuts (Enter/Escape)
-- Automatic navigation after deletion
-- Security-scoped access management
-
-## Future Enhancements
-
-Potential improvements to consider:
-
-1. **Customizable Shortcuts**: Allow users to customize key bindings
-2. **Additional Navigation**: Support for jumping by percentage (e.g., Ctrl+1-9)
-3. **Modifier Keys**: Support for Shift/Cmd combinations
-4. **Context Sensitivity**: Different shortcuts in different modes
-5. **Batch Operations**: Multi-select and batch delete with keyboard
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Keys Not Responding**: Ensure the main view has focus
-2. **Partial Functionality**: Check that ImageViewerViewModel is properly connected
-3. **Conflicts**: Verify no other components are capturing the same keys
-
-### Debug Information
-
-The system provides debug capabilities through:
-- Return values from `handleKeyPress()` indicate if events were handled
-- Mock objects in tests track all method calls
-- Formatted shortcuts list for documentation
+`KeyboardHandlerTests` and viewer interaction tests cover dispatch and focus boundaries. A running-app check is still required for AppKit responder behavior and menu interaction.

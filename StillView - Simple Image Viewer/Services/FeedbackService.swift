@@ -91,27 +91,15 @@ final class FeedbackService: FeedbackServiceProtocol {
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
         let osVersion = ProcessInfo.processInfo.operatingSystemVersionString
-        let architecture = getArchitecture()
         let aiEnabled = DefaultPreferencesService.shared.enableAIAnalysis
 
         return SystemInfo(
             appVersion: appVersion,
             buildNumber: buildNumber,
             osVersion: osVersion,
-            architecture: architecture,
+            architecture: "Apple Silicon",
             aiEnabled: aiEnabled
         )
-    }
-
-    /// Determines the system architecture (Apple Silicon or Intel)
-    private func getArchitecture() -> String {
-        #if arch(arm64)
-        return "Apple Silicon"
-        #elseif arch(x86_64)
-        return "Intel"
-        #else
-        return "Unknown"
-        #endif
     }
 
     /// Creates the issue template body with system information

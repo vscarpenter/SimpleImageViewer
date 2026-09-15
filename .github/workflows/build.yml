@@ -13,21 +13,19 @@ env:
   
   # Build configuration
   BUILD_CONFIGURATION: Debug
-  MACOS_VERSION: "13.5"
 
 jobs:
   build:
     name: Build and Test
-    runs-on: macos-latest
+    # GitHub public preview: macOS 27 and Xcode 27 on Apple silicon.
+    runs-on: xcode-27
     
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
       
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: latest-stable
+    - name: Verify macOS 27 toolchain
+      run: bash scripts/check-macos-toolchain.sh
         
     - name: Show Xcode Version
       run: |
@@ -63,6 +61,9 @@ jobs:
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO
           
+    - name: Verify regression test target
+      run: python3 scripts/check-test-target.py
+
     - name: Run Unit Tests
       run: |
         xcodebuild test \
@@ -94,16 +95,15 @@ jobs:
 
   code-quality:
     name: Code Quality Checks
-    runs-on: macos-latest
+    # GitHub public preview: macOS 27 and Xcode 27 on Apple silicon.
+    runs-on: xcode-27
     
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
       
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: latest-stable
+    - name: Verify macOS 27 toolchain
+      run: bash scripts/check-macos-toolchain.sh
         
     - name: SwiftLint
       run: |
@@ -129,7 +129,8 @@ jobs:
 
   security-scan:
     name: Security Scan
-    runs-on: macos-latest
+    # GitHub public preview: macOS 27 and Xcode 27 on Apple silicon.
+    runs-on: xcode-27
     
     steps:
     - name: Checkout Repository
@@ -159,7 +160,8 @@ jobs:
 
   release-build:
     name: Release Build
-    runs-on: macos-latest
+    # GitHub public preview: macOS 27 and Xcode 27 on Apple silicon.
+    runs-on: xcode-27
     if: github.ref == 'refs/heads/main'
     needs: [build, code-quality]
     
@@ -167,10 +169,8 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
       
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: latest-stable
+    - name: Verify macOS 27 toolchain
+      run: bash scripts/check-macos-toolchain.sh
         
     - name: Build Release Version
       run: |

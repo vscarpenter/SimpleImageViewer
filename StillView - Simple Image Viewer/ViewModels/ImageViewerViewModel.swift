@@ -21,6 +21,7 @@ class ImageViewerViewModel: ObservableObject {
     @Published var isSlideshow: Bool = false
     @Published var slideshowInterval: Double = 3.0
     @Published var viewMode: ViewMode = .single
+    @Published private(set) var isDeletingImage: Bool = false
 
     // Inspector state (Studio redesign): one docked panel, one active tab.
     @Published var inspectorVisible: Bool = false
@@ -77,31 +78,73 @@ class ImageViewerViewModel: ObservableObject {
     // MARK: - Private Properties
     private var folderContent: FolderContent?
     private var cancellables = Set<AnyCancellable>()
+    private var currentImageLoad: AnyCancellable?
+    private var activeImageLoadID: UUID?
+    private var activeImageLoadURL: URL?
+    private var enhancementTask: Task<Void, Never>?
+    private var expectedImageSizeTask: Task<Void, Never>?
+    private var failedImageURLs: Set<URL> = []
     private let imageLoaderService: ImageLoaderService
+    private let imageEnhancer: (NSImage) async throws -> NSImage
+    private let expectedImageSizeLoader: (URL) async -> CGSize?
     private var preferencesService: PreferencesService
     private let errorHandlingService: ErrorHandlingService
+    private let trashService: any ImageTrashService
     private var slideshowTimer: Timer?
     private let thumbnailCache = NSCache<NSURL, NSImage>()
     private let sharingDelegate = SharingServiceDelegate()
     
-    // MARK: - macOS 26 Enhanced Services
-    private let enhancedImageProcessing = EnhancedImageProcessingService.shared
+    // MARK: - Enhanced Services
     private let enhancedSecurity = EnhancedSecurityService.shared
-    private let imageInsightService: AppleIntelligenceInsightsService
+    private let insightAvailabilityProvider: () -> ImageInsightAvailability
+    private let insightInputProvider: (ImageFile) -> ImageInsightInput
+    private var systemInsightAvailability: ImageInsightAvailability = .unavailable(.unknown)
+    private var currentImageRevision: ImageRevision?
+
+    private struct ImageRevision: Equatable {
+        let url: URL
+        let byteCount: Int64?
+        let modificationDate: Date?
+    }
     
     // Zoom levels for quick access
     private let zoomLevels: [Double] = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 5.0]
     private let fitToWindowZoom: Double = -1.0 // Special value for fit-to-window
+    private(set) var fitZoomLevel: Double = 1.0
 
     // MARK: - Initialization
+    // The dependencies keep image loading, Insights, and destructive file operations independently testable.
+    // swiftlint:disable:next function_parameter_count
     init(imageLoaderService: ImageLoaderService = DefaultImageLoaderService(),
          preferencesService: PreferencesService = DefaultPreferencesService(),
          errorHandlingService: ErrorHandlingService = ErrorHandlingService.shared,
-         imageInsightService: AppleIntelligenceInsightsService = .shared) {
+         imageInsightService: any ImageInsightGenerating = AppleIntelligenceInsightsService.shared,
+         imageEnhancer: ((NSImage) async throws -> NSImage)? = nil,
+         expectedImageSizeLoader: ((URL) async -> CGSize?)? = nil,
+         insightAvailabilityProvider: (() -> ImageInsightAvailability)? = nil,
+         insightInputProvider: ((ImageFile) -> ImageInsightInput)? = nil,
+         trashService: (any ImageTrashService)? = nil) {
         self.imageLoaderService = imageLoaderService
+        self.imageEnhancer = imageEnhancer ?? { image in
+            let features: Set<ProcessingFeature> = [.smartCropping, .colorEnhancement, .noiseReduction]
+            return try await EnhancedImageProcessingService.shared.processImageAsync(image, with: features).currentImage
+        }
+        self.expectedImageSizeLoader = expectedImageSizeLoader ?? { url in
+            let task = Task.detached(priority: .utility) {
+                guard !Task.isCancelled else { return nil as CGSize? }
+                return Self.readExpectedImageSize(at: url)
+            }
+            return await withTaskCancellationHandler {
+                await task.value
+            } onCancel: {
+                task.cancel()
+            }
+        }
         self.preferencesService = preferencesService
         self.errorHandlingService = errorHandlingService
-        self.imageInsightService = imageInsightService
+        self.trashService = trashService ?? SystemImageTrashService()
+        self.insightAvailabilityProvider = insightAvailabilityProvider ?? AppleIntelligenceInsightsService.shared.availability
+        self.insightInputProvider = insightInputProvider ?? AppleIntelligenceInsightsService.shared.makeInput
         self.imageInsightViewModel = ImageInsightViewModel(service: imageInsightService)
         self.isAIAnalysisEnabled = preferencesService.enableAIAnalysis
         self.isEnhancedProcessingEnabled = preferencesService.enableImageEnhancements
@@ -155,6 +198,8 @@ class ImageViewerViewModel: ObservableObject {
     /// Load images from folder content
     /// - Parameter folderContent: The folder content containing image files
     func loadFolderContent(_ folderContent: FolderContent) {
+        cancelLoading()
+        failedImageURLs.removeAll()
         self.folderContent = folderContent
         self.allImageFiles = folderContent.imageFiles
         self.totalImages = folderContent.totalImages
@@ -168,6 +213,7 @@ class ImageViewerViewModel: ObservableObject {
             loadCurrentImage()
         } else {
             currentImage = nil
+            prepareImageInsightForCurrentImage()
             errorMessage = "No images found in the selected folder"
         }
     }
@@ -219,34 +265,26 @@ class ImageViewerViewModel: ObservableObject {
     /// Set the zoom level
     /// - Parameter level: The zoom level (1.0 = 100%, -1.0 = fit to window)
     func setZoom(_ level: Double) {
-        zoomLevel = level
+        guard level.isFinite else { return }
+        zoomLevel = level == fitToWindowZoom ? level : min(max(level, 0.01), max(5, fitZoomLevel))
+    }
+
+    /// The view supplies the pixel scale needed to fit its current drawable area.
+    func updateFitZoomLevel(_ level: Double) {
+        guard level.isFinite, level > 0 else { return }
+        fitZoomLevel = level
     }
     
     /// Zoom in to the next level
     func zoomIn() {
-        if zoomLevel == fitToWindowZoom {
-            // If currently fit-to-window, go to 100%
-            zoomLevel = 1.0
-        } else {
-            // Find next higher zoom level
-            let nextLevel = zoomLevels.first { $0 > zoomLevel } ?? zoomLevels.last ?? 5.0
-            zoomLevel = nextLevel
-        }
+        let currentLevel = isZoomFitToWindow ? fitZoomLevel : zoomLevel
+        zoomLevel = zoomLevels.first { $0 > currentLevel } ?? max(currentLevel, 5)
     }
     
     /// Zoom out to the previous level
     func zoomOut() {
-        if zoomLevel == fitToWindowZoom {
-            // Already at minimum, do nothing
-            return
-        } else if zoomLevel <= zoomLevels.first ?? 0.1 {
-            // Go to fit-to-window
-            zoomLevel = fitToWindowZoom
-        } else {
-            // Find next lower zoom level
-            let previousLevel = zoomLevels.last { $0 < zoomLevel } ?? zoomLevels.first ?? 0.1
-            zoomLevel = previousLevel
-        }
+        let currentLevel = isZoomFitToWindow ? fitZoomLevel : zoomLevel
+        zoomLevel = zoomLevels.last { $0 < currentLevel } ?? max(0.01, currentLevel / 2)
     }
     
     /// Reset zoom to fit window
@@ -327,13 +365,19 @@ class ImageViewerViewModel: ObservableObject {
     
     /// Cancel current loading operation
     func cancelLoading() {
-        if let currentImageFile = currentImageFile {
-            imageLoaderService.cancelLoading(for: currentImageFile.url)
-        }
+        cancelActiveImageLoad()
         isLoading = false
         loadingProgress = 0.0
         expectedImageSize = nil
     }
+
+    /// An explicit retry starts a new recovery attempt for the current selection.
+    func retryCurrentImage() {
+        loadCurrentImage()
+    }
+
+    /// Identifies the selection/load that metadata belongs to, including same-URL reloads.
+    var currentImageRequestID: UUID? { activeImageLoadID }
 
     // MARK: - AI Insights UI Methods
 
@@ -343,29 +387,27 @@ class ImageViewerViewModel: ObservableObject {
     
     /// Check if AI Insights is supported by the system (independent of user preference)
     var isAIInsightsSupported: Bool {
-        imageInsightAvailability.isUserVisible
+        systemInsightAvailability.isUserVisible
     }
     
     /// Update AI Insights availability based on system compatibility and preferences
     func updateAIInsightsAvailability() {
-        imageInsightAvailability = imageInsightService.availability()
-        let userEnabledAI = preferencesService.enableAIAnalysis
-        isAIInsightsAvailable = imageInsightAvailability.isUserVisible && userEnabledAI
+        systemInsightAvailability = insightAvailabilityProvider()
+        isAIAnalysisEnabled = preferencesService.enableAIAnalysis
+        imageInsightAvailability = isAIAnalysisEnabled ? systemInsightAvailability : .unavailable(.appDisabled)
+        isAIInsightsAvailable = imageInsightAvailability.isAvailable
         imageInsightViewModel.updateAvailability(imageInsightAvailability)
+    }
 
-        // Fall back to the Info tab if Insights becomes unavailable
-        if !isAIInsightsAvailable {
-            if inspectorTab == .insights {
-                inspectorTab = .info
-            }
-            cancelImageInsightGeneration()
-        }
-        
-        Logger.info("AI Insights availability updated - User: \(userEnabledAI), Available: \(isAIInsightsAvailable)", context: "AIInsights")
+    func enableAIInsights() {
+        preferencesService.enableAIAnalysis = true
+        preferencesService.savePreferences()
+        prepareImageInsightForCurrentImage()
     }
 
     func generateImageInsight() {
         prepareImageInsightForCurrentImage()
+        guard canGenerateImageInsight else { return }
         imageInsightViewModel.generate()
     }
 
@@ -422,25 +464,8 @@ class ImageViewerViewModel: ObservableObject {
 
     /// Handle AI Insights preference change notification
     private func handleAIAnalysisPreferenceChange(_ notification: Notification) {
-        // Extract the new preference value from the notification
-        let newValue: Bool
-
-        // Safely extract the preference value with fallback
-        if let notificationValue = notification.object as? Bool {
-            newValue = notificationValue
-        } else {
-            // Fallback to reading directly from preferences service
-            newValue = preferencesService.enableAIAnalysis
-            Logger.warning("Preference notification missing value, using fallback", context: "AIInsights")
-        }
-
-        // Update the local state
-        updateAIAnalysisEnabled(newValue)
-
-        // If AI Insights is disabled, ensure panel state persistence is also reset.
-        if !newValue {
-            Logger.info("AI Insights disabled - panel state will be reset", context: "AIInsights")
-        }
+        // Read the owning preference store; unrelated windows may use a different store.
+        prepareImageInsightForCurrentImage()
     }
     
     /// Handle automatic image enhancement preference change
@@ -462,21 +487,6 @@ class ImageViewerViewModel: ObservableObject {
         loadCurrentImage()
     }
     
-    /// Update the AI Insights enabled state and synchronize UI.
-    private func updateAIAnalysisEnabled(_ enabled: Bool) {
-        guard isAIAnalysisEnabled != enabled else { return }
-        
-        isAIAnalysisEnabled = enabled
-
-        // Update AI Insights availability based on new preference; it already
-        // falls back to the Info tab and cancels generation when disabled.
-        updateAIInsightsAvailability()
-
-        if enabled {
-            prepareImageInsightForCurrentImage()
-        }
-    }
-    
     /// Initialize AI Insights state for a new folder session
     private func initializeAIInsightsForNewSession() {
         // Update availability for the new session
@@ -496,178 +506,148 @@ class ImageViewerViewModel: ObservableObject {
 
     /// Reset AI Insights state when ending a session
     private func resetAIInsightsForSessionEnd() {
-        cancelImageInsightGeneration()
+        currentImageRevision = nil
+        imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
         Logger.info("AI Insights state reset for session end")
     }
 
-    private func prepareImageInsightForCurrentImage() {
+    private func prepareImageInsightForCurrentImage(reloadIfChanged: Bool = true) {
         updateAIInsightsAvailability()
-        guard isAIAnalysisEnabled else {
-            imageInsightViewModel.updateAvailability(.unavailable(.unknown))
-            return
-        }
-
         guard let imageFile = currentImageFile else {
-            imageInsightViewModel.prepareForImage(nil, availability: .unavailable(.imageUnavailable))
+            currentImageRevision = nil
+            imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
             return
         }
 
-        let input = imageInsightService.makeInput(for: imageFile)
+        let input = insightInputProvider(imageFile)
+        let revision = ImageRevision(url: imageFile.url, byteCount: input.fileByteCount,
+                                     modificationDate: input.fileModificationDate)
+        if reloadIfChanged, let previousRevision = currentImageRevision,
+           previousRevision.url == revision.url, previousRevision != revision {
+            // The stage and Insights must refer to the same file revision after an external edit.
+            loadCurrentImage()
+            return
+        }
+        currentImageRevision = revision
         imageInsightViewModel.prepareForImage(input, availability: imageInsightAvailability)
     }
 
-    private func loadCurrentImage() {
-        cancelImageInsightGeneration()
+    private func cancelActiveImageLoad() {
+        // Invalidate first: cancellation alone cannot suppress work already queued for publication.
+        activeImageLoadID = nil
+        currentImageLoad?.cancel()
+        currentImageLoad = nil
+        enhancementTask?.cancel()
+        enhancementTask = nil
+        expectedImageSizeTask?.cancel()
+        expectedImageSizeTask = nil
+        if let url = activeImageLoadURL {
+            imageLoaderService.cancelLoading(for: url)
+        }
+        activeImageLoadURL = nil
+    }
+
+    private func isCurrentImageLoad(_ loadID: UUID, for imageFile: ImageFile) -> Bool {
+        activeImageLoadID == loadID && currentImageFile?.url == imageFile.url
+    }
+
+    private func loadCurrentImage(resetRecovery: Bool = true) {
+        cancelActiveImageLoad()
+        if resetRecovery {
+            failedImageURLs.removeAll()
+        }
+        currentImage = nil
+        expectedImageSize = nil
+        isLoading = false
+        loadingProgress = 0
         guard let imageFile = currentImageFile else {
-            currentImage = nil
-            expectedImageSize = nil
-            imageInsightViewModel.prepareForImage(nil, availability: .unavailable(.imageUnavailable))
+            currentImageRevision = nil
+            imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
             return
         }
-        
-        // Clear any previous error and state
+
+        let loadID = UUID()
+        activeImageLoadID = loadID
+        activeImageLoadURL = imageFile.url
         errorMessage = nil
-        expectedImageSize = nil
-        prepareImageInsightForCurrentImage()
-
-        // Set loading state
+        prepareImageInsightForCurrentImage(reloadIfChanged: false)
         isLoading = true
-        loadingProgress = 0.0
-        
-        // Cancel any previous loading
-        imageLoaderService.cancelLoading(for: imageFile.url)
-        
-        // Try to get expected image size from metadata for better skeleton loading
-        loadExpectedImageSize(for: imageFile)
-        
-        // Load the image with enhanced processing if available
-        loadImageWithEnhancements(imageFile)
-    }
-    
-    /// Load image with macOS 26 enhancements
-    private func loadImageWithEnhancements(_ imageFile: ImageFile) {
-        // Use enhanced image processing only when available and enabled by the user
-        if isEnhancedProcessingEnabled {
-            loadImageWithEnhancedProcessing(imageFile)
-        } else {
-            loadImageStandard(imageFile)
-        }
-    }
-    
-    /// Load image with enhanced processing
-    private func loadImageWithEnhancedProcessing(_ imageFile: ImageFile) {
-        imageLoaderService.loadImage(from: imageFile.url)
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { [weak self] completion in
-                    self?.isLoading = false
-                    self?.loadingProgress = 0.0
-                    
-                    if case .failure(let error) = completion {
-                        self?.handleImageLoadingError(error, for: imageFile)
-                    }
-                },
-                receiveValue: { [weak self] image in
-                    self?.processImageWithEnhancements(image, for: imageFile)
-                }
-            )
-            .store(in: &cancellables)
-    }
-    
-    /// Load image with standard processing
-    private func loadImageStandard(_ imageFile: ImageFile) {
-        imageLoaderService.loadImage(from: imageFile.url)
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { [weak self] completion in
-                    self?.isLoading = false
-                    self?.loadingProgress = 0.0
-                    
-                    if case .failure(let error) = completion {
-                        self?.handleImageLoadingError(error, for: imageFile)
-                    }
-                },
-                receiveValue: { [weak self] image in
-                    guard let self else { return }
-                    self.currentImage = image
-                    self.isLoading = false
-                    self.loadingProgress = 1.0
-                    
-                    // Reset zoom to fit when loading new image
-                    self.zoomToFit()
-                }
-            )
-            .store(in: &cancellables)
-    }
-    
-    /// Process image with macOS 26 enhancements
-    private func processImageWithEnhancements(_ image: NSImage, for imageFile: ImageFile) {
-        Task {
-            do {
-                // Apply enhanced processing features
-                let features: Set<ProcessingFeature> = [
-                    .smartCropping,
-                    .colorEnhancement,
-                    .noiseReduction
-                ]
-                
-                let processedImage = try await enhancedImageProcessing.processImageAsync(
-                    image,
-                    with: features
-                )
-                
-                if !self.isEnhancedProcessingEnabled {
-                    await MainActor.run {
-                        self.currentImage = image
-                        self.isLoading = false
-                        self.loadingProgress = 1.0
-                        self.zoomToFit()
-                    }
-                    return
-                }
+        loadExpectedImageSize(for: imageFile, loadID: loadID)
 
-                await MainActor.run {
-                    self.currentImage = processedImage.currentImage
-                    self.isLoading = false
-                    self.loadingProgress = 1.0
-                    
-                    // Reset zoom to fit when loading new image
-                    self.zoomToFit()
+        currentImageLoad = imageLoaderService.loadImage(from: imageFile.url)
+            .receive(on: DispatchQueue.main)
+            .sink(
+                receiveCompletion: { [weak self] completion in
+                    guard let self, self.isCurrentImageLoad(loadID, for: imageFile) else { return }
+                    self.currentImageLoad = nil
+                    // A successful decode can still have an enhancement in progress.
+                    if case .failure(let error) = completion {
+                        self.isLoading = false
+                        self.loadingProgress = 0
+                        self.expectedImageSizeTask?.cancel()
+                        self.expectedImageSize = nil
+                        self.handleImageLoadingError(error, for: imageFile)
+                    }
+                },
+                receiveValue: { [weak self] image in
+                    guard let self, self.isCurrentImageLoad(loadID, for: imageFile) else { return }
+                    if self.isEnhancedProcessingEnabled {
+                        self.processImageWithEnhancements(image, for: imageFile, loadID: loadID)
+                    } else {
+                        self.publishImage(image, for: imageFile, loadID: loadID)
+                    }
                 }
+            )
+    }
+
+    private func publishImage(_ image: NSImage, for imageFile: ImageFile, loadID: UUID) {
+        guard isCurrentImageLoad(loadID, for: imageFile) else { return }
+        currentImage = image
+        isLoading = false
+        loadingProgress = 1
+        failedImageURLs.removeAll()
+        zoomToFit()
+    }
+
+    private func processImageWithEnhancements(_ image: NSImage, for imageFile: ImageFile, loadID: UUID) {
+        enhancementTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let processedImage = try await self.imageEnhancer(image)
+                guard !Task.isCancelled, self.isCurrentImageLoad(loadID, for: imageFile) else { return }
+                self.publishImage(processedImage, for: imageFile, loadID: loadID)
             } catch {
-                await MainActor.run {
-                    // Fallback to standard image if processing fails
-                    self.currentImage = image
-                    self.isLoading = false
-                    self.loadingProgress = 1.0
-                    self.zoomToFit()
-                }
+                guard !Task.isCancelled, self.isCurrentImageLoad(loadID, for: imageFile) else { return }
+                // A processing failure still leaves a usable original image.
+                self.publishImage(image, for: imageFile, loadID: loadID)
             }
         }
     }
-    
-    private func loadExpectedImageSize(for imageFile: ImageFile) {
-        // Try to get image dimensions from metadata without loading the full image
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let imageSource = CGImageSourceCreateWithURL(imageFile.url as CFURL, nil),
-                  CGImageSourceGetCount(imageSource) > 0 else {
-                return
-            }
-            
-            // Get image properties
-            if let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any],
-               let width = properties[kCGImagePropertyPixelWidth] as? NSNumber,
-               let height = properties[kCGImagePropertyPixelHeight] as? NSNumber {
-                
-                let imageSize = CGSize(width: width.doubleValue, height: height.doubleValue)
-                
-                DispatchQueue.main.async {
-                    self?.expectedImageSize = imageSize
-                }
-            }
+
+    private func loadExpectedImageSize(for imageFile: ImageFile, loadID: UUID) {
+        expectedImageSizeTask = Task { [weak self] in
+            guard let self else { return }
+            let size = await self.expectedImageSizeLoader(imageFile.url)
+            guard !Task.isCancelled, self.isCurrentImageLoad(loadID, for: imageFile) else { return }
+            self.expectedImageSize = size
         }
     }
-    
+
+    nonisolated private static func readExpectedImageSize(at url: URL) -> CGSize? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              CGImageSourceGetCount(source) > 0,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? NSNumber,
+              let height = properties[kCGImagePropertyPixelHeight] as? NSNumber else {
+            return nil
+        }
+        let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+        if (5...8).contains(orientation) {
+            return CGSize(width: height.doubleValue, height: width.doubleValue)
+        }
+        return CGSize(width: width.doubleValue, height: height.doubleValue)
+    }
+
     private func preloadAdjacentImages() {
         var urlsToPreload: [URL] = []
         
@@ -687,82 +667,45 @@ class ImageViewerViewModel: ObservableObject {
     }
     
     private func handleImageLoadingError(_ error: Error, for imageFile: ImageFile) {
-        if let imageLoaderError = error as? ImageLoaderError {
-            // Use the error handling service for consistent error handling
-            errorHandlingService.handleImageLoaderError(imageLoaderError, imageURL: imageFile.url)
-            
-            // For corrupted or unsupported images, try to skip to next image automatically
-            if imageLoaderError == .corruptedImage || imageLoaderError == .unsupportedFormat {
-                skipToNextValidImage()
-            }
-        } else {
-            // Handle generic errors
-            errorMessage = "Failed to load image: \(imageFile.displayName)"
-            
-            // Auto-clear error after 3 seconds
-            let currentErrorMessage = errorMessage
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                if self?.errorMessage == currentErrorMessage {
-                    self?.errorMessage = nil
-                }
-            }
+        errorMessage = "Failed to load \(imageFile.displayName): \(error.localizedDescription)"
+        guard let loaderError = error as? ImageLoaderError else { return }
+        errorHandlingService.handleImageLoaderError(loaderError, imageURL: imageFile.url)
+        if loaderError == .corruptedImage || loaderError == .unsupportedFormat {
+            failedImageURLs.insert(imageFile.url)
+            skipToNextValidImage()
         }
     }
-    
-    /// Skip to the next valid image when current image fails to load
+
+    /// Recovery spans successive failures, so two bad files cannot keep selecting each other.
     private func skipToNextValidImage() {
-        // Try to find the next valid image
-        var nextIndex = currentIndex + 1
-        var attempts = 0
-        let maxAttempts = min(5, totalImages) // Limit attempts to avoid infinite loops
-        
-        while nextIndex < totalImages && attempts < maxAttempts {
-            let nextImageFile = allImageFiles[nextIndex]
-            
-            // Quick check if the file exists and is readable
-            if FileManager.default.fileExists(atPath: nextImageFile.url.path) {
-                // Try to load this image
-                navigateToIndex(nextIndex)
-                return
-            }
-            
-            nextIndex += 1
-            attempts += 1
+        let maximumAttempts = min(5, totalImages)
+        let nextIndices = Array((currentIndex + 1)..<totalImages)
+        let previousIndices = Array((0..<currentIndex).reversed())
+        if failedImageURLs.count < maximumAttempts,
+           let nextIndex = (nextIndices + previousIndices).first(where: {
+               !failedImageURLs.contains(allImageFiles[$0].url)
+           }) {
+            currentIndex = nextIndex
+            loadCurrentImage(resetRecovery: false)
+            return
         }
-        
-        // If no valid next image found, try previous images
-        nextIndex = currentIndex - 1
-        attempts = 0
-        
-        while nextIndex >= 0 && attempts < maxAttempts {
-            let previousImageFile = allImageFiles[nextIndex]
-            
-            if FileManager.default.fileExists(atPath: previousImageFile.url.path) {
-                navigateToIndex(nextIndex)
-                return
-            }
-            
-            nextIndex -= 1
-            attempts += 1
+
+        stopSlideshow()
+        if failedImageURLs.count >= totalImages {
+            errorMessage = "No valid images found in the current folder"
+        } else {
+            errorMessage = "Could not open \(failedImageURLs.count) images. Select another image to try again."
         }
-        
-        // If no valid images found, show error
-        errorMessage = "No valid images found in the current folder"
-        errorHandlingService.showNotification(
-            "All images in the current folder appear to be corrupted or inaccessible",
-            type: .error
-        )
     }
-    
+
     /// Clear all content and prepare for navigation back to folder selection
     func clearContent() {
         // Stop slideshow if running
         stopSlideshow()
         
-        // Cancel any ongoing loading
-        if let currentImageFile = currentImageFile {
-            imageLoaderService.cancelLoading(for: currentImageFile.url)
-        }
+        // Cancel decoding, enhancement, and metadata publication before clearing the selection.
+        cancelLoading()
+        failedImageURLs.removeAll()
         
         // Clear the image cache to free memory
         imageLoaderService.clearCache()
@@ -979,125 +922,126 @@ class ImageViewerViewModel: ObservableObject {
     
     // MARK: - Delete Methods
     
-    /// Move the current image to trash with confirmation
-    @MainActor
+    /// Confirm and recycle one captured file, retaining its folder access until recycling finishes.
     func moveCurrentImageToTrash() async {
-        guard let currentImageFile = currentImageFile else {
+        guard !isDeletingImage else { return }
+        guard let imageFile = currentImageFile, let folderURL = currentFolderURL else {
             errorHandlingService.showNotification("No image to delete", type: .warning)
             return
         }
-        
-        // Show confirmation dialog
-        let confirmed = await showDeleteConfirmation(for: currentImageFile)
-        guard confirmed else { return }
-        
-        // Ensure security-scoped access before attempting delete
-        let fileURL = currentImageFile.url
-        let parentURL = fileURL.deletingLastPathComponent()
-        
-        // Start security-scoped access for the parent directory
-        let hasAccess = parentURL.startAccessingSecurityScopedResource()
-        
-        defer {
-            if hasAccess {
-                parentURL.stopAccessingSecurityScopedResource()
-            }
-        }
-        
-        guard hasAccess else {
+
+        // Guard both the confirmation and the asynchronous file operation against repeated shortcuts.
+        isDeletingImage = true
+        defer { isDeletingImage = false }
+        guard await trashService.confirmDeletion(for: imageFile), !Task.isCancelled else { return }
+
+        // Use the selected folder's scoped URL, preserving its sandbox authority across folder changes.
+        guard trashService.startAccess(to: folderURL) else {
             errorHandlingService.showNotification(
                 "Permission denied. Please re-select the folder to grant delete permissions.",
                 type: .error
             )
             return
         }
-        
-        // Move to trash using NSWorkspace
-        NSWorkspace.shared.recycle([fileURL], completionHandler: { (trashedItems, error) in
-            DispatchQueue.main.async {
-                if let error = error {
-                    // Check for specific permission errors
-                    if error.localizedDescription.contains("permission") || 
-                       error.localizedDescription.contains("Operation not permitted") {
-                        self.errorHandlingService.showNotification(
-                            "Permission denied. The app needs write access to this folder. Please re-select the folder.",
-                            type: .error
-                        )
-                    } else {
-                        self.errorHandlingService.showNotification(
-                            "Failed to move image to trash: \(error.localizedDescription)",
-                            type: .error
-                        )
-                    }
-                } else {
-                    // Successfully moved to trash
-                    self.handleImageDeletion()
-                    self.errorHandlingService.showNotification(
-                        "Image moved to Trash",
-                        type: .success
-                    )
-                }
-            }
-        })
-    }
-    
-    /// Show confirmation dialog for deleting an image
-    @MainActor
-    private func showDeleteConfirmation(for imageFile: ImageFile) async -> Bool {
-        return await withCheckedContinuation { continuation in
-            DispatchQueue.main.async {
-                let alert = NSAlert()
-                alert.messageText = "Move to Trash"
-                alert.informativeText = "Are you sure you want to move \"\(imageFile.displayName)\" to the Trash? This action can be undone from the Trash."
-                alert.alertStyle = .warning
-                alert.addButton(withTitle: "Move to Trash")
-                alert.addButton(withTitle: "Cancel")
-                
-                // Set the trash button as the default (pressing Enter)
-                if let trashButton = alert.buttons.first {
-                    trashButton.keyEquivalent = "\r" // Enter key
-                }
-                
-                // Set cancel button shortcut
-                if alert.buttons.count > 1 {
-                    alert.buttons[1].keyEquivalent = "\u{1b}" // Escape key
-                }
-                
-                // Run the alert
-                let response = alert.runModal()
-                continuation.resume(returning: response == .alertFirstButtonReturn)
+        defer { trashService.stopAccess(to: folderURL) }
+
+        do {
+            try await trashService.recycle(imageFile.url)
+            handleImageDeletion(at: imageFile.url, in: folderURL)
+            errorHandlingService.showNotification("Image moved to Trash", type: .success)
+        } catch {
+            let cocoaError = error as NSError
+            if cocoaError.domain == NSCocoaErrorDomain && cocoaError.code == NSFileWriteNoPermissionError {
+                errorHandlingService.showNotification(
+                    "Permission denied. The app needs write access to this folder. Please re-select the folder.",
+                    type: .error
+                )
+            } else {
+                errorHandlingService.showNotification(
+                    "Failed to move image to trash: \(error.localizedDescription)",
+                    type: .error
+                )
             }
         }
     }
-    
-    /// Handle the image deletion by updating the image list and navigation
-    private func handleImageDeletion() {
-        let deletedIndex = currentIndex
-        
-        // Remove the image from our array
+
+    /// Reconcile the recycled identity only in its folder, preserving any newer selection.
+    private func handleImageDeletion(at fileURL: URL, in folderURL: URL) {
+        guard currentFolderURL == folderURL,
+              let deletedIndex = allImageFiles.firstIndex(where: { $0.url == fileURL }) else { return }
+
+        let selectedURL = currentImageFile?.url
         allImageFiles.remove(at: deletedIndex)
+        thumbnailCache.removeObject(forKey: fileURL as NSURL)
+        failedImageURLs.remove(fileURL)
         totalImages = allImageFiles.count
-        
-        // Handle navigation after deletion
-        if totalImages == 0 {
-            // No more images, go back to folder selection
+
+        guard totalImages > 0 else {
+            currentIndex = 0
+            stopSlideshow()
+            errorMessage = nil
+            loadCurrentImage()
+            folderContent = FolderContent(folderURL: folderURL, imageFiles: [])
             shouldNavigateToFolderSelection = true
             return
         }
-        
-        // Adjust current index if necessary
-        if currentIndex >= totalImages {
-            currentIndex = totalImages - 1
+
+        if let selectedURL, selectedURL != fileURL,
+           let selectedIndex = allImageFiles.firstIndex(where: { $0.url == selectedURL }) {
+            // Index shifts do not invalidate a still-current decode or its displayed image.
+            currentIndex = selectedIndex
+        } else {
+            currentIndex = min(deletedIndex, totalImages - 1)
+            loadCurrentImage()
         }
-        
-        // Load the new current image
-        loadCurrentImage()
+        folderContent = FolderContent(folderURL: folderURL, imageFiles: allImageFiles, currentIndex: currentIndex)
     }
     
     /// Check if deletion is available for the current image
     var canDeleteCurrentImage: Bool {
-        return currentImageFile != nil
+        return currentImageFile != nil && !isDeletingImage
     }
+}
+
+/// Isolates confirmation and sandboxed recycling so completion races can be verified without deleting files.
+@MainActor
+protocol ImageTrashService: AnyObject {
+    func confirmDeletion(for imageFile: ImageFile) async -> Bool
+    func recycle(_ url: URL) async throws
+    func startAccess(to url: URL) -> Bool
+    func stopAccess(to url: URL)
+}
+
+@MainActor
+private final class SystemImageTrashService: ImageTrashService {
+    func confirmDeletion(for imageFile: ImageFile) async -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Move to Trash"
+        alert.informativeText = "Are you sure you want to move \"\(imageFile.displayName)\" to the Trash? This action can be undone from the Trash."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Move to Trash")
+        alert.addButton(withTitle: "Cancel")
+        alert.buttons.first?.keyEquivalent = "\r"
+        alert.buttons.last?.keyEquivalent = "\u{1b}"
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    func recycle(_ url: URL) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            NSWorkspace.shared.recycle([url]) { recycledURLs, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if recycledURLs[url] != nil {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: CocoaError(.fileWriteUnknown))
+                }
+            }
+        }
+    }
+
+    func startAccess(to url: URL) -> Bool { url.startAccessingSecurityScopedResource() }
+    func stopAccess(to url: URL) { url.stopAccessingSecurityScopedResource() }
 }
 
 // MARK: - Sharing Service Delegate

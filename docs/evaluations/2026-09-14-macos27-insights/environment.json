@@ -1,0 +1,8 @@
+{
+  "hw.model": "Mac16,11",
+  "hw.memsize": "51539607552",
+  "machdep.cpu.brand_string": "Apple M4 Pro",
+  "swiftVersion": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0",
+  "xcodeVersion": "Xcode 27.0\nBuild version 27A266a",
+  "fixtureGeneratorSHA256": "7a86decdc0f5fd0aac6fe900c7f323e047d57c2ed397f3054d91bdefba18a2cd"
+}

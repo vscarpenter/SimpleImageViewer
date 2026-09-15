@@ -1,0 +1,7 @@
+4b7baaeb1cfa0455420cd1b12db4fc94b32d13c25f796a1062c4d1cdd0dd857c  /private/tmp/stillview-macos27-baseline/StillView - Simple Image Viewer/Models/ImageInsightCore.swift
+ebddd8307c4b1ccfc958a4e26603cff7dd6e81be59c54df5312ab0c385821870  /private/tmp/stillview-macos27-baseline/StillView - Simple Image Viewer/Services/ImagePerceptionService.swift
+165630b859a30d48313ee5ac146332ee17d0964b9eceb7d722aa3720a5511ea9  /private/tmp/stillview-macos27-baseline/StillView - Simple Image Viewer/Services/ImageContentTypeClassifier.swift
+6ff841881b7b4a9fb7c58ff9e7aa44a1f29b12c7192a2392f5a154b9eef3a94f  /private/tmp/stillview-macos27-baseline/StillView - Simple Image Viewer/Services/InsightOutputValidator.swift
+4ea8478c45556323b8138a56a6a88163829770996f0c4c67cbf6ab82c83310fd  /private/tmp/stillview-macos27-baseline/StillView - Simple Image Viewer/Services/ImageMetadataService.swift
+dc0a9dedf7ce2cc4ac3a45db8ce46c0c12539d62b4739565b5083a05100a800a  /private/tmp/stillview-macos27-baseline/StillView - Simple Image Viewer/Services/AppleIntelligenceInsightsService.swift
+49ec2079193fde8f85d7ea51470db09fead1a72de7cf866dd0cfa9725cbde517  /private/tmp/stillview-macos27-evidence/Runner.swift

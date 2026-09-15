@@ -110,7 +110,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Next Image",
-                description: "Navigate to the next image in the folder",
+                description: "Navigate to the next image; Space stops an active slideshow",
                 shortcut: "→ or Space",
                 type: .shortcut
             ),
@@ -158,13 +158,13 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Toggle Fullscreen",
-                description: "Enter or exit fullscreen viewing mode",
+                description: "F toggles fullscreen; Enter opens the selection in Grid and toggles fullscreen in Single or Strip",
                 shortcut: "F or Enter",
                 type: .shortcut
             ),
             HelpContentItem(
-                title: "Exit Fullscreen",
-                description: "Exit fullscreen mode",
+                title: "Step Back",
+                description: "Exit fullscreen, or return from Grid or Strip to Single. Escape does not return to folder selection.",
                 shortcut: "Escape",
                 type: .shortcut
             ),
@@ -220,125 +220,103 @@ extension HelpSection {
     )
     
     static let consolidatedToolbar = HelpSection(
-        title: "Consolidated Toolbar",
+        title: "Toolbar",
         icon: "rectangle.3.group",
         items: [
             HelpContentItem(
-                title: "Streamlined Design",
-                description: "All controls are now organized in a single top toolbar for a cleaner, more intuitive interface. No more bottom toolbar taking up screen space.",
+                title: "Folder and Image Counter",
+                description: "Use the folder menu on the left to choose another folder or reopen a recent one. The counter shows your position in the current collection.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Left Section: Navigation & Context",
-                description: "Contains the Back button, image counter (e.g., '4 of 4'), and folder selection button. Everything you need for navigation and context awareness.",
+                title: "Single, Strip, and Grid",
+                description: "Choose Single to focus on one image, Strip to add a docked filmstrip, or Grid to browse thumbnails in the viewing area. Narrow windows show icons for these modes.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Center Section: View Mode Controls",
-                description: "Groups all view-related toggles: Image Info (I), Slideshow (S), Thumbnail Strip (T), and Grid View (G). Easy to find and logically grouped.",
+                title: "Image Actions",
+                description: "The toolbar provides slideshow, sharing, Trash, and inspector controls. Single and Strip include zoom controls; Grid includes thumbnail density and sorting.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Right Section: Image Actions & Zoom",
-                description: "Contains Share, Delete (trash), Zoom controls (-, zoom%, +, fit, 1:1), and filename toggle. All image manipulation tools in one place.",
+                title: "Compact Windows",
+                description: "In narrow windows, use the toolbar’s More actions menu for additional image actions and view controls.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Visual Separators",
-                description: "Subtle dividers between toolbar sections help visually organize the controls while maintaining a clean, unified appearance.",
+                title: "Keyboard Shortcuts",
+                description: "Hover over a control for its label or shortcut. Press B to return to folder selection, or use File → Back to Folder Selection.",
                 type: .tip
-            ),
-            HelpContentItem(
-                title: "Hover for Shortcuts",
-                description: "Hover over any toolbar button to see its keyboard shortcut in a tooltip. This helps you learn the shortcuts for faster navigation.",
-                type: .tip
-            ),
-            HelpContentItem(
-                title: "macOS Native Design",
-                description: "The consolidated toolbar follows macOS design patterns and works seamlessly with fullscreen mode, auto-hiding when appropriate.",
-                type: .information
             )
         ]
     )
-    
+
     static let navigation = HelpSection(
         title: "Interface & Controls",
         icon: "arrow.left.arrow.right",
         items: [
             HelpContentItem(
                 title: "Browse Images",
-                description: "Use arrow keys, spacebar, or navigation buttons to move between images. StillView automatically loads adjacent images for smooth browsing.",
+                description: "With the image viewer focused, use arrow keys or the image-stage navigation arrows to browse. Home and End jump to the first and last image.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Image Counter",
-                description: "The top toolbar shows your current position (e.g., '5 of 23') in the left section next to the back button.",
+                description: "The folder menu and image counter are at the left of the toolbar.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Consolidated Toolbar",
-                description: "All controls are now organized in a single top toolbar with three sections: Navigation & Context (left), View Mode Controls (center), and Image Actions & Zoom (right).",
+                title: "Refresh a Folder",
+                description: "Choose the folder again to refresh images added or removed outside StillView. Folder contents do not refresh automatically.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Quick Navigation",
-                description: "Use Home and End keys to quickly jump to the first or last image in the folder. Perfect for large image collections.",
-                type: .tip
-            ),
-            HelpContentItem(
-                title: "Folder Monitoring",
-                description: "StillView automatically detects when images are added or removed from the current folder and updates the view accordingly.",
+                title: "Return to Folder Selection",
+                description: "Press B while the viewer is focused, or use File → Back to Folder Selection. Opening another folder with ⌘O keeps the current image available if you cancel.",
                 type: .information
             )
         ]
     )
-    
+
     static let thumbnailViewing = HelpSection(
         title: "Thumbnail Navigation",
         icon: "rectangle.grid.3x3",
         items: [
             HelpContentItem(
                 title: "Thumbnail Strip",
-                description: "Press 'T' or use the Strip segment in the toolbar. The docked filmstrip at the bottom gives quick previews while keeping focus on the main image.",
-                shortcut: "T",
+                description: "Press T or choose Strip in the toolbar. Click a thumbnail in the docked filmstrip to view that image.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Grid View",
-                description: "Press 'G' or click the grid button in the center toolbar section to open a full-screen thumbnail grid. Great for browsing large collections and jumping to specific images.",
-                shortcut: "G",
+                description: "Press G or choose Grid in the toolbar to browse thumbnails in the viewing area. The selected image uses your system accent color.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Navigate with Thumbnails",
-                description: "Click any thumbnail to instantly jump to that image. The current image is highlighted with a blue border and scroll position updates automatically.",
+                title: "Open a Grid Selection",
+                description: "Click a tile to select it; the inspector follows the selection. Double-click or press Enter to open it in Single view. Escape returns to Single when not in fullscreen.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Thumbnail Performance",
-                description: "Thumbnails are generated in the background and cached for smooth scrolling. The cache manages memory automatically to prevent system slowdowns.",
-                type: .tip
-            ),
-            HelpContentItem(
-                title: "Grid View Controls",
-                description: "In grid view, click a tile to select it (the inspector follows), and double-click or press Enter to open it in Single view. Escape steps back to Single. Use the toolbar's density slider and sort menu to adjust the grid.",
+                title: "Grid Controls",
+                description: "Use the toolbar’s density slider to resize thumbnails. In a narrow window, sorting is available in the More actions menu.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Memory Efficient",
-                description: "Thumbnail cache is limited to 25MB and 100 items to ensure smooth performance even with large image collections. Old thumbnails are automatically removed as needed.",
+                title: "Thumbnail Loading",
+                description: "Thumbnails are downsampled in the background and regenerated as needed. Large files may take a moment to appear.",
                 type: .tip
             )
         ]
     )
-    
+
     static let zoomAndView = HelpSection(
         title: "Zoom & View Controls",
         icon: "magnifyingglass",
         items: [
             HelpContentItem(
                 title: "Zoom Modes",
-                description: "StillView offers multiple zoom modes: Fit to Window (default), Actual Size (100%), and custom zoom levels from 10% to 500%.",
+                description: "Use Fit to Window (0), Actual Size (1), or the zoom controls to inspect image details.",
                 type: .information
             ),
             HelpContentItem(
@@ -348,7 +326,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Fullscreen Mode",
-                description: "Press F or Enter for distraction-free fullscreen viewing. Press Escape to exit. Perfect for presentations or detailed image review.",
+                description: "Press F to enter or exit fullscreen. Enter also toggles fullscreen in Single and Strip; in Grid, Enter opens the selected image. Escape exits fullscreen.",
                 type: .information
             ),
             HelpContentItem(
@@ -365,218 +343,165 @@ extension HelpSection {
     )
 
     static let aiFeatures = HelpSection(
-        title: "AI-Powered Insights (macOS 26+)",
+        title: "AI Insights",
         icon: "brain.head.profile",
         items: [
             HelpContentItem(
-                title: "Apple Intelligence Insights",
-                description: "StillView can use Apple Intelligence on macOS 26 or later to generate short notes for the current image. The feature is intentionally modest and supports viewing without taking over the app.",
+                title: "Analyze an Image",
+                description: "Open the inspector with I, choose Insights, and select Analyze image. You can also press ⌘I while the viewer has focus. If Insights are disabled in StillView, choose Enable Insights first.",
                 type: .information
             ),
             HelpContentItem(
-                title: "AI Insights Panel",
-                description: "Open the AI Insights panel and choose Generate Insight for the current image. StillView sends only local, deterministic inputs such as file name, file type, dimensions, file size, dates, color profile, and existing metadata.",
+                title: "Image Descriptions",
+                description: "Apple Intelligence receives the selected image on this Mac and writes a short description with notable visible details. Copy description copies the summary. Refresh runs a new analysis; Cancel stops an in-flight request.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Text in Image",
+                description: "Expand Text in image to read or copy the original words recognized by Vision. Repeated lines are preserved within the analysis limit. Recognized text is separate from the generated description and may contain OCR errors.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Privacy",
-                description: "AI Insights runs through Apple's on-device Foundation Models framework when available. StillView does not upload images, metadata, prompts, generated text, or analysis results, and it does not add analytics or telemetry.",
+                description: "StillView does not upload images, metadata, prompts, recognized text, or results. Analysis runs on this Mac without analytics or telemetry.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Grounded Results",
-                description: "Insights are based on the local inputs StillView supplies. They may be incomplete and should be treated as helpful notes, not ground truth. The result includes a limitations section explaining what the app could and could not infer.",
-                type: .information
-            ),
-            HelpContentItem(
-                title: "Enabling/Disabling AI",
-                description: "Control AI Insights in Preferences > General. When disabled, StillView hides the AI Insights panel and cancels any in-progress generation.",
+                title: "Enable or Disable Insights",
+                description: "Use Settings → Intelligence → AI Insights, or enable them from the Insights panel. Disabling them cancels generation; the panel can still explain how to enable the feature.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Availability",
-                description: "AI Insights require macOS 26 or later, a Mac that supports Apple Intelligence, Apple Intelligence enabled in System Settings, and an on-device model that is ready. StillView shows the reason when Apple Intelligence is unavailable.",
+                description: "AI Insights require an Apple Intelligence eligible Mac, Apple Intelligence enabled in System Settings, and an on-device model that is ready. StillView shows the reason when generation is unavailable.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Limitations",
-                description: "AI Insights does not run custom Core ML classifiers, ResNet models, OCR, object detection, smart search, smart organization, quality scoring, or automatic caption generation. If metadata is sparse, the generated note should say that plainly.",
+                description: "Descriptions may miss details or misinterpret the scene. Specific uncertainties appear with the result. Recognized text may contain OCR errors. The app does not identify people or modify your files during analysis.",
                 type: .warning
             )
         ]
     )
 
     static let preferences = HelpSection(
-        title: "Preferences & Customization",
+        title: "Settings",
         icon: "gearshape",
         items: [
             HelpContentItem(
-                title: "Opening Preferences",
-                description: "Access preferences by pressing ⌘, (Command-Comma) or selecting 'Preferences...' from the StillView menu. The preferences window organizes settings into three main tabs.",
-                shortcut: "⌘,",
+                title: "Opening Settings",
+                description: "Press ⌘, (Command-Comma) or choose Settings from the StillView menu. General, Intelligence, and Shortcuts organize the available settings.",
                 type: .information
             ),
             HelpContentItem(
-                title: "General Settings",
-                description: "Configure image display options (file names, info overlay), slideshow behavior (duration, looping), file management (deletion confirmation, folder memory), thumbnail preferences (size, metadata badges), and AI Insights settings on macOS 26+.",
+                title: "Image Display Defaults",
+                description: "Choose whether file names and the inspector appear by default. These settings apply when you next launch StillView.",
                 type: .information
             ),
             HelpContentItem(
-                title: "AI Features Control",
-                description: "On macOS 26+, the General tab includes an 'Enable AI Insights' toggle. Turn this on to show the AI Insights panel when Apple Intelligence is available. Turn it off to hide the panel and stop generation.",
+                title: "Slideshow Duration",
+                description: "Choose how long each image appears in a slideshow. Duration changes apply when you next launch StillView. Slideshows repeat from the first image after the last image.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Appearance Customization",
-                description: "Personalize the interface with toolbar style options (floating vs. attached), animation intensity levels (minimal, normal, enhanced), glassmorphism effects, and hover feedback controls. Changes are previewed in real-time.",
+                title: "Insights and Enhancements",
+                description: "Enable or disable AI Insights and automatic image enhancements in Intelligence. Enhancements affect the displayed image and preserve the original file.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Keyboard Shortcuts",
-                description: "Customize all keyboard shortcuts to match your workflow. Click any shortcut to record a new key combination. The system automatically detects conflicts with existing shortcuts and system shortcuts.",
+                title: "Appearance",
+                description: "Settings follows your Mac’s light or dark appearance, accessibility options, and system control colors.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Live Preview",
-                description: "The Appearance tab includes a live preview panel showing how your settings affect the toolbar, thumbnails, and notifications. Switch between preview modes to see different interface elements.",
+                title: "Built-in Keyboard Shortcuts",
+                description: "The Shortcuts tab is a searchable, read-only reference to the viewer’s built-in commands. Image commands work when the viewer is focused; text fields, controls, dialogs, and other windows retain their usual keys.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Saved Settings",
+                description: "Settings are saved automatically. Image display defaults and slideshow duration take effect on the next launch.",
                 type: .tip
-            ),
-            HelpContentItem(
-                title: "Shortcut Management",
-                description: "Search for specific shortcuts using the search field. Reset individual shortcuts or all shortcuts to defaults. Export and import shortcut configurations to share between devices.",
-                type: .information
-            ),
-            HelpContentItem(
-                title: "Validation & Feedback",
-                description: "Preferences include real-time validation with helpful error messages and warnings. Performance-impacting settings show warnings to help you make informed choices.",
-                type: .information
-            ),
-            HelpContentItem(
-                title: "Accessibility Integration",
-                description: "All preference controls support full keyboard navigation and VoiceOver. Animation settings respect system accessibility preferences like Reduce Motion.",
-                type: .information
-            ),
-            HelpContentItem(
-                title: "Immediate Application",
-                description: "Most preference changes take effect immediately without requiring an app restart. Settings are automatically saved and restored when you reopen the app.",
-                type: .tip
-            ),
-            HelpContentItem(
-                title: "Backup & Restore",
-                description: "Preferences are automatically backed up before major changes. If settings become corrupted, the app will restore sensible defaults and notify you of the reset.",
-                type: .information
-            ),
-            HelpContentItem(
-                title: "Performance Optimization",
-                description: "Enhanced animations and glass effects may impact performance on older Macs. The preferences system warns you about performance-heavy combinations and suggests alternatives.",
-                type: .warning
-            ),
-            HelpContentItem(
-                title: "Shortcut Conflicts",
-                description: "When recording new shortcuts, the system checks for conflicts with existing app shortcuts and system shortcuts. Conflicting shortcuts are highlighted with suggestions for alternatives.",
-                type: .warning
             )
         ]
     )
-    
+
     static let additionalFeatures = HelpSection(
         title: "Image Management",
         icon: "star",
         items: [
             HelpContentItem(
                 title: "Image Information",
-                description: "Press 'I' or click the info button to display image metadata including dimensions, file size, format, creation date, and camera EXIF data when available.",
-                shortcut: "I",
+                description: "Press I or use the inspector button to open the Info and Insights panel. Info shows file details, dimensions, color information, and EXIF camera data when available.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Slideshow Mode",
-                description: "Press 'S' or click the play button to start an automatic slideshow. Images advance every 3 seconds by default. Press 'S' again or spacebar to pause/resume.",
-                shortcut: "S",
+                title: "Slideshow",
+                description: "Press S to start or stop a slideshow. Space stops an active slideshow; otherwise it advances to the next image. Slideshows repeat after the last image.",
                 type: .information
-            ),
-            HelpContentItem(
-                title: "Slideshow Controls",
-                description: "During slideshow mode, spacebar pauses/resumes, and arrow keys allow manual navigation. The slideshow automatically loops back to the first image when reaching the end.",
-                type: .information
-            ),
-            HelpContentItem(
-                title: "Toolbar Organization",
-                description: "The consolidated top toolbar groups related controls together: navigation on the left, view modes in the center, and image actions (share, delete, zoom) on the right. Hover over buttons for keyboard shortcut hints.",
-                type: .information
-            ),
-            HelpContentItem(
-                title: "Delete Images Safely",
-                description: "Click the trash button or press Delete/Backspace to move images to Trash. A confirmation dialog ensures you don't accidentally delete images. Files can be recovered from the Trash.",
-                type: .information
-            ),
-            HelpContentItem(
-                title: "EXIF Data Support",
-                description: "View detailed camera information including aperture, shutter speed, ISO, focal length, and GPS coordinates when available in the image metadata.",
-                type: .tip
             ),
             HelpContentItem(
                 title: "Share Images",
-                description: "Use the share button in the top-right toolbar section to quickly share the current image via email, Messages, AirDrop, or other installed sharing services.",
+                description: "Use Share in the toolbar or its More actions menu to open macOS sharing services for the current image. Sharing is a user-initiated action.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Delete Images",
-                description: "Click the trash button (between share and zoom controls) or press Delete/Backspace to move images to Trash. A confirmation dialog prevents accidental deletions.",
+                title: "Move Images to Trash",
+                description: "Use Move to Trash or press Delete/Backspace with the viewer focused. Confirm the named file in the dialog. You can recover that file from macOS Trash.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Safe File Management",
-                description: "Deleted images are moved to the Trash, not permanently deleted. You can recover them from the Trash if needed. The app requires explicit folder access permissions for delete operations.",
-                type: .tip
+                title: "Folder Permissions",
+                description: "StillView requests access to folders you select. Read-write access allows the app to move a confirmed image to Trash; it does not rewrite your original image for viewing or enhancements.",
+                type: .information
             ),
             HelpContentItem(
-                title: "Auto-Navigation After Delete",
-                description: "When you delete an image, StillView automatically advances to the next image in the folder. If you delete the last image, it will return to folder selection.",
+                title: "After Moving to Trash",
+                description: "StillView removes the trashed file from the open collection. If it was the selected image, another image is selected when available. An empty collection returns to folder selection.",
                 type: .information
             )
         ]
     )
-    
+
     static let supportedFormats = HelpSection(
         title: "Supported Formats",
         icon: "photo",
         items: [
             HelpContentItem(
-                title: "Primary Formats",
-                description: "JPEG, PNG, GIF (including animated), HEIF/HEIC (iPhone photos), WebP",
+                title: "Image Formats",
+                description: "JPEG, PNG, GIF, HEIF/HEIC, WebP, TIFF, and BMP.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Extended Formats",
-                description: "TIFF, BMP, SVG, PDF (first page only)",
+                title: "Still Images",
+                description: "Animated GIF and WebP files display their first frame only. Multipage TIFF files display their first image. Animation playback and additional pages are not supported.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Modern iPhone Photos",
-                description: "Full support for HEIF/HEIC format used by modern iPhones, including metadata and color profiles.",
+                title: "Unsupported Formats",
+                description: "SVG and PDF files are not supported and do not appear in the folder’s image collection.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Large Image Support",
-                description: "StillView can handle very large images (100MB+) with intelligent memory management to prevent system slowdowns.",
+                title: "Metadata",
+                description: "The Info inspector displays the metadata available in each file. Different formats and files may contain different fields.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Metadata Preservation",
-                description: "Image metadata, EXIF data, and color profiles are preserved and respected for accurate color reproduction.",
+                title: "Large Images",
+                description: "Large or damaged files may take longer to load or fail to decode. Use the displayed error and retry action if an image cannot be opened.",
                 type: .tip
             )
         ]
     )
-    
+
     static let troubleshooting = HelpSection(
         title: "Troubleshooting",
         icon: "wrench.and.screwdriver",
         items: [
             HelpContentItem(
                 title: "Image Won't Load",
-                description: "Ensure the file isn't corrupted and is in a supported format. StillView will automatically skip corrupted files and show the next valid image.",
+                description: "Check that the file is readable and uses a supported format. Use Retry if loading fails, or navigate to another image.",
                 type: .warning
             ),
             HelpContentItem(
@@ -601,7 +526,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Thumbnail Loading",
-                description: "Thumbnails generate automatically in the background. Large images may take a moment to appear in thumbnail views. The thumbnail cache persists between sessions for faster subsequent loading.",
+                description: "Thumbnails are downsampled in the background and regenerated as needed. Large files may take a moment to appear.",
                 type: .information
             ),
             HelpContentItem(
@@ -618,22 +543,22 @@ extension HelpSection {
         items: [
             HelpContentItem(
                 title: "Privacy First",
-                description: "StillView works completely offline and never collects or transmits any data. Your images and viewing habits remain completely private. AI Insights on macOS 26+ use Apple Intelligence on this Mac when available, with no cloud service, data collection, or tracking.",
+                description: "StillView does not collect data or use tracking. Image viewing and analysis work locally. Sharing and external links open only when you choose them. Privacy policy: https://stillviewapp.com/privacy.html",
                 type: .information
             ),
             HelpContentItem(
                 title: "AI Privacy Commitment",
-                description: "AI Insights use only local file metadata, available system analysis, and Apple's on-device Foundation Models framework. Images, metadata, prompts, generated text, and results stay on this Mac. You can enable or disable AI Insights at any time in Preferences.",
+                description: "AI Insights gives Apple Intelligence the selected image to describe its visible content on this Mac. Expand Text in image for original recognized text, or use Copy description. Descriptions and OCR may contain errors. Inputs and results stay local. Disable Insights in Settings → Intelligence.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Universal Binary",
-                description: "Optimized for both Intel and Apple Silicon Macs, ensuring excellent performance on modern Mac computers. AI Insights availability depends on Apple Intelligence support.",
+                description: "StillView requires macOS 27 or later and Apple silicon. AI Insights requires Apple Intelligence enabled and its on-device model ready.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Accessibility",
-                description: "Full VoiceOver support, keyboard navigation, and compatibility with macOS accessibility features. StillView provides local metadata-based accessibility descriptions without uploading image data.",
+                description: "StillView includes keyboard navigation, accessibility labels, and support for Reduce Motion. Image descriptions use local metadata without uploading image data.",
                 type: .information
             ),
             HelpContentItem(
@@ -648,7 +573,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "App Sandbox Security",
-                description: "StillView operates within Apple's App Sandbox for enhanced security. The app only accesses folders you explicitly select and requires your permission for file operations. All security-scoped bookmarks are stored locally and encrypted.",
+                description: "StillView operates within Apple's App Sandbox for enhanced security. The app only accesses folders you explicitly select and requires your permission for file operations. Security-scoped bookmarks are stored locally.",
                 type: .information
             )
         ]

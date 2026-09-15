@@ -113,7 +113,7 @@ class KeyboardHandler: ObservableObject {
     }
 
     private func handleSpacebarKey(viewModel: ImageViewerViewModel) -> Bool {
-        // In slideshow mode, spacebar pauses/resumes. Otherwise, advances to next image
+        // Space stops an active slideshow; otherwise it advances to the next image.
         if viewModel.isSlideshow {
             viewModel.toggleSlideshow()
         } else {
@@ -188,7 +188,7 @@ class KeyboardHandler: ObservableObject {
     static func getKeyboardShortcuts() -> [String: String] {
         return [
             "← / →": "Navigate between images",
-            "Spacebar": "Next image / Pause slideshow",
+            "Spacebar": "Next image / Stop slideshow",
             "Page Up/Down": "Navigate between images",
             "Home": "Go to first image",
             "End": "Go to last image",
@@ -223,18 +223,21 @@ class KeyboardHandler: ObservableObject {
 /// A view modifier that adds keyboard handling to any view
 struct KeyboardHandling: ViewModifier {
     let keyboardHandler: KeyboardHandler
+    var isEnabled = true
     
     func body(content: Content) -> some View {
         content
-            .background(InvisibleKeyCapture(keyHandler: keyboardHandler))
+            .background(InvisibleKeyCapture(keyHandler: keyboardHandler, isEnabled: isEnabled))
     }
 }
 
 extension View {
     /// Add keyboard handling to this view
-    /// - Parameter keyboardHandler: The KeyboardHandler instance
+    /// - Parameters:
+    ///   - keyboardHandler: The KeyboardHandler instance
+    ///   - isEnabled: Whether the viewer is visible and available for keyboard interaction
     /// - Returns: A view with keyboard handling enabled
-    func keyboardHandling(_ keyboardHandler: KeyboardHandler) -> some View {
-        self.modifier(KeyboardHandling(keyboardHandler: keyboardHandler))
+    func keyboardHandling(_ keyboardHandler: KeyboardHandler, isEnabled: Bool = true) -> some View {
+        self.modifier(KeyboardHandling(keyboardHandler: keyboardHandler, isEnabled: isEnabled))
     }
 }

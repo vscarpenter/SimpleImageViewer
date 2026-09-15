@@ -1,36 +1,27 @@
 #if DEBUG
-import Foundation
 import AppKit
+import Foundation
+import FoundationModels
 
-/// DEBUG-only manual evaluation harness for AI Insights. Runs the real on-device pipeline
-/// (perception → classify → generate → validate) over a folder of images and writes a Markdown
-/// report you can eyeball. Triggered from the Debug menu ("Run AI Insights Eval…").
-///
-/// It runs in the app process so FoundationModels is available and everything links. The app's
-/// sandbox is `files.user-selected.read-only`, so the report is written to the app container's
-/// temporary directory and revealed in Finder rather than saved to a user-chosen location.
-/// Only top-level images in the chosen folder are evaluated (non-recursive); keep the eval set flat.
+/// Runs the production analysis once per image. Reports stay in the app's local temporary directory.
 enum InsightEvalHarness {
-
     private static let supportedExtensions: Set<String> = [
         "jpg", "jpeg", "png", "heic", "heif", "gif", "tiff", "tif", "bmp", "webp"
     ]
 
-    /// One image's evaluation outcome.
-    private struct Record {
+    struct Record {
         let fileName: String
-        let route: ImageContentType
-        let perceptionSignals: [String]
+        let durationSeconds: TimeInterval
         let result: ImageInsightResult?
+        let perception: ImagePerceptionResult?
+        let modelTextLineIndices: [Int]
         let error: String?
     }
 
     private enum Outcome {
-        case report(url: URL, imageCount: Int)
+        case report(url: URL, imageCount: Int, failureCount: Int)
         case failure(String)
     }
-
-    // MARK: - Entry point (Debug menu command)
 
     @MainActor
     static func presentAndRun() {
@@ -38,163 +29,153 @@ enum InsightEvalHarness {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.prompt = "Run Eval"
-        panel.message = "Choose a folder of images to evaluate AI Insights on."
-
+        panel.prompt = "Run Evaluation"
+        panel.message = "Choose a folder of images to evaluate Insights on this Mac."
         guard panel.runModal() == .OK, let folder = panel.url else { return }
 
         let availability = AppleIntelligenceInsightsService.shared.availability()
         guard availability.isAvailable else {
-            presentAlert(title: "AI Insights Unavailable", message: availability.message)
+            presentAlert(title: "Insights Unavailable", message: availability.message)
             return
         }
-
         Task.detached {
             let outcome = await run(folder: folder)
             await MainActor.run { present(outcome) }
         }
     }
 
-    // MARK: - Run
-
     private static func run(folder: URL) async -> Outcome {
         let scoped = folder.startAccessingSecurityScopedResource()
         defer { if scoped { folder.stopAccessingSecurityScopedResource() } }
-
         let imageURLs = supportedImageURLs(in: folder)
-        guard !imageURLs.isEmpty else {
-            return .failure("No supported images found in \(folder.path).")
-        }
+        guard !imageURLs.isEmpty else { return .failure("No supported images found in the selected folder.") }
 
-        let service = AppleIntelligenceInsightsService.shared
-        var sections: [String] = []
-        // Sequential on purpose: FoundationModels rejects concurrent requests. Print per-image
-        // progress (DEBUG console only) so a multi-minute run is visibly working, not hung.
+        let runID = UUID().uuidString
+        let startedAt = Date()
+        var records: [Record] = []
+        // Bound resource use and keep each independent image in its own production session.
         for (index, imageURL) in imageURLs.enumerated() {
-            // Intentional print, not os.log: DEBUG-only dev progress that must NOT push file
-            // names into the unified log (the codebase's no-filename-logging privacy rule).
+            if Task.isCancelled { return .failure("Evaluation canceled.") }
+            // Local DEBUG console only. Image names and contents never enter the unified log.
             // swiftlint:disable:next no_print
-            print("📸 Insight eval \(index + 1)/\(imageURLs.count): \(imageURL.lastPathComponent)")
-            sections.append(await evaluate(imageURL: imageURL, service: service))
+            print("Insights evaluation \(index + 1)/\(imageURLs.count)")
+            records.append(await evaluate(imageURL: imageURL))
         }
 
-        let report = reportHeader(folder: folder, count: imageURLs.count)
-            + sections.joined(separator: "\n\n") + "\n"
-
+        let report = reportHeader(runID: runID, startedAt: startedAt, count: records.count)
+            + records.map(markdownSection).joined(separator: "\n\n") + "\n"
         let outputURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("insight-eval-report.md")
+            .appendingPathComponent("insight-eval-\(runID).md")
         do {
             try report.write(to: outputURL, atomically: true, encoding: .utf8)
-            return .report(url: outputURL, imageCount: imageURLs.count)
+            return .report(url: outputURL, imageCount: records.count,
+                           failureCount: records.filter { $0.error != nil }.count)
         } catch {
-            return .failure("Could not write report: \(error.localizedDescription)")
+            return .failure("Could not write the local evaluation report: \(error.localizedDescription)")
         }
     }
 
-    /// Runs the production path for one image. Perception is run here for the displayed signals
-    /// and route; `generateInsight` re-runs it internally (minor redundancy) so the insight comes
-    /// from the exact production path. Per-image errors are captured, not thrown.
-    private static func evaluate(imageURL: URL, service: AppleIntelligenceInsightsService) async -> String {
-        let perception = await ImagePerceptionService.shared.analyze(url: imageURL)
-        let route = ImageContentTypeClassifier.classify(perception)
-        let fileName = imageURL.lastPathComponent
-
+    private static func evaluate(imageURL: URL) async -> Record {
+        let started = ProcessInfo.processInfo.systemUptime
         do {
-            let imageFile = try ImageFile(url: imageURL)
-            let input = service.makeInput(for: imageFile)
-            let result = try await service.generateInsight(for: input)
-            return markdownSection(Record(
-                fileName: fileName,
-                route: route,
-                perceptionSignals: promptLines(for: perception),
-                result: result,
-                error: nil
-            ))
+            let service = AppleIntelligenceInsightsService.shared
+            let input = service.makeInput(for: try ImageFile(url: imageURL))
+            let analysis = try await service.generateAnalysis(for: input)
+            return Record(fileName: imageURL.lastPathComponent,
+                          durationSeconds: ProcessInfo.processInfo.systemUptime - started,
+                          result: analysis.result,
+                          perception: analysis.perception,
+                          modelTextLineIndices: analysis.modelTextLineIndices,
+                          error: nil)
         } catch {
-            return markdownSection(Record(
-                fileName: fileName,
-                route: route,
-                perceptionSignals: promptLines(for: perception),
-                result: nil,
-                error: error.localizedDescription
-            ))
+            return Record(fileName: imageURL.lastPathComponent,
+                          durationSeconds: ProcessInfo.processInfo.systemUptime - started,
+                          result: nil, perception: nil, modelTextLineIndices: [], error: error.localizedDescription)
         }
     }
-
-    private static func promptLines(for perception: ImagePerceptionResult) -> [String] {
-        ImageInsightPromptBuilder.prompt(for: perception)
-            .components(separatedBy: .newlines)
-            .filter { !$0.isEmpty }
-    }
-
-    // MARK: - Formatting
 
     private static func supportedImageURLs(in folder: URL) -> [URL] {
         let contents = (try? FileManager.default.contentsOfDirectory(
-            at: folder, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
-        return contents
-            .filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
-            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+            at: folder, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles])) ?? []
+        return contents.filter {
+            supportedExtensions.contains($0.pathExtension.lowercased())
+                && (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+        }.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
     }
 
-    private static func reportHeader(folder: URL, count: Int) -> String {
-        """
-        # AI Insights Eval Report
+    static func reportHeader(runID: String, startedAt: Date, count: Int) -> String {
+        let process = ProcessInfo.processInfo
+        let memoryGB = Double(process.physicalMemory) / 1_073_741_824
+        return """
+        # Image Insights evaluation
 
-        - Folder: \(folder.path)
+        - Run: \(runID)
+        - Started: \(ISO8601DateFormatter().string(from: startedAt))
+        - OS: \(process.operatingSystemVersionString)
+        - Hardware: Apple silicon, \(process.processorCount) logical CPUs, \(String(format: "%.0f", memoryGB)) GB memory
         - Images: \(count)
+        - Pipeline: production direct-image analysis, one analysis per image
+
+        ## Manual quality review
+
+        Score subject accuracy and usefulness from 1 (poor) to 5 (strong). Record unsupported claims,
+        OCR differences, and ambiguous observations explicitly. Compare the same fixtures and prompt
+        version between runs. Structured output and successful inference do not establish accuracy.
+        Durations below include image loading, OCR, and generation; they are not token-throughput measurements.
 
         ---
 
         """
     }
 
-    private static func markdownSection(_ record: Record) -> String {
-        var lines = ["## \(record.fileName)", "- Route: \(record.route.rawValue)"]
-
+    static func markdownSection(_ record: Record) -> String {
+        var lines = ["## \(record.fileName)",
+                     "- Elapsed: \(String(format: "%.2f", record.durationSeconds)) s"]
         if let error = record.error {
-            lines.append("- **ERROR:** \(error)")
+            lines.append("- Outcome: failed")
+            lines.append("- Error: \(error)")
             return lines.joined(separator: "\n")
         }
-
-        if record.perceptionSignals.isEmpty {
-            lines.append("- Perception: (no signals)")
-        } else {
-            lines.append("- Perception:")
-            lines.append(contentsOf: record.perceptionSignals.map { "  - \($0)" })
+        guard let result = record.result else {
+            lines.append("- Outcome: missing result")
+            return lines.joined(separator: "\n")
         }
-
-        if let result = record.result {
-            lines.append("- Title: \(result.title)")
-            lines.append("- Summary: \(result.summary)")
-            lines.append("- Likely content: \(result.likelyContent)")
-            if !result.usefulDetails.isEmpty {
-                lines.append("- Useful details:")
-                lines.append(contentsOf: result.usefulDetails.map { "  - \($0)" })
-            }
-            lines.append("- Tags: \(result.tags.joined(separator: ", "))")
-            if !result.limitations.isEmpty {
-                lines.append("- Limitations:")
-                lines.append(contentsOf: result.limitations.map { "  - \($0)" })
-            }
+        lines.append("- Outcome: completed (quality requires review)")
+        if let provenance = result.provenance {
+            lines.append("- Model: \(provenance.modelName)")
+            lines.append("- Context capacity: \(provenance.contextSize) tokens")
+            lines.append("- Prompt version: \(provenance.promptVersion)")
         }
-
+        if let perception = record.perception {
+            lines.append("- OCR observations retained: \(perception.textObservations.count)")
+            lines.append("- OCR evidence truncated: \(perception.textWasTruncated)")
+            lines.append("- Original OCR indices supplied to model: \(record.modelTextLineIndices)")
+        }
+        lines.append("- Title: \(result.title)")
+        lines.append("- Description: \(result.summary)")
+        append(result.usefulDetails, heading: "Notable details", to: &lines)
+        append(result.tags, heading: "Suggested tags", to: &lines)
+        append(result.recognizedText, heading: "Recognized text (unchanged OCR)", to: &lines)
+        append(result.limitations, heading: "Uncertainties", to: &lines)
+        lines.append("- Review: subject accuracy __/5; usefulness __/5; unsupported claims __; OCR fidelity __")
         return lines.joined(separator: "\n")
     }
 
-    // MARK: - UI helpers
+    private static func append(_ values: [String], heading: String, to lines: inout [String]) {
+        guard !values.isEmpty else { return }
+        lines.append("- \(heading):")
+        lines.append(contentsOf: values.map { "  - \($0)" })
+    }
 
     @MainActor
     private static func present(_ outcome: Outcome) {
         switch outcome {
-        case .report(let url, let imageCount):
+        case .report(let url, let imageCount, let failureCount):
             NSWorkspace.shared.activateFileViewerSelecting([url])
-            presentAlert(
-                title: "Eval Complete",
-                message: "Evaluated \(imageCount) image(s).\nReport: \(url.path)"
-            )
+            presentAlert(title: "Evaluation Complete",
+                         message: "Evaluated \(imageCount) images; \(failureCount) failed.\nReport: \(url.path)")
         case .failure(let message):
-            presentAlert(title: "Eval Failed", message: message)
+            presentAlert(title: "Evaluation Failed", message: message)
         }
     }
 

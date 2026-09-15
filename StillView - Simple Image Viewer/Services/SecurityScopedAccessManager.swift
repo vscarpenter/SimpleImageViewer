@@ -32,7 +32,8 @@ class SecurityScopedAccessManager: ObservableObject {
         }
     }
     
-    private init() {}
+    // Keep independent instances available for tests without disturbing the app's active scope.
+    init() {}
     
     // MARK: - Public Methods
     
@@ -45,10 +46,9 @@ class SecurityScopedAccessManager: ObservableObject {
             // Only stop existing access if it's for a different URL AND it's not a favorite folder
             if let currentURL = currentAccessURL, currentURL != url {
                 // Check if current URL is a favorite folder
-                let currentIsFavoriteFolder = favoriteFolderURLs.contains(currentURL) || 
-                    favoriteFolderURLs.contains { favoriteURL in
-                        currentURL.path.hasPrefix(favoriteURL.path)
-                    }
+                let currentIsFavoriteFolder = favoriteFolderURLs.contains { favoriteURL in
+                    Self.isSameOrDescendant(currentURL, of: favoriteURL)
+                }
                 
                 // Only stop access if current URL is NOT a favorite folder
                 if !currentIsFavoriteFolder {
@@ -108,42 +108,20 @@ class SecurityScopedAccessManager: ObservableObject {
     /// - Returns: True if we have access to this URL or its containing folder
     func hasAccess(to url: URL) -> Bool {
         return accessQueue.sync {
-            // Check current access URL
-            if let currentURL = currentAccessURL {
-                // Check if the URL is the same as current access URL
-                if url == currentURL {
-                    return true
-                }
-                
-                // Check if the URL is contained within the current access URL
-                if url.path.hasPrefix(currentURL.path + "/") || url.path == currentURL.path {
-                    return true
-                }
+            if let currentURL = currentAccessURL, Self.isSameOrDescendant(url, of: currentURL) {
+                return true
             }
             
-            // Check favorite folder URLs (more precise path matching)
             for favoriteURL in favoriteFolderURLs {
-                if url == favoriteURL || url.path.hasPrefix(favoriteURL.path + "/") {
+                if Self.isSameOrDescendant(url, of: favoriteURL) {
                     return true
                 }
             }
             
-            // Check if we have bookmark-based access
-            let folderURL = url.hasDirectoryPath ? url : url.deletingLastPathComponent()
-            
-            if SecurityScopedBookmarkManager.shared.hasBookmark(for: folderURL) {
-                // Try to restore access if we have a bookmark
-                if SecurityScopedBookmarkManager.shared.restoreAccessWithRetry(for: folderURL) {
-                    // Add to tracked folders to maintain access
-                    _addFavoriteFolder(folderURL)
-                    return true
-                }
-            }
-            
-            // Check if the URL is contained within any bookmarked folder
+            // Restore using the original bookmark URL, even when comparison resolved an alias.
             let bookmarkedFolders = SecurityScopedBookmarkManager.shared.getBookmarkedFolders()
             for bookmarkedFolder in bookmarkedFolders {
-                if url.path.hasPrefix(bookmarkedFolder.path + "/") || url.path == bookmarkedFolder.path {
+                if Self.isSameOrDescendant(url, of: bookmarkedFolder) {
                     // Try to restore access to the bookmarked folder
                     if SecurityScopedBookmarkManager.shared.restoreAccessWithRetry(for: bookmarkedFolder) {
                         _addFavoriteFolder(bookmarkedFolder)
@@ -154,6 +132,30 @@ class SecurityScopedAccessManager: ObservableObject {
             
             return false
         }
+    }
+
+    /// Resolve aliases only for containment checks; stored URLs retain their security scopes.
+    /// Comparing complete components rejects sibling prefixes and links escaping a granted root.
+    static func isSameOrDescendant(_ url: URL, of root: URL) -> Bool {
+        guard url.isFileURL, root.isFileURL else { return false }
+        let path = canonicalPathComponents(for: url)
+        let rootPath = canonicalPathComponents(for: root)
+        return path.starts(with: rootPath)
+    }
+
+    private static func canonicalPathComponents(for url: URL) -> [String] {
+        var ancestor = url.resolvingSymlinksInPath()
+        var unresolvedComponents: [String] = []
+        // Foundation normalizes /private/tmp differently when the leaf does not exist. Resolve
+        // the existing ancestor as well, so missing files still reach the file-not-found path.
+        while !FileManager.default.fileExists(atPath: ancestor.path) {
+            let parent = ancestor.deletingLastPathComponent()
+            guard parent.path != ancestor.path else { break }
+            unresolvedComponents.append(ancestor.lastPathComponent)
+            ancestor = parent
+        }
+        return ancestor.resolvingSymlinksInPath().standardizedFileURL.pathComponents
+            + unresolvedComponents.reversed()
     }
     
     /// Get the current security-scoped access URL

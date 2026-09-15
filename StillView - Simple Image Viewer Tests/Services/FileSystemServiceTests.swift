@@ -1,40 +1,43 @@
 import XCTest
 import Combine
 import UniformTypeIdentifiers
-@testable import Simple_Image_Viewer
+@testable import StillView___Simple_Image_Viewer
 
-class FileSystemServiceTests: XCTestCase {
+final class FileSystemServiceTests: XCTestCase {
     var fileSystemService: DefaultFileSystemService!
     var tempDirectory: URL!
     var cancellables: Set<AnyCancellable>!
-    
-    override func setUp() {
-        super.setUp()
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
         fileSystemService = DefaultFileSystemService()
         cancellables = Set<AnyCancellable>()
-        
+
         // Create temporary directory for testing
         tempDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("FileSystemServiceTests")
-            .appendingPathComponent(UUID().uuidString)
-        
-        try! FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
     }
-    
-    override func tearDown() {
+
+    override func tearDownWithError() throws {
         // Clean up temporary directory
-        try? FileManager.default.removeItem(at: tempDirectory)
         cancellables = nil
         fileSystemService = nil
-        super.tearDown()
+        if let tempDirectory, FileManager.default.fileExists(atPath: tempDirectory.path) {
+            try FileManager.default.removeItem(at: tempDirectory)
+        }
+        try super.tearDownWithError()
     }
-    
+
     // MARK: - Helper Methods
-    
-    private func createTestImageFile(name: String, extension: String) -> URL {
+
+    private func createTestImageFile(name: String, extension: String) throws -> URL {
         let fileURL = tempDirectory.appendingPathComponent("\(name).\(`extension`)")
-        
-        // Create a minimal valid image file based on extension
+
+        // Scanning uses file metadata and does not decode image contents.
+        // Header-only fixtures exercise discovery without promising decodability.
         var data: Data
         switch `extension`.lowercased() {
         case "jpg", "jpeg":
@@ -50,25 +53,25 @@ class FileSystemServiceTests: XCTestCase {
             // Generic binary data
             data = Data([0x00, 0x01, 0x02, 0x03])
         }
-        
-        try! data.write(to: fileURL)
+
+        try data.write(to: fileURL)
         return fileURL
     }
-    
-    private func createTestTextFile(name: String) -> URL {
+
+    private func createTestTextFile(name: String) throws -> URL {
         let fileURL = tempDirectory.appendingPathComponent("\(name).txt")
-        try! "Test content".write(to: fileURL, atomically: true, encoding: .utf8)
+        try "Test content".write(to: fileURL, atomically: true, encoding: .utf8)
         return fileURL
     }
-    
-    private func createSubdirectory(name: String) -> URL {
-        let subdirURL = tempDirectory.appendingPathComponent(name)
-        try! FileManager.default.createDirectory(at: subdirURL, withIntermediateDirectories: true)
+
+    private func createSubdirectory(name: String) throws -> URL {
+        let subdirURL = tempDirectory.appendingPathComponent(name, isDirectory: true)
+        try FileManager.default.createDirectory(at: subdirURL, withIntermediateDirectories: true)
         return subdirURL
     }
-    
+
     // MARK: - Folder Scanning Tests
-    
+
     func testScanEmptyFolder() async {
         do {
             let result = try await fileSystemService.scanFolder(tempDirectory, recursive: false)
@@ -79,22 +82,22 @@ class FileSystemServiceTests: XCTestCase {
             XCTFail("Expected FileSystemError.noImagesFound, but got \(error)")
         }
     }
-    
-    func testScanFolderWithImages() async {
+
+    func testScanFolderWithImages() async throws {
         // Create test image files
-        _ = createTestImageFile(name: "image1", extension: "jpg")
-        _ = createTestImageFile(name: "image2", extension: "png")
-        _ = createTestImageFile(name: "image3", extension: "gif")
-        
+        _ = try createTestImageFile(name: "image1", extension: "jpg")
+        _ = try createTestImageFile(name: "image2", extension: "png")
+        _ = try createTestImageFile(name: "image10", extension: "gif")
+
         do {
             let result = try await fileSystemService.scanFolder(tempDirectory, recursive: false)
             XCTAssertEqual(result.count, 3)
-            
-            // Check that files are sorted by name
+
+            // Natural ordering keeps image2 before image10.
             XCTAssertEqual(result[0].name, "image1.jpg")
             XCTAssertEqual(result[1].name, "image2.png")
-            XCTAssertEqual(result[2].name, "image3.gif")
-            
+            XCTAssertEqual(result[2].name, "image10.gif")
+
             // Verify file types
             XCTAssertTrue(result[0].type.conforms(to: .jpeg))
             XCTAssertTrue(result[1].type.conforms(to: .png))
@@ -103,13 +106,13 @@ class FileSystemServiceTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
     }
-    
-    func testScanFolderWithMixedFiles() async {
+
+    func testScanFolderWithMixedFiles() async throws {
         // Create mix of image and non-image files
-        _ = createTestImageFile(name: "image1", extension: "jpg")
-        _ = createTestTextFile(name: "document1")
-        _ = createTestImageFile(name: "image2", extension: "png")
-        
+        _ = try createTestImageFile(name: "image1", extension: "jpg")
+        _ = try createTestTextFile(name: "document1")
+        _ = try createTestImageFile(name: "image2", extension: "png")
+
         do {
             let result = try await fileSystemService.scanFolder(tempDirectory, recursive: false)
             XCTAssertEqual(result.count, 2) // Only image files should be included
@@ -119,26 +122,36 @@ class FileSystemServiceTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
     }
-    
-    func testScanFolderRecursive() async {
+
+    func test_scanFolder_skipsHiddenFilesAndImageNamedDirectories() async throws {
+        _ = try createTestImageFile(name: "visible", extension: "jpg")
+        _ = try createTestImageFile(name: ".hidden", extension: "png")
+        _ = try createSubdirectory(name: "album.jpg")
+
+        let files = try await fileSystemService.scanFolder(tempDirectory, recursive: false)
+
+        XCTAssertEqual(files.map(\.name), ["visible.jpg"])
+    }
+
+    func testScanFolderRecursive() async throws {
         // Create images in root directory
-        _ = createTestImageFile(name: "root_image", extension: "jpg")
-        
+        _ = try createTestImageFile(name: "root_image", extension: "jpg")
+
         // Create subdirectory with images
-        let subdir = createSubdirectory(name: "subdir")
+        let subdir = try createSubdirectory(name: "subdir")
         let subdirImageURL = subdir.appendingPathComponent("sub_image.png")
-        try! Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).write(to: subdirImageURL)
-        
+        try Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).write(to: subdirImageURL)
+
         do {
             // Test non-recursive scan
             let shallowResult = try await fileSystemService.scanFolder(tempDirectory, recursive: false)
             XCTAssertEqual(shallowResult.count, 1)
             XCTAssertEqual(shallowResult[0].name, "root_image.jpg")
-            
+
             // Test recursive scan
             let recursiveResult = try await fileSystemService.scanFolder(tempDirectory, recursive: true)
             XCTAssertEqual(recursiveResult.count, 2)
-            
+
             // Results should be sorted by name
             let sortedNames = recursiveResult.map { $0.name }.sorted()
             XCTAssertEqual(sortedNames, ["root_image.jpg", "sub_image.png"])
@@ -146,10 +159,10 @@ class FileSystemServiceTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
     }
-    
+
     func testScanNonExistentFolder() async {
-        let nonExistentURL = tempDirectory.appendingPathComponent("nonexistent")
-        
+        let nonExistentURL = tempDirectory.appendingPathComponent("nonexistent", isDirectory: true)
+
         do {
             _ = try await fileSystemService.scanFolder(nonExistentURL, recursive: false)
             XCTFail("Expected FileSystemError.folderNotFound")
@@ -159,10 +172,10 @@ class FileSystemServiceTests: XCTestCase {
             XCTFail("Expected FileSystemError.folderNotFound, but got \(error)")
         }
     }
-    
-    func testScanFileInsteadOfFolder() async {
-        let fileURL = createTestImageFile(name: "test", extension: "jpg")
-        
+
+    func testScanFileInsteadOfFolder() async throws {
+        let fileURL = try createTestImageFile(name: "test", extension: "jpg")
+
         do {
             _ = try await fileSystemService.scanFolder(fileURL, recursive: false)
             XCTFail("Expected FileSystemError.folderNotFound")
@@ -172,107 +185,446 @@ class FileSystemServiceTests: XCTestCase {
             XCTFail("Expected FileSystemError.folderNotFound, but got \(error)")
         }
     }
-    
+
     // MARK: - File Type Detection Tests
-    
-    func testIsSupportedImageFile() {
-        let jpegURL = createTestImageFile(name: "test", extension: "jpg")
-        let pngURL = createTestImageFile(name: "test", extension: "png")
-        let textURL = createTestTextFile(name: "test")
-        
+
+    func testIsSupportedImageFile() throws {
+        let jpegURL = try createTestImageFile(name: "test", extension: "jpg")
+        let pngURL = try createTestImageFile(name: "test", extension: "png")
+        let textURL = try createTestTextFile(name: "test")
+
         XCTAssertTrue(fileSystemService.isSupportedImageFile(jpegURL))
         XCTAssertTrue(fileSystemService.isSupportedImageFile(pngURL))
         XCTAssertFalse(fileSystemService.isSupportedImageFile(textURL))
     }
-    
-    func testGetFileType() {
-        let jpegURL = createTestImageFile(name: "test", extension: "jpg")
-        let pngURL = createTestImageFile(name: "test", extension: "png")
-        
+
+    func testGetFileType() throws {
+        let jpegURL = try createTestImageFile(name: "test", extension: "jpg")
+        let pngURL = try createTestImageFile(name: "test", extension: "png")
+
         let jpegType = fileSystemService.getFileType(for: jpegURL)
         let pngType = fileSystemService.getFileType(for: pngURL)
-        
+
         XCTAssertNotNil(jpegType)
         XCTAssertNotNil(pngType)
         XCTAssertTrue(jpegType?.conforms(to: .jpeg) ?? false)
         XCTAssertTrue(pngType?.conforms(to: .png) ?? false)
     }
-    
+
     // MARK: - Security-Scoped Bookmark Tests
-    
+
     func testCreateSecurityScopedBookmark() {
         let bookmarkData = fileSystemService.createSecurityScopedBookmark(for: tempDirectory)
         XCTAssertNotNil(bookmarkData)
         XCTAssertFalse(bookmarkData?.isEmpty ?? true)
     }
-    
-    func testResolveSecurityScopedBookmark() {
-        // Create bookmark
-        guard let bookmarkData = fileSystemService.createSecurityScopedBookmark(for: tempDirectory) else {
-            XCTFail("Failed to create bookmark")
-            return
-        }
-        
-        // Resolve bookmark
-        let resolvedURL = fileSystemService.resolveSecurityScopedBookmark(bookmarkData)
-        XCTAssertNotNil(resolvedURL)
-        XCTAssertEqual(resolvedURL?.path, tempDirectory.path)
+
+    func testCreatedBookmarkRefersToOriginalFolder() throws {
+        let bookmarkData = try XCTUnwrap(fileSystemService.createSecurityScopedBookmark(for: tempDirectory))
+        var isStale = false
+        let resolvedURL = try URL(
+            resolvingBookmarkData: bookmarkData,
+            options: [.withSecurityScope, .withoutUI],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        )
+
+        XCTAssertFalse(isStale)
+        XCTAssertEqual(resolvedURL.standardizedFileURL, tempDirectory.standardizedFileURL)
+        // A temporary directory is already accessible to the test host. It cannot
+        // establish whether a user-granted security scope can be activated.
     }
-    
+
     func testResolveInvalidBookmark() {
         let invalidData = Data([0x00, 0x01, 0x02, 0x03])
         let resolvedURL = fileSystemService.resolveSecurityScopedBookmark(invalidData)
         XCTAssertNil(resolvedURL)
     }
-    
+
     // MARK: - Folder Monitoring Tests
-    
-    func testFolderMonitoring() {
-        let expectation = XCTestExpectation(description: "Folder monitoring should detect changes")
-        expectation.expectedFulfillmentCount = 1
-        
-        // Start monitoring
-        let publisher = fileSystemService.monitorFolder(tempDirectory)
-        
-        publisher
-            .sink { imageFiles in
-                // Should receive update when file is added
-                if !imageFiles.isEmpty {
-                    expectation.fulfill()
-                }
+
+    func testFolderMonitoring() throws {
+        let update = expectation(description: "Folder monitoring detects the added image")
+
+        fileSystemService.monitorFolder(tempDirectory)
+            .filter { $0.contains { $0.name == "monitored.jpg" } }
+            .prefix(1)
+            .sink { files in
+                XCTAssertEqual(files.map(\.name), ["monitored.jpg"])
+                update.fulfill()
             }
             .store(in: &cancellables)
-        
-        // Add a file after a short delay to trigger monitoring
-        DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) {
-            _ = self.createTestImageFile(name: "monitored", extension: "jpg")
-        }
-        
-        wait(for: [expectation], timeout: 2.0)
+
+        _ = try createTestImageFile(name: "monitored", extension: "jpg")
+        wait(for: [update], timeout: 5)
     }
-    
-    func testMultipleFolderMonitoring() {
-        let subdir = createSubdirectory(name: "subdir")
-        
-        let expectation1 = XCTestExpectation(description: "First folder monitoring")
-        let expectation2 = XCTestExpectation(description: "Second folder monitoring")
-        
-        // Monitor both directories
+
+    func testMultipleFolderMonitoring() throws {
+        let subdir = try createSubdirectory(name: "subdir")
+        let rootUpdate = expectation(description: "Root folder detects its image")
+        let subfolderUpdate = expectation(description: "Subfolder detects its image")
+
         fileSystemService.monitorFolder(tempDirectory)
-            .sink { _ in expectation1.fulfill() }
+            .filter { $0.contains { $0.name == "root.jpg" } }
+            .prefix(1)
+            .sink { files in
+                XCTAssertEqual(files.map(\.name), ["root.jpg"])
+                rootUpdate.fulfill()
+            }
             .store(in: &cancellables)
-        
+
         fileSystemService.monitorFolder(subdir)
-            .sink { _ in expectation2.fulfill() }
+            .filter { $0.contains { $0.name == "sub.png" } }
+            .prefix(1)
+            .sink { files in
+                XCTAssertEqual(files.map(\.name), ["sub.png"])
+                subfolderUpdate.fulfill()
+            }
             .store(in: &cancellables)
-        
-        // Add files to both directories
-        DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) {
-            _ = self.createTestImageFile(name: "root", extension: "jpg")
-            let subdirImageURL = subdir.appendingPathComponent("sub.png")
-            try! Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).write(to: subdirImageURL)
-        }
-        
-        wait(for: [expectation1, expectation2], timeout: 2.0)
+
+        _ = try createTestImageFile(name: "root", extension: "jpg")
+        let subdirImageURL = subdir.appendingPathComponent("sub.png")
+        try Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).write(to: subdirImageURL)
+
+        wait(for: [rootUpdate, subfolderUpdate], timeout: 5)
     }
+}
+
+final class SecurityScopedAccessPathRegressionTests: XCTestCase {
+    func test_currentFolder_acceptsSymlinkAliasWithoutReplacingScopedURL() throws {
+        let fixture = try makeAliasFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let manager = SecurityScopedAccessManager()
+        _ = manager.startAccess(for: fixture.alias)
+
+        XCTAssertTrue(manager.hasAccess(to: fixture.image))
+        XCTAssertEqual(manager.currentURL, fixture.alias, "Keep the original security-scoped URL alive")
+    }
+
+    func test_favoriteFolder_acceptsSymlinkAliasWithoutReplacingTrackedURL() throws {
+        let fixture = try makeAliasFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let manager = SecurityScopedAccessManager()
+        manager.addFavoriteFolder(fixture.alias)
+        defer { manager.removeFavoriteFolder(fixture.alias) }
+
+        XCTAssertTrue(manager.hasAccess(to: fixture.image))
+        XCTAssertTrue(manager.trackedFavoriteFolders.contains(fixture.alias))
+    }
+
+    func test_pathComparison_treatsTmpAndPrivateTmpAsTheSameFolder() {
+        let alias = URL(fileURLWithPath: "/tmp", isDirectory: true)
+        let canonical = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
+
+        XCTAssertTrue(SecurityScopedAccessManager.isSameOrDescendant(canonical, of: alias))
+        XCTAssertTrue(SecurityScopedAccessManager.isSameOrDescendant(alias, of: canonical))
+        XCTAssertTrue(SecurityScopedAccessManager.isSameOrDescendant(
+            canonical.appendingPathComponent("image.png"), of: alias
+        ))
+    }
+
+    func test_pathComparison_rejectsSiblingWithMatchingPrefix() throws {
+        let fixture = try makeAliasFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let sibling = fixture.directory.appendingPathComponent("photos-other", isDirectory: true)
+        try FileManager.default.createDirectory(at: sibling, withIntermediateDirectories: true)
+        let image = sibling.appendingPathComponent("image.png")
+        try Data([1]).write(to: image)
+
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(image, of: fixture.root))
+    }
+
+    func test_pathComparison_rejectsSymlinkEscapingTheGrantedFolder() throws {
+        let fixture = try makeAliasFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let outside = fixture.directory.appendingPathComponent("outside", isDirectory: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        try Data([1]).write(to: outside.appendingPathComponent("image.png"))
+        let escape = fixture.root.appendingPathComponent("escape", isDirectory: true)
+        try FileManager.default.createSymbolicLink(at: escape, withDestinationURL: outside)
+
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(
+            escape.appendingPathComponent("image.png"), of: fixture.root
+        ))
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(
+            escape.appendingPathComponent("image.png"), of: fixture.alias
+        ))
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(
+            escape.appendingPathComponent("missing.png"), of: fixture.root
+        ))
+    }
+
+    func test_pathComparison_rejectsNonFileURLs() throws {
+        let root = URL(fileURLWithPath: "/tmp", isDirectory: true)
+        let remote = try XCTUnwrap(URL(string: "https://example.com/tmp/image.png"))
+
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(remote, of: root))
+        XCTAssertFalse(SecurityScopedAccessManager.isSameOrDescendant(root, of: remote))
+    }
+
+    private func makeAliasFixture() throws -> (directory: URL, root: URL, alias: URL, image: URL) {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let root = directory.appendingPathComponent("photos", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let alias = directory.appendingPathComponent("selected-alias", isDirectory: true)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: root)
+        let image = root.appendingPathComponent("image.png")
+        try Data([1]).write(to: image)
+        return (directory, root, alias, image)
+    }
+}
+
+@MainActor
+final class FolderPresentationRegressionTests: XCTestCase {
+    func test_selectFolder_ignoresDuplicateRequestsWhilePanelIsOpen() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+
+        fixture.model.selectFolder()
+        fixture.model.selectFolder()
+
+        XCTAssertTrue(fixture.model.isShowingFolderPicker)
+        XCTAssertEqual(fixture.panel.presentationCount, 1)
+        XCTAssertEqual(fixture.service.scanCount, 0)
+        fixture.panel.complete(with: nil)
+    }
+
+    func test_cancelPicker_preservesCurrentFolderAndAccess() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+
+        fixture.model.selectFolder()
+        fixture.panel.complete(with: nil)
+
+        XCTAssertFalse(fixture.model.isShowingFolderPicker)
+        XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+        XCTAssertEqual(fixture.service.scanCount, 0)
+    }
+
+    func test_acceptPicker_keepsPreviousAccessUntilScanSucceedsAndPublishesOnce() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        var publications: [URL] = []
+        let subscription = fixture.model.$selectedFolderContent.dropFirst().compactMap { $0?.folderURL }
+            .sink { publications.append($0) }
+        defer { subscription.cancel() }
+
+        fixture.model.selectFolder()
+        fixture.panel.complete(with: fixture.candidate)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+
+        XCTAssertFalse(fixture.model.isShowingFolderPicker)
+        XCTAssertTrue(fixture.model.isScanning)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        let completed = expectation(description: "Successful scan publishes content")
+        let completion = fixture.model.$isScanning.dropFirst().filter { !$0 }.prefix(1)
+            .sink { _ in completed.fulfill() }
+        fixture.service.complete(with: .success([makeImage(in: fixture.candidate)]))
+        await fulfillment(of: [completed], timeout: 2)
+        completion.cancel()
+
+        XCTAssertEqual(fixture.service.scanCount, 1)
+        XCTAssertEqual(publications, [fixture.candidate])
+        XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.candidate)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.candidate)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.candidate)
+    }
+
+    func test_failedScan_preservesCurrentFolderAndAccess() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        fixture.model.selectFolder()
+        fixture.panel.complete(with: fixture.candidate)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+        let failed = expectation(description: "Scan exposes its error")
+        let subscription = fixture.model.$currentError.compactMap { $0 }.prefix(1)
+            .sink { _ in failed.fulfill() }
+        fixture.service.complete(with: .failure(FileSystemError.noImagesFound))
+        await fulfillment(of: [failed], timeout: 2)
+        subscription.cancel()
+
+        XCTAssertFalse(fixture.model.isScanning)
+        XCTAssertNotNil(fixture.model.currentError)
+        XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+    }
+
+    func test_cancelScan_discardsLateResultAndPreservesCurrentFolder() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        fixture.model.selectFolder()
+        fixture.panel.complete(with: fixture.candidate)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+        let replaced = expectation(description: "Canceled scan must not publish")
+        replaced.isInverted = true
+        let subscription = fixture.model.$selectedFolderContent.dropFirst()
+            .sink { _ in replaced.fulfill() }
+
+        fixture.model.cancelScanning()
+        fixture.service.complete(with: .success([makeImage(in: fixture.candidate)]))
+        await fulfillment(of: [replaced], timeout: 0.1)
+        subscription.cancel()
+
+        XCTAssertFalse(fixture.model.isScanning)
+        XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+    }
+
+    func test_expiredRecentBookmark_exposesOnlyTheFolderAlert() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let preferences = DefaultPreferencesService(userDefaults: fixture.defaults)
+        preferences.recentFolders = [fixture.candidate]
+        preferences.folderBookmarks = [Data([0x01])]
+        preferences.savePreferences()
+        let duplicateDialog = expectation(description: "Folder failure must not open a second permission dialog")
+        duplicateDialog.isInverted = true
+        let subscription = ErrorHandlingService.shared.$showPermissionDialog.dropFirst()
+            .sink { _ in duplicateDialog.fulfill() }
+
+        fixture.model.selectRecentFolder(fixture.candidate)
+        await fulfillment(of: [duplicateDialog], timeout: 0.1)
+        subscription.cancel()
+
+        guard case .bookmarkResolutionFailed(let url) = fixture.model.currentError else {
+            return XCTFail("Expected the central folder alert to receive the expired bookmark error")
+        }
+        XCTAssertEqual(url, fixture.candidate)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+        XCTAssertEqual(fixture.service.scanCount, 0)
+    }
+
+    func test_invalidRecentSelection_cancelsEarlierScanBeforeItsLateResult() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        fixture.model.selectFolder()
+        fixture.panel.complete(with: fixture.candidate)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+        let replaced = expectation(description: "Earlier scan must not replace a failed later selection")
+        replaced.isInverted = true
+        let subscription = fixture.model.$selectedFolderContent.dropFirst()
+            .sink { _ in replaced.fulfill() }
+        let missing = fixture.directory.appendingPathComponent("missing", isDirectory: true)
+
+        fixture.model.selectRecentFolder(missing)
+        fixture.service.complete(with: .success([makeImage(in: fixture.candidate)]))
+        await fulfillment(of: [replaced], timeout: 0.1)
+        subscription.cancel()
+
+        XCTAssertFalse(fixture.model.isScanning)
+        guard case .folderNotFound(let url) = fixture.model.currentError else {
+            return XCTFail("Expected the later missing-folder error to remain visible")
+        }
+        XCTAssertEqual(url, missing)
+        XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+    }
+
+    private func makeImage(in folder: URL) -> ImageFile {
+        ImageFile(url: folder.appendingPathComponent("sample.jpg"), name: "sample.jpg", type: .jpeg,
+                  size: 10, creationDate: .distantPast, modificationDate: .distantPast)
+    }
+
+    private func makeFixture() throws -> FolderPresentationFixture {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let original = directory.appendingPathComponent("original", isDirectory: true)
+        let candidate = directory.appendingPathComponent("candidate", isDirectory: true)
+        try FileManager.default.createDirectory(at: original, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: candidate, withIntermediateDirectories: true)
+        let suite = "FolderPresentationRegressionTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let panel = ControlledFolderPanelPresenter()
+        let service = ControlledFolderScanService()
+        let manager = SecurityScopedAccessManager()
+        let model = FolderSelectionViewModel(
+            fileSystemService: service,
+            preferencesService: DefaultPreferencesService(userDefaults: defaults),
+            panelPresenter: panel,
+            accessManager: manager
+        )
+        model.selectedFolderURL = original
+        model.selectedFolderContent = FolderContent(folderURL: original, imageFiles: [makeImage(in: original)])
+        _ = manager.startAccess(for: original)
+        return FolderPresentationFixture(
+            model: model, panel: panel, service: service, manager: manager,
+            original: original, candidate: candidate, directory: directory, defaults: defaults, suite: suite
+        )
+    }
+}
+
+@MainActor
+private struct FolderPresentationFixture {
+    let model: FolderSelectionViewModel
+    let panel: ControlledFolderPanelPresenter
+    let service: ControlledFolderScanService
+    let manager: SecurityScopedAccessManager
+    let original: URL
+    let candidate: URL
+    let directory: URL
+    let defaults: UserDefaults
+    let suite: String
+
+    func cleanup() {
+        model.cancelScanning()
+        manager.stopCurrentAccess()
+        defaults.removePersistentDomain(forName: suite)
+        try? FileManager.default.removeItem(at: directory)
+    }
+}
+
+@MainActor
+private final class ControlledFolderPanelPresenter: FolderPanelPresenting {
+    private(set) var presentationCount = 0
+    private var completion: (@MainActor (URL?) -> Void)?
+
+    func present(initialDirectory: URL?, completion: @escaping @MainActor (URL?) -> Void) {
+        presentationCount += 1
+        self.completion = completion
+    }
+
+    func complete(with url: URL?) {
+        let callback = completion
+        completion = nil
+        callback?(url)
+    }
+}
+
+private final class ControlledFolderScanService: FileSystemService, @unchecked Sendable {
+    let scanStarted = XCTestExpectation(description: "Folder scan started")
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<[ImageFile], Error>?
+    private var requests = 0
+
+    var scanCount: Int { lock.withLock { requests } }
+
+    func scanFolder(_ url: URL, recursive: Bool) async throws -> [ImageFile] {
+        try await withCheckedThrowingContinuation { continuation in
+            lock.withLock {
+                requests += 1
+                self.continuation = continuation
+            }
+            scanStarted.fulfill()
+        }
+    }
+
+    func complete(with result: Result<[ImageFile], Error>) {
+        let pending = lock.withLock {
+            let pending = continuation
+            continuation = nil
+            return pending
+        }
+        pending?.resume(with: result)
+    }
+
+    func monitorFolder(_ url: URL) -> AnyPublisher<[ImageFile], Never> { Empty().eraseToAnyPublisher() }
+    func createSecurityScopedBookmark(for url: URL) -> Data? { nil }
+    func resolveSecurityScopedBookmark(_ bookmarkData: Data) -> URL? { nil }
+    func isSupportedImageFile(_ url: URL) -> Bool { true }
+    func getFileType(for url: URL) -> UTType? { .jpeg }
 }

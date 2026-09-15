@@ -1,7 +1,7 @@
 import UniformTypeIdentifiers
 
 extension UTType {
-    /// All image types supported by StillView - Simple Image Viewer
+    /// Raster types supported by the ImageIO viewer. GIFs display their first frame.
     static let supportedImageTypes: [UTType] = [
         // Primary formats
         .jpeg,
@@ -13,8 +13,7 @@ extension UTType {
         
         // Extended formats
         .tiff,
-        .bmp,
-        .svg
+        .bmp
     ]
     
     /// Check if this UTType represents a supported image format
@@ -48,10 +47,10 @@ extension UTType {
             return "PNG Image"
         case let type where type.conforms(to: .gif):
             return "GIF Image"
-        case let type where type.conforms(to: .heif):
-            return "HEIF Image"
         case let type where type.conforms(to: .heic):
             return "HEIC Image"
+        case let type where type.conforms(to: .heif):
+            return "HEIF Image"
         case let type where type.conforms(to: .webP):
             return "WebP Image"
         case let type where type.conforms(to: .tiff):
@@ -74,10 +73,10 @@ extension UTType {
             return ["png"]
         case let type where type.conforms(to: .gif):
             return ["gif"]
-        case let type where type.conforms(to: .heif):
-            return ["heif"]
         case let type where type.conforms(to: .heic):
             return ["heic"]
+        case let type where type.conforms(to: .heif):
+            return ["heif"]
         case let type where type.conforms(to: .webP):
             return ["webp"]
         case let type where type.conforms(to: .tiff):

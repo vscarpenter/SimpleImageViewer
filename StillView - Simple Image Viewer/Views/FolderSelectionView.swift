@@ -3,19 +3,11 @@ import AppKit
 
 /// View for selecting folders and managing recent folders
 struct FolderSelectionView: View {
-    @StateObject private var viewModel = FolderSelectionViewModel()
-    @State private var showingErrorAlert = false
-
-    /// Callback when an image is selected for full-screen viewing
-    let onImageSelected: ((FolderContent, ImageFile) -> Void)?
-    
+    @ObservedObject var viewModel: FolderSelectionViewModel
     var body: some View {
         folderSelectionContent
-            .onReceive(NotificationCenter.default.publisher(for: .openFolderPanel)) { _ in
-                viewModel.selectFolder()
-            }
     }
-    
+
     private var folderSelectionContent: some View {
         ZStack {
             // Adaptive gradient background with context menu
@@ -70,32 +62,6 @@ struct FolderSelectionView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .clipped() // Ensure content doesn't extend beyond bounds
-        .alert("Error", isPresented: $showingErrorAlert, presenting: viewModel.currentError) { error in
-            Button("OK") {
-                viewModel.clearError()
-            }
-            .accessibilityLabel("Dismiss error")
-            
-            if case .folderAccessDenied = error {
-                Button("Try Again") {
-                    viewModel.selectFolder()
-                }
-                .accessibilityLabel("Try selecting folder again")
-            }
-        } message: { error in
-            VStack(alignment: .leading, spacing: 8) {
-                Text(error.localizedDescription)
-                
-                if let recoverySuggestion = error.recoverySuggestion {
-                    Text(recoverySuggestion)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-        .onChange(of: viewModel.currentError) { _, error in
-            showingErrorAlert = error != nil
-        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Folder selection view")
     }
@@ -142,11 +108,7 @@ struct FolderSelectionView: View {
             Divider()
             
             Button(action: {
-                // Open preferences (placeholder)
-                ErrorHandlingService.shared.showNotification(
-                    "Preferences window will be available in a future update",
-                    type: .info
-                )
+                NotificationCenter.default.post(name: .openPreferences, object: nil)
             }) {
                 Label("Preferences...", systemImage: "gearshape")
             }
@@ -503,20 +465,20 @@ private struct RecentFolderRow: View {
 }
 
 #Preview {
-    FolderSelectionView(onImageSelected: nil)
+    FolderSelectionView(viewModel: FolderSelectionViewModel())
         .frame(width: 600, height: 500)
 }
 
 #Preview("With Recent Folders") {
     let _ = FolderSelectionViewModel()
     // Note: In a real preview, you'd inject mock data
-    FolderSelectionView(onImageSelected: nil)
+    FolderSelectionView(viewModel: FolderSelectionViewModel())
         .frame(width: 600, height: 500)
 }
 
 #Preview("Scanning State") {
     let _ = FolderSelectionViewModel()
     // Note: In a real preview, you'd set isScanning to true
-    FolderSelectionView(onImageSelected: nil)
+    FolderSelectionView(viewModel: FolderSelectionViewModel())
         .frame(width: 600, height: 500)
 }

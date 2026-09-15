@@ -1,0 +1,14 @@
+{
+  "attempt": 1,
+  "error": null,
+  "evidence": {
+    "pr_number": 17,
+    "pr_url": "https://github.com/vscarpenter/SimpleImageViewer/pull/17",
+    "spec_sha": "df35740753915d4710a82c07e5521ef3f1f30b4a"
+  },
+  "issue": 16,
+  "phase": "spec",
+  "started_at": "2026-08-18T00:14:06.704967+00:00",
+  "status": "succeeded",
+  "updated_at": "2026-08-18T00:17:15.534823+00:00"
+}

@@ -1,143 +1,88 @@
 import Foundation
-import AppKit
 
-/// Manages memory usage for image loading operations
+/// Tracks decoded bytes retained by image caches. Every owner registers and releases the same cost.
 final class ImageMemoryManager {
     private let maxMemoryUsage: Int
-    private var currentMemoryUsage: Int = 0
+    private var currentMemoryUsage = 0
     private let memoryQueue = DispatchQueue(label: "com.simpleimageviewer.memorymanager", qos: .utility)
     private let memoryPressureSource: DispatchSourceMemoryPressure
-    private var isUnderMemoryPressure: Bool = false
-    
-    /// Initialize the memory manager
-    /// - Parameter maxMemoryUsage: Maximum memory usage in bytes (default: 4GB)
+    private var isUnderMemoryPressure = false
+
     init(maxMemoryUsage: Int = 4_000_000_000) {
-        self.maxMemoryUsage = maxMemoryUsage
-        
-        // Set up memory pressure monitoring
+        self.maxMemoryUsage = max(0, maxMemoryUsage)
         memoryPressureSource = DispatchSource.makeMemoryPressureSource(
-            eventMask: [.normal, .warning, .critical],
-            queue: memoryQueue
+            eventMask: [.normal, .warning, .critical], queue: memoryQueue
         )
-        
         memoryPressureSource.setEventHandler { [weak self] in
             self?.handleMemoryPressureEvent()
         }
-        
         memoryPressureSource.resume()
     }
-    
+
     deinit {
         memoryPressureSource.cancel()
     }
-    
-    /// Check if an image of the given size should be loaded
-    /// - Parameter size: Size of the image file in bytes
-    /// - Returns: True if the image should be loaded, false if memory is constrained
+
+    /// Whether an additional decoded allocation fits. `size` is bytes, never compressed file size.
     func shouldLoadImage(size: Int) -> Bool {
-        return memoryQueue.sync {
-            // Don't load if under memory pressure
-            if isUnderMemoryPressure {
-                return false
-            }
-            
-            // Check if loading this image would exceed our memory limit
-            let projectedUsage = currentMemoryUsage + estimateImageMemoryUsage(fileSize: size)
-            return projectedUsage <= maxMemoryUsage
+        memoryQueue.sync {
+            size >= 0 && !isUnderMemoryPressure && size <= max(0, maxMemoryUsage - currentMemoryUsage)
         }
     }
-    
-    /// Record that an image has been loaded
-    /// - Parameter size: Size of the image file in bytes
+
+    /// Register decoded bytes retained by an owner such as ImageCache.
     func didLoadImage(size: Int) {
-        memoryQueue.async { [weak self] in
-            guard let self = self else { return }
-            let estimatedMemoryUsage = self.estimateImageMemoryUsage(fileSize: size)
-            self.currentMemoryUsage += estimatedMemoryUsage
+        guard size > 0 else { return }
+        memoryQueue.sync {
+            let total = currentMemoryUsage.addingReportingOverflow(size)
+            currentMemoryUsage = total.overflow ? Int.max : total.partialValue
         }
     }
-    
-    /// Record that an image has been unloaded from memory
-    /// - Parameter size: Size of the image file in bytes
+
+    /// Release the exact decoded cost previously registered by its owner.
     func didUnloadImage(size: Int) {
-        memoryQueue.async { [weak self] in
-            guard let self = self else { return }
-            let estimatedMemoryUsage = self.estimateImageMemoryUsage(fileSize: size)
-            self.currentMemoryUsage = max(0, self.currentMemoryUsage - estimatedMemoryUsage)
+        guard size > 0 else { return }
+        memoryQueue.sync {
+            currentMemoryUsage = max(0, currentMemoryUsage - size)
         }
     }
-    
-    /// Handle memory pressure by clearing memory usage tracking
+
+    /// Ask owners to purge actual entries. Counters change only when those owners release them.
     func handleMemoryPressure() {
-        memoryQueue.async { [weak self] in
-            self?.currentMemoryUsage = 0
-            self?.isUnderMemoryPressure = true
-            
-            // Post notification for other components to clear their caches
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .memoryWarning, object: nil)
-            }
-            
-            // Reset memory pressure flag after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-                self?.memoryQueue.async {
-                    self?.isUnderMemoryPressure = false
-                }
-            }
+        memoryQueue.sync {
+            isUnderMemoryPressure = true
+        }
+        postMemoryWarning()
+        memoryQueue.asyncAfter(deadline: .now() + 30) { [weak self] in
+            self?.isUnderMemoryPressure = false
         }
     }
-    
-    /// Get current memory usage statistics
+
     var memoryUsage: (current: Int, maximum: Int, percentage: Double) {
-        return memoryQueue.sync {
-            let percentage = maxMemoryUsage > 0 ? Double(currentMemoryUsage) / Double(maxMemoryUsage) : 0.0
-            return (current: currentMemoryUsage, maximum: maxMemoryUsage, percentage: percentage)
+        memoryQueue.sync {
+            let percentage = maxMemoryUsage > 0 ? Double(currentMemoryUsage) / Double(maxMemoryUsage) : 0
+            return (currentMemoryUsage, maxMemoryUsage, percentage)
         }
     }
-    
-    /// Reset memory usage tracking
+
+    /// Only use after all tracked owners have released their entries.
     func resetMemoryTracking() {
-        memoryQueue.async { [weak self] in
-            self?.currentMemoryUsage = 0
-        }
+        memoryQueue.sync { currentMemoryUsage = 0 }
     }
-    
-    // MARK: - Private Methods
-    
+
     private func handleMemoryPressureEvent() {
         let event = memoryPressureSource.data
-        
-        switch event {
-        case .normal:
+        if event.contains(.critical) || event.contains(.warning) {
+            isUnderMemoryPressure = true
+            postMemoryWarning()
+        } else if event.contains(.normal) {
             isUnderMemoryPressure = false
-        case .warning:
-            isUnderMemoryPressure = true
-            // Reduce current memory usage estimate by 50%
-            currentMemoryUsage /= 2
-        case .critical:
-            isUnderMemoryPressure = true
-            // Reset memory usage tracking completely
-            currentMemoryUsage = 0
-        default:
-            break
         }
     }
-    
-    private func estimateImageMemoryUsage(fileSize: Int) -> Int {
-        // More realistic estimation based on modern image formats
-        // HEIC/WebP have very high compression ratios (20-50:1)
-        // JPEG typically 10-15:1, PNG varies widely
-        
-        // Use more realistic multipliers based on file size patterns
-        if fileSize > 50_000_000 { // Files > 50MB - likely already uncompressed or minimally compressed
-            return Int(Double(fileSize) * 1.2) // 20% overhead for processing
-        } else if fileSize > 10_000_000 { // Files > 10MB - moderate compression
-            return fileSize * 2 // 2x for decompression
-        } else if fileSize > 1_000_000 { // Files > 1MB - good compression
-            return fileSize * 3 // 3x for decompression
-        } else {
-            // Small files may be thumbnails or highly compressed
-            return fileSize * 8 // Higher ratio for very compressed images
+
+    private func postMemoryWarning() {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .memoryWarning, object: nil)
         }
     }
 }

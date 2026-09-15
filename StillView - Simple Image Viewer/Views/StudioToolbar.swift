@@ -1,5 +1,4 @@
 import AppKit
-import Combine
 import SwiftUI
 
 /// Unified 52 pt toolbar (Studio redesign, finding V1): breadcrumb folder menu +
@@ -9,9 +8,8 @@ import SwiftUI
 struct StudioToolbar: View {
     @ObservedObject var viewModel: ImageViewerViewModel
 
-    /// Handles "Choose Folder…" and recent-folder switches; scanning results
-    /// flow back through the .folderSelected notification ContentView handles.
-    @StateObject private var folderPicker = FolderSelectionViewModel()
+    /// ContentView owns the picker and presents its loading and error states.
+    @ObservedObject var folderPicker: FolderSelectionViewModel
 
     @State private var toolbarWidth: CGFloat = 1180
 
@@ -19,23 +17,28 @@ struct StudioToolbar: View {
     /// Space reserved for the window's traffic lights (hidden title bar)
     private static let trafficLightInset: CGFloat = 78
 
-    /// Below this the segments go icon-only so the grid controls never crowd
-    /// the window-centered control.
+    /// Compact windows keep the three modes visible with named icons.
     private var showsSegmentLabels: Bool {
         toolbarWidth >= 1020
     }
 
     var body: some View {
-        ZStack {
-            HStack(spacing: 14) {
-                breadcrumbGroup
-                Spacer(minLength: 0)
-                rightGroup
-            }
-            .padding(.leading, Self.trafficLightInset)
-            .padding(.trailing, 16)
+        HStack(spacing: 14) {
+            breadcrumbGroup
+                .padding(.leading, Self.trafficLightInset)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
 
             viewModeControl
+                .fixedSize()
+
+            // Equal flexible side regions keep the modes window-centered.
+            // Measure the actions within their own region so they cannot overlap.
+            ViewThatFits(in: .horizontal) {
+                rightGroup(compact: false).fixedSize()
+                rightGroup(compact: true).fixedSize()
+            }
+            .padding(.trailing, 16)
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .trailing)
         }
         .frame(height: Self.barHeight)
         .frame(maxWidth: .infinity)
@@ -50,11 +53,9 @@ struct StudioToolbar: View {
                 .fill(Color.appHairline)
                 .frame(height: 1)
         }
-        .onReceive(folderPicker.$selectedFolderContent.compactMap { $0 }) { content in
-            NotificationCenter.default.post(name: .folderSelected, object: content)
-        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Toolbar")
+        .focusedValue(\.viewerKeyboardFocus, .control)
     }
 
     // MARK: - Breadcrumb + Counter
@@ -91,7 +92,7 @@ struct StudioToolbar: View {
                         .foregroundColor(.appText)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                        .frame(maxWidth: 180)
+                        .frame(minWidth: 0, maxWidth: 180, alignment: .leading)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(.appSecondaryText)
@@ -99,7 +100,6 @@ struct StudioToolbar: View {
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
-            .fixedSize()
             .help("Switch folder")
             .accessibilityLabel("Folder: \(viewModel.currentFolderName)")
 
@@ -107,6 +107,7 @@ struct StudioToolbar: View {
                 .font(.system(size: 12))
                 .monospacedDigit()
                 .foregroundColor(.appSecondaryText)
+                .fixedSize(horizontal: true, vertical: false)
                 .accessibilityLabel("Image \(viewModel.currentIndex + 1) of \(viewModel.totalImages)")
         }
     }
@@ -154,6 +155,7 @@ struct StudioToolbar: View {
         }
         .buttonStyle(.plain)
         .help("\(mode.displayName) view")
+        .accessibilityLabel(mode.displayName)
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
@@ -172,28 +174,34 @@ struct StudioToolbar: View {
 
     // MARK: - Right Group
 
-    private var rightGroup: some View {
+    private func rightGroup(compact: Bool) -> some View {
         HStack(spacing: 14) {
-            slideshowButton
+            if compact {
+                overflowMenu
+            } else {
+                slideshowButton
 
-            toolbarGlyphButton("square.and.arrow.up", help: "Share current image") {
-                shareCurrentImage()
-            }
-            .disabled(!viewModel.canShareCurrentImage)
-
-            toolbarGlyphButton("trash", help: "Move current image to Trash (Delete)") {
-                Task { @MainActor in
-                    await viewModel.moveCurrentImageToTrash()
+                toolbarGlyphButton("square.and.arrow.up", help: "Share current image") {
+                    shareCurrentImage()
                 }
+                .disabled(!viewModel.canShareCurrentImage)
+
+                toolbarGlyphButton("trash", help: "Move current image to Trash (Delete)") {
+                    Task { @MainActor in
+                        await viewModel.moveCurrentImageToTrash()
+                    }
+                }
+                .disabled(!viewModel.canDeleteCurrentImage)
             }
-            .disabled(!viewModel.canDeleteCurrentImage)
 
             toolbarDivider
 
             if viewModel.viewMode == .grid {
                 densitySlider
-                toolbarDivider
-                sortMenu
+                if !compact {
+                    toolbarDivider
+                    sortMenu
+                }
             } else {
                 zoomPill
             }
@@ -202,6 +210,57 @@ struct StudioToolbar: View {
 
             inspectorToggle
         }
+    }
+
+    private var overflowMenu: some View {
+        Menu {
+            Button {
+                viewModel.toggleSlideshow()
+            } label: {
+                Label(
+                    viewModel.isSlideshow ? "Stop Slideshow" : "Start Slideshow",
+                    systemImage: viewModel.isSlideshow ? "pause.circle.fill" : "play.circle"
+                )
+            }
+            .disabled(viewModel.totalImages < 2)
+
+            Menu("Slideshow Interval") {
+                slideshowIntervalOptions
+            }
+
+            Button {
+                shareCurrentImage()
+            } label: {
+                Label("Share Current Image", systemImage: "square.and.arrow.up")
+            }
+            .disabled(!viewModel.canShareCurrentImage)
+
+            Button {
+                Task { @MainActor in
+                    await viewModel.moveCurrentImageToTrash()
+                }
+            } label: {
+                Label("Move Current Image to Trash", systemImage: "trash")
+            }
+            .disabled(!viewModel.canDeleteCurrentImage)
+
+            if viewModel.viewMode == .grid {
+                Divider()
+                Menu("Sort by") {
+                    sortOptions
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(viewModel.isSlideshow ? .systemAccent : .appText)
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .help("More actions")
+        .accessibilityLabel("More actions")
     }
 
     private var toolbarDivider: some View {
@@ -236,15 +295,19 @@ struct StudioToolbar: View {
         .help(viewModel.isSlideshow ? "Stop slideshow (S)" : "Start slideshow (S)")
         .accessibilityLabel(viewModel.isSlideshow ? "Stop slideshow" : "Start slideshow")
         .contextMenu {
-            ForEach([2.0, 5.0, 10.0], id: \.self) { interval in
-                Button {
-                    viewModel.setSlideshowInterval(interval)
-                } label: {
-                    if viewModel.slideshowInterval == interval {
-                        Label("\(Int(interval)) seconds", systemImage: "checkmark")
-                    } else {
-                        Text("\(Int(interval)) seconds")
-                    }
+            slideshowIntervalOptions
+        }
+    }
+
+    private var slideshowIntervalOptions: some View {
+        ForEach([2.0, 5.0, 10.0], id: \.self) { interval in
+            Button {
+                viewModel.setSlideshowInterval(interval)
+            } label: {
+                if viewModel.slideshowInterval == interval {
+                    Label("\(Int(interval)) seconds", systemImage: "checkmark")
+                } else {
+                    Text("\(Int(interval)) seconds")
                 }
             }
         }
@@ -314,32 +377,22 @@ struct StudioToolbar: View {
             Image(systemName: "photo")
                 .font(.system(size: 11))
                 .foregroundColor(.appSecondaryText)
+                .accessibilityHidden(true)
             Slider(value: $viewModel.gridDensity, in: 120...220)
                 .controlSize(.mini)
                 .frame(width: 84)
+                .accessibilityLabel("Thumbnail size")
             Image(systemName: "photo")
                 .font(.system(size: 15))
                 .foregroundColor(.appSecondaryText)
+                .accessibilityHidden(true)
         }
         .help("Thumbnail size")
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Thumbnail size")
-
     }
 
     private var sortMenu: some View {
         Menu {
-            ForEach(ImageSortOrder.allCases, id: \.self) { order in
-                Button {
-                    viewModel.applySortOrder(order)
-                } label: {
-                    if viewModel.sortOrder == order {
-                        Label(order.displayName, systemImage: "checkmark")
-                    } else {
-                        Text(order.displayName)
-                    }
-                }
-            }
+            sortOptions
         } label: {
             HStack(spacing: 4) {
                 Text(viewModel.sortOrder.displayName)
@@ -355,6 +408,20 @@ struct StudioToolbar: View {
         .fixedSize()
         .help("Sort order")
         .accessibilityLabel("Sort by \(viewModel.sortOrder.displayName)")
+    }
+
+    private var sortOptions: some View {
+        ForEach(ImageSortOrder.allCases, id: \.self) { order in
+            Button {
+                viewModel.applySortOrder(order)
+            } label: {
+                if viewModel.sortOrder == order {
+                    Label(order.displayName, systemImage: "checkmark")
+                } else {
+                    Text(order.displayName)
+                }
+            }
+        }
     }
 
     // MARK: - Inspector Toggle
@@ -386,6 +453,6 @@ struct StudioToolbar: View {
 
 // MARK: - Preview
 #Preview {
-    StudioToolbar(viewModel: ImageViewerViewModel())
+    StudioToolbar(viewModel: ImageViewerViewModel(), folderPicker: FolderSelectionViewModel())
         .frame(width: 1180)
 }

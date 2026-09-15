@@ -5,7 +5,10 @@ struct ContentView: View {
     // MARK: - State Properties
     @StateObject private var imageViewerViewModel = ImageViewerViewModel()
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
+    @StateObject private var folderPicker = FolderSelectionViewModel()
     @State private var showImageViewer = false
+    @State private var restoredImageIndex: Int?
+    @FocusState private var isStageFocused: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -29,19 +32,43 @@ struct ContentView: View {
             .onAppear {
                 setupApplication()
             }
-            .onReceive(NotificationCenter.default.publisher(for: .folderSelected)) { notification in
-                handleFolderSelection(notification)
+            .onReceive(folderPicker.$selectedFolderContent.compactMap { $0 }) { content in
+                handleFolderSelection(content)
             }
             .onReceive(NotificationCenter.default.publisher(for: .requestFolderSelection)) { _ in
-                showImageViewer = false
+                returnToFolderSelection()
             }
             .onReceive(NotificationCenter.default.publisher(for: .openFolderPanel)) { _ in
-                showImageViewer = false
+                restoredImageIndex = nil
+                folderPicker.selectFolder()
+            }
+            .onChange(of: imageViewerViewModel.shouldNavigateToFolderSelection) { _, requested in
+                if requested { returnToFolderSelection() }
+            }
+            .onChange(of: folderPicker.isScanning) { _, scanning in
+                if scanning { imageViewerViewModel.stopSlideshow() }
+            }
+            .onChange(of: folderPicker.currentError) { _, error in
+                if error != nil { restoredImageIndex = nil }
             }
             .onReceive(NotificationCenter.default.publisher(for: .restoreWindowState)) { notification in
                 handleWindowStateRestoration(notification)
             }
-            .background(InvisibleKeyCapture(keyHandler: KeyboardHandler(imageViewerViewModel: imageViewerViewModel)))
+            .alert("Unable to Open Folder", isPresented: Binding(
+                get: { folderPicker.currentError != nil },
+                set: { if !$0 { folderPicker.clearError() } }
+            ), presenting: folderPicker.currentError) { _ in
+                Button("OK") { folderPicker.clearError() }
+            } message: { error in
+                Text([error.localizedDescription, error.recoverySuggestion].compactMap { $0 }.joined(separator: "\n\n"))
+            }
+            .background(InvisibleKeyCapture(
+                keyHandler: KeyboardHandler(imageViewerViewModel: imageViewerViewModel),
+                isEnabled: showImageViewer && imageViewerViewModel.totalImages > 0
+                    && !folderPicker.isShowingFolderPicker && !folderPicker.isScanning
+                    && folderPicker.currentError == nil && errorHandlingService.modalError == nil
+                    && !errorHandlingService.showPermissionDialog
+            ))
     }
     
     // MARK: - View Components
@@ -69,7 +96,18 @@ struct ContentView: View {
         // inspector on the right. The stage only resizes as the single
         // inspector open/close animation (finding U4).
         VStack(spacing: 0) {
-            StudioToolbar(viewModel: imageViewerViewModel)
+            StudioToolbar(viewModel: imageViewerViewModel, folderPicker: folderPicker)
+
+            if folderPicker.isScanning {
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text("Opening folder…")
+                    Spacer()
+                    Button("Cancel") { folderPicker.cancelScanning() }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
 
             HStack(spacing: 0) {
                 VStack(spacing: 0) {
@@ -100,6 +138,11 @@ struct ContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
+                .focusable()
+                .focusEffectDisabled()
+                .focused($isStageFocused)
+                .focusedValue(\.viewerKeyboardFocus, .viewer)
+                .simultaneousGesture(TapGesture().onEnded { isStageFocused = true })
 
                 if imageViewerViewModel.inspectorVisible {
                     InspectorView(viewModel: imageViewerViewModel)
@@ -115,21 +158,7 @@ struct ContentView: View {
     
     @ViewBuilder
     private var folderSelectionInterface: some View {
-        FolderSelectionView(onImageSelected: { folderContent, imageFile in
-            // Load the folder content with the selected image
-            imageViewerViewModel.loadFolderContent(folderContent)
-            showImageViewer = true
-            
-            // Update window state manager with new folder and image
-            if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-                Task { @MainActor in
-                    appDelegate.windowStateManager.updateFolderState(
-                        folderURL: folderContent.folderURL,
-                        imageIndex: folderContent.currentIndex
-                    )
-                }
-            }
-        })
+        FolderSelectionView(viewModel: folderPicker)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
@@ -171,6 +200,7 @@ struct ContentView: View {
             .foregroundColor(.white)
             .padding(.leading, 4)
             .accessibilityLabel("Dismiss notification")
+            .focusedValue(\.viewerKeyboardFocus, .control)
         }
         .frame(maxWidth: 400)
         .accessibilityElement(children: .combine)
@@ -291,56 +321,43 @@ struct ContentView: View {
         }
     }
     
-    private func handleFolderSelection(_ notification: Notification) {
-        if let folderContent = notification.object as? FolderContent {
-            imageViewerViewModel.loadFolderContent(folderContent)
-            showImageViewer = true
-            
-            // Update window state manager with new folder
-            if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-                Task { @MainActor in
-                    appDelegate.windowStateManager.updateFolderState(
-                        folderURL: folderContent.folderURL,
-                        imageIndex: folderContent.currentIndex
-                    )
-                }
-            }
+    private func returnToFolderSelection() {
+        folderPicker.cancelScanning()
+        restoredImageIndex = nil
+        imageViewerViewModel.stopSlideshow()
+        imageViewerViewModel.shouldNavigateToFolderSelection = false
+        showImageViewer = false
+    }
+
+    private func handleFolderSelection(_ content: FolderContent) {
+        let folderContent = FolderContent(
+            folderURL: content.folderURL,
+            imageFiles: content.imageFiles,
+            currentIndex: restoredImageIndex ?? content.currentIndex
+        )
+        restoredImageIndex = nil
+        imageViewerViewModel.shouldNavigateToFolderSelection = false
+        imageViewerViewModel.loadFolderContent(folderContent)
+        showImageViewer = folderContent.hasImages
+
+        if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+            appDelegate.windowStateManager.updateFolderState(
+                folderURL: folderContent.folderURL,
+                imageIndex: folderContent.currentIndex
+            )
         }
     }
-    
+
     private func handleWindowStateRestoration(_ notification: Notification) {
         guard let userInfo = notification.userInfo,
               let folderURL = userInfo["folderURL"] as? URL,
               let imageIndex = userInfo["imageIndex"] as? Int else {
             return
         }
-        
-        // Create a folder selection view model to handle the restoration
-        let folderSelectionViewModel = FolderSelectionViewModel()
-        
-        // Restore the folder at the specific image index
-        Task { @MainActor in
-            // Set the folder URL and trigger scanning
-            folderSelectionViewModel.selectedFolderURL = folderURL
-            
-            // Wait for scanning to complete and then navigate to the specific image
-            // We'll use a simple approach by posting a delayed notification
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                // Try to restore the folder content
-                if let folderContent = folderSelectionViewModel.selectedFolderContent {
-                    // Update the folder content to start at the restored image index
-                    let restoredFolderContent = FolderContent(
-                        folderURL: folderContent.folderURL,
-                        imageFiles: folderContent.imageFiles,
-                        currentIndex: min(imageIndex, folderContent.imageFiles.count - 1)
-                    )
-                    
-                    self.imageViewerViewModel.loadFolderContent(restoredFolderContent)
-                    self.showImageViewer = true
-                }
-            }
-        }
+        restoredImageIndex = imageIndex
+        folderPicker.restoreLastFolder(folderURL)
     }
+
 }
 
 // MARK: - Notification Names
@@ -393,6 +410,7 @@ private struct StageHoverArrows: View {
         .disabled(!enabled)
         .opacity(enabled ? 1.0 : 0.35)
         .accessibilityLabel(label)
+        .focusedValue(\.viewerKeyboardFocus, .control)
     }
 }
 

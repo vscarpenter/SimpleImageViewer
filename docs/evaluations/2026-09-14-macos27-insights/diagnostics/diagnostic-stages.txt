@@ -1,0 +1,7 @@
+DIAGNOSTIC before instruction tokens
+DIAGNOSTIC instruction tokens 233, before schema tokens
+DIAGNOSTIC schema tokens 331, before image prompt tokens
+DIAGNOSTIC underlying: Error Domain=FoundationModels.LanguageModelError Code=-1 "The operation couldn’t be completed. (ModelManagerServices.ModelManagerError error 1001.)" UserInfo={NSLocalizedDescription=The operation couldn’t be completed. (ModelManagerServices.ModelManagerError error 1001.), NSMultipleUnderlyingErrorsKey=(
+    "Error Domain=ModelManagerServices.ModelManagerError Code=1001 \"(null)\" UserInfo={NSMultipleUnderlyingErrorsKey=(\n)}"
+)}
+diagnostic: 1/1 abstract-shapes.png error 15.13s

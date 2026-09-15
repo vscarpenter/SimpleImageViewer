@@ -93,6 +93,7 @@ private struct FilmstripThumbnail: View {
             }
         }
         .buttonStyle(.plain)
+        .focusedValue(\.viewerKeyboardFocus, .control)
         .onHover { hovering in
             isHovered = hovering
         }

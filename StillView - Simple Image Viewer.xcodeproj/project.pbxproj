@@ -42,33 +42,22 @@
 		B20100000000000000000001 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
 		B20100000000000000000003 /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
 		B20100000000000000000005 /* AppleIntelligenceInsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */; };
-		B2010000000000000000AA05 /* InsightEvalHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000AA06 /* InsightEvalHarness.swift */; };
-		B20100000000000000000009 /* ImageInsightCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000002 /* ImageInsightCore.swift */; };
-		B2010000000000000000000A /* ImageInsightViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20100000000000000000004 /* ImageInsightViewModel.swift */; };
 		B2010000000000000000000B /* ImageInsightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000C /* ImageInsightTests.swift */; };
 		B2010000000000000000000D /* ImagePerceptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000E /* ImagePerceptionService.swift */; };
-		B201000000000000000000F1 /* ImageContentTypeClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000F2 /* ImageContentTypeClassifier.swift */; };
-		B201000000000000000000F3 /* ImageContentTypeClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000F4 /* ImageContentTypeClassifierTests.swift */; };
-		B2010000000000000000AA01 /* ImagePerceptionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */; };
-		B201000000000000000000F6 /* ImageContentTypeClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000F2 /* ImageContentTypeClassifier.swift */; };
-		B201000000000000000000F7 /* ImagePerceptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000E /* ImagePerceptionService.swift */; };
-		B201000000000000000000F8 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2E7C922E556A5F000525C4 /* Logger.swift */; };
 		B201000000000000000000A1 /* InsightOutputValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000A2 /* InsightOutputValidator.swift */; };
 		B201000000000000000000A3 /* InsightOutputValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000A4 /* InsightOutputValidatorTests.swift */; };
-		B201000000000000000000A5 /* InsightOutputValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000A2 /* InsightOutputValidator.swift */; };
-		C0C0C0C0C0C0C0C0C0C0C0D1 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0C0C0C0C0C0C0C0C0C0F1 /* SmokeTests.swift */; };
-		B30100000000000000000005 /* ViewerModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000004 /* ViewerModeTests.swift */; };
-		B30100000000000000000018 /* BeforeAfterSliderViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000017 /* BeforeAfterSliderViewTests.swift */; };
+		B2010000000000000000AA01 /* ImagePerceptionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */; };
+		B2010000000000000000AA05 /* InsightEvalHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000AA06 /* InsightEvalHarness.swift */; };
 		B30100000000000000000001 /* ViewerMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000002 /* ViewerMode.swift */; };
+		B30100000000000000000005 /* ViewerModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000004 /* ViewerModeTests.swift */; };
+		B30100000000000000000009 /* ImageMetadataFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000008 /* ImageMetadataFormattingTests.swift */; };
 		B3010000000000000000000B /* FilmstripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3010000000000000000000A /* FilmstripView.swift */; };
 		B3010000000000000000000D /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3010000000000000000000C /* InspectorView.swift */; };
 		B3010000000000000000000F /* StudioToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3010000000000000000000E /* StudioToolbar.swift */; };
 		B30100000000000000000011 /* GridPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000010 /* GridPane.swift */; };
 		B30100000000000000000015 /* BeforeAfterSliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000014 /* BeforeAfterSliderView.swift */; };
-		B30100000000000000000016 /* BeforeAfterSliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000014 /* BeforeAfterSliderView.swift */; };
-		B30100000000000000000007 /* ImageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5D39032E355791004B9D85 /* ImageMetadataService.swift */; };
-		B30100000000000000000009 /* ImageMetadataFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000008 /* ImageMetadataFormattingTests.swift */; };
-		B30100000000000000000003 /* ViewerMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000002 /* ViewerMode.swift */; };
+		B30100000000000000000018 /* BeforeAfterSliderViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000017 /* BeforeAfterSliderViewTests.swift */; };
+		C0C0C0C0C0C0C0C0C0C0C0D1 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0C0C0C0C0C0C0C0C0C0F1 /* SmokeTests.swift */; };
 		FB140FAB2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB140FAA2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift */; };
 		FB140FB02E435B8F00A36AB6 /* SkeletonLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB140FAD2E435B8F00A36AB6 /* SkeletonLoadingView.swift */; };
 		FB140FB22E435B8F00A36AB6 /* ThumbnailGridPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB140FAE2E435B8F00A36AB6 /* ThumbnailGridPreferencesView.swift */; };
@@ -85,6 +74,7 @@
 		FB2E7C902E556A31000525C4 /* UnifiedErrorHandlingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2E7C8E2E556A31000525C4 /* UnifiedErrorHandlingService.swift */; };
 		FB2E7C912E556A31000525C4 /* MemoryManagementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2E7C8C2E556A31000525C4 /* MemoryManagementService.swift */; };
 		FB2E7C932E556A5F000525C4 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2E7C922E556A5F000525C4 /* Logger.swift */; };
+		FB495D0A3058B4FE00CAC231 /* ThinkingIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB495D093058B4FE00CAC231 /* ThinkingIndicatorView.swift */; };
 		FB49A3702E80D50800F77575 /* PreferencesEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A36F2E80D50800F77575 /* PreferencesEnums.swift */; };
 		FB49A3742E80D51E00F77575 /* EnhancedImageDisplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A3722E80D51E00F77575 /* EnhancedImageDisplayView.swift */; };
 		FB49A37E2E80D54000F77575 /* EnhancedAccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A37B2E80D54000F77575 /* EnhancedAccessibilityService.swift */; };
@@ -126,7 +116,25 @@
 		FBF3C8A62E5FE1A800F10DC8 /* PreferencesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3C8A32E5FE1A800F10DC8 /* PreferencesViewModel.swift */; };
 		FBF3C8A72E5FE1A800F10DC8 /* ShortcutsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3C8A42E5FE1A800F10DC8 /* ShortcutsViewModel.swift */; };
 		FBF3C8A92E5FE1CD00F10DC8 /* KeyboardNavigation+Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3C8A82E5FE1CD00F10DC8 /* KeyboardNavigation+Preferences.swift */; };
+		FBF6CAA6304CF59100ADFEEB /* ViewingLifecycleRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAA5304CF59100ADFEEB /* ViewingLifecycleRegressionTests.swift */; };
+		FBF6CAA8304CF5DF00ADFEEB /* ImageViewportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAA7304CF5DF00ADFEEB /* ImageViewportTests.swift */; };
+		FBF6CAAA304CF60B00ADFEEB /* ImageFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAA9304CF60B00ADFEEB /* ImageFileTests.swift */; };
+		FBF6CAAC304CF61600ADFEEB /* FolderContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAAB304CF61600ADFEEB /* FolderContentTests.swift */; };
+		FBF6CAAE304CF62100ADFEEB /* FileSystemServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAAD304CF62100ADFEEB /* FileSystemServiceTests.swift */; };
+		FBF6CAB0304CF63200ADFEEB /* ImageDecodingRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAAF304CF63200ADFEEB /* ImageDecodingRegressionTests.swift */; };
+		FBF6CAB2304CF63E00ADFEEB /* ImageCacheAccountingRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAB1304CF63E00ADFEEB /* ImageCacheAccountingRegressionTests.swift */; };
+		FBF6CAB4304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF6CAB3304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		FBF6CAA3304CF4A400ADFEEB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A0FFFFF5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A0FFFFFC;
+			remoteInfo = "StillView - Simple Image Viewer";
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A0FFFFFD /* StillView - Simple Image Viewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "StillView - Simple Image Viewer.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -166,25 +174,23 @@
 		B20100000000000000000002 /* ImageInsightCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightCore.swift; sourceTree = "<group>"; };
 		B20100000000000000000004 /* ImageInsightViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightViewModel.swift; sourceTree = "<group>"; };
 		B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleIntelligenceInsightsService.swift; sourceTree = "<group>"; };
-		B2010000000000000000AA06 /* InsightEvalHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightEvalHarness.swift; sourceTree = "<group>"; };
 		B2010000000000000000000C /* ImageInsightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInsightTests.swift; sourceTree = "<group>"; };
 		B2010000000000000000000E /* ImagePerceptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePerceptionService.swift; sourceTree = "<group>"; };
-		B201000000000000000000F2 /* ImageContentTypeClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageContentTypeClassifier.swift; sourceTree = "<group>"; };
-		B201000000000000000000F4 /* ImageContentTypeClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageContentTypeClassifierTests.swift; sourceTree = "<group>"; };
-		B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePerceptionServiceTests.swift; sourceTree = "<group>"; };
 		B201000000000000000000A2 /* InsightOutputValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightOutputValidator.swift; sourceTree = "<group>"; };
 		B201000000000000000000A4 /* InsightOutputValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightOutputValidatorTests.swift; sourceTree = "<group>"; };
-		C0C0C0C0C0C0C0C0C0C0C0E1 /* StillView - Simple Image Viewer Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "StillView - Simple Image Viewer Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		C0C0C0C0C0C0C0C0C0C0C0F1 /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
-		B30100000000000000000004 /* ViewerModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerModeTests.swift; sourceTree = "<group>"; };
-		B30100000000000000000017 /* BeforeAfterSliderViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeforeAfterSliderViewTests.swift; sourceTree = "<group>"; };
+		B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePerceptionServiceTests.swift; sourceTree = "<group>"; };
+		B2010000000000000000AA06 /* InsightEvalHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightEvalHarness.swift; sourceTree = "<group>"; };
 		B30100000000000000000002 /* ViewerMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerMode.swift; sourceTree = "<group>"; };
+		B30100000000000000000004 /* ViewerModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerModeTests.swift; sourceTree = "<group>"; };
+		B30100000000000000000008 /* ImageMetadataFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataFormattingTests.swift; sourceTree = "<group>"; };
 		B3010000000000000000000A /* FilmstripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmstripView.swift; sourceTree = "<group>"; };
 		B3010000000000000000000C /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
 		B3010000000000000000000E /* StudioToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioToolbar.swift; sourceTree = "<group>"; };
 		B30100000000000000000010 /* GridPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridPane.swift; sourceTree = "<group>"; };
 		B30100000000000000000014 /* BeforeAfterSliderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeforeAfterSliderView.swift; sourceTree = "<group>"; };
-		B30100000000000000000008 /* ImageMetadataFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataFormattingTests.swift; sourceTree = "<group>"; };
+		B30100000000000000000017 /* BeforeAfterSliderViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeforeAfterSliderViewTests.swift; sourceTree = "<group>"; };
+		C0C0C0C0C0C0C0C0C0C0C0E1 /* StillView - Simple Image Viewer Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "StillView - Simple Image Viewer Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0C0C0C0C0C0C0C0C0C0C0F1 /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
 		FB140FAA2E435B8300A36AB6 /* ResponsiveGridLayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponsiveGridLayoutManager.swift; sourceTree = "<group>"; };
 		FB140FAC2E435B8F00A36AB6 /* ContextMenuProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextMenuProvider.swift; sourceTree = "<group>"; };
 		FB140FAD2E435B8F00A36AB6 /* SkeletonLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonLoadingView.swift; sourceTree = "<group>"; };
@@ -201,6 +207,7 @@
 		FB2E7C8D2E556A31000525C4 /* PerformanceOptimizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceOptimizationService.swift; sourceTree = "<group>"; };
 		FB2E7C8E2E556A31000525C4 /* UnifiedErrorHandlingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedErrorHandlingService.swift; sourceTree = "<group>"; };
 		FB2E7C922E556A5F000525C4 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		FB495D093058B4FE00CAC231 /* ThinkingIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThinkingIndicatorView.swift; sourceTree = "<group>"; };
 		FB49A36F2E80D50800F77575 /* PreferencesEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesEnums.swift; sourceTree = "<group>"; };
 		FB49A3722E80D51E00F77575 /* EnhancedImageDisplayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedImageDisplayView.swift; sourceTree = "<group>"; };
 		FB49A37B2E80D54000F77575 /* EnhancedAccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedAccessibilityService.swift; sourceTree = "<group>"; };
@@ -242,6 +249,14 @@
 		FBF3C8A32E5FE1A800F10DC8 /* PreferencesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesViewModel.swift; sourceTree = "<group>"; };
 		FBF3C8A42E5FE1A800F10DC8 /* ShortcutsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsViewModel.swift; sourceTree = "<group>"; };
 		FBF3C8A82E5FE1CD00F10DC8 /* KeyboardNavigation+Preferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KeyboardNavigation+Preferences.swift"; sourceTree = "<group>"; };
+		FBF6CAA5304CF59100ADFEEB /* ViewingLifecycleRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ViewingLifecycleRegressionTests.swift; path = ViewModels/ViewingLifecycleRegressionTests.swift; sourceTree = "<group>"; };
+		FBF6CAA7304CF5DF00ADFEEB /* ImageViewportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImageViewportTests.swift; path = Views/ImageViewportTests.swift; sourceTree = "<group>"; };
+		FBF6CAA9304CF60B00ADFEEB /* ImageFileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImageFileTests.swift; path = Models/ImageFileTests.swift; sourceTree = "<group>"; };
+		FBF6CAAB304CF61600ADFEEB /* FolderContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FolderContentTests.swift; path = Models/FolderContentTests.swift; sourceTree = "<group>"; };
+		FBF6CAAD304CF62100ADFEEB /* FileSystemServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FileSystemServiceTests.swift; path = Services/FileSystemServiceTests.swift; sourceTree = "<group>"; };
+		FBF6CAAF304CF63200ADFEEB /* ImageDecodingRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImageDecodingRegressionTests.swift; path = Services/ImageDecodingRegressionTests.swift; sourceTree = "<group>"; };
+		FBF6CAB1304CF63E00ADFEEB /* ImageCacheAccountingRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImageCacheAccountingRegressionTests.swift; path = Models/ImageCacheAccountingRegressionTests.swift; sourceTree = "<group>"; };
+		FBF6CAB3304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImageInsightLifecycleRegressionTests.swift; path = ViewModels/ImageInsightLifecycleRegressionTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -311,7 +326,6 @@
 				B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */,
 				B2010000000000000000AA06 /* InsightEvalHarness.swift */,
 				B2010000000000000000000E /* ImagePerceptionService.swift */,
-				B201000000000000000000F2 /* ImageContentTypeClassifier.swift */,
 				B201000000000000000000A2 /* InsightOutputValidator.swift */,
 				FB4EE8272E916AEA00B4AA4D /* FeedbackService.swift */,
 				FB49A37B2E80D54000F77575 /* EnhancedAccessibilityService.swift */,
@@ -371,6 +385,7 @@
 				A100009D /* NotificationView.swift */,
 				A100009E /* KeyCaptureViewRepresentable.swift */,
 				A10000A7 /* AboutView.swift */,
+				FB495D093058B4FE00CAC231 /* ThinkingIndicatorView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -454,15 +469,14 @@
 			path = Extensions;
 			sourceTree = "<group>";
 		};
-		C0C0C0C0C0C0C0C0C0C0C0B1 /* StillView - Simple Image Viewer Tests */ = {
+		B201000000000000000000F5 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				C0C0C0C0C0C0C0C0C0C0C0B2 /* Smoke */,
-				B30100000000000000000006 /* Models */,
-				B30100000000000000000019 /* Views */,
-				B201000000000000000000F5 /* Services */,
+				B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */,
+				B201000000000000000000A4 /* InsightOutputValidatorTests.swift */,
+				B30100000000000000000008 /* ImageMetadataFormattingTests.swift */,
 			);
-			path = "StillView - Simple Image Viewer Tests";
+			path = Services;
 			sourceTree = "<group>";
 		};
 		B30100000000000000000006 /* Models */ = {
@@ -481,15 +495,23 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		B201000000000000000000F5 /* Services */ = {
+		C0C0C0C0C0C0C0C0C0C0C0B1 /* StillView - Simple Image Viewer Tests */ = {
 			isa = PBXGroup;
 			children = (
-				B201000000000000000000F4 /* ImageContentTypeClassifierTests.swift */,
-				B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */,
-				B201000000000000000000A4 /* InsightOutputValidatorTests.swift */,
-				B30100000000000000000008 /* ImageMetadataFormattingTests.swift */,
+				FBF6CAB3304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift */,
+				FBF6CAB1304CF63E00ADFEEB /* ImageCacheAccountingRegressionTests.swift */,
+				FBF6CAAF304CF63200ADFEEB /* ImageDecodingRegressionTests.swift */,
+				FBF6CAAD304CF62100ADFEEB /* FileSystemServiceTests.swift */,
+				FBF6CAAB304CF61600ADFEEB /* FolderContentTests.swift */,
+				FBF6CAA9304CF60B00ADFEEB /* ImageFileTests.swift */,
+				FBF6CAA7304CF5DF00ADFEEB /* ImageViewportTests.swift */,
+				FBF6CAA5304CF59100ADFEEB /* ViewingLifecycleRegressionTests.swift */,
+				C0C0C0C0C0C0C0C0C0C0C0B2 /* Smoke */,
+				B30100000000000000000006 /* Models */,
+				B30100000000000000000019 /* Views */,
+				B201000000000000000000F5 /* Services */,
 			);
-			path = Services;
+			path = "StillView - Simple Image Viewer Tests";
 			sourceTree = "<group>";
 		};
 		C0C0C0C0C0C0C0C0C0C0C0B2 /* Smoke */ = {
@@ -532,6 +554,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				FBF6CAA4304CF4A400ADFEEB /* PBXTargetDependency */,
 			);
 			name = "StillView - Simple Image Viewer Tests";
 			productName = "StillView - Simple Image Viewer Tests";
@@ -554,6 +577,7 @@
 					C0C0C0C0C0C0C0C0C0C0C0C1 = {
 						CreatedOnToolsVersion = 15.0;
 						ProvisioningStyle = Automatic;
+						TestTargetID = A0FFFFFC;
 					};
 				};
 			};
@@ -617,7 +641,6 @@
 				B20100000000000000000005 /* AppleIntelligenceInsightsService.swift in Sources */,
 				B2010000000000000000AA05 /* InsightEvalHarness.swift in Sources */,
 				B2010000000000000000000D /* ImagePerceptionService.swift in Sources */,
-				B201000000000000000000F1 /* ImageContentTypeClassifier.swift in Sources */,
 				B201000000000000000000A1 /* InsightOutputValidator.swift in Sources */,
 				FB231AB52E45B2B600763700 /* WhatsNewContentView.swift in Sources */,
 				FB231AB62E45B2B600763700 /* WhatsNewSectionView.swift in Sources */,
@@ -662,6 +685,7 @@
 				FBF3C8A92E5FE1CD00F10DC8 /* KeyboardNavigation+Preferences.swift in Sources */,
 				A10000AD /* Color+Adaptive.swift in Sources */,
 				FBC4F84F2E35216900AE62AA /* KeyboardHandler.swift in Sources */,
+				FB495D0A3058B4FE00CAC231 /* ThinkingIndicatorView.swift in Sources */,
 				FBA5E0AC2E45ABA0009F3D00 /* WhatsNewContentProvider.swift in Sources */,
 				FBA5E0AD2E45ABA0009F3D00 /* WhatsNewService.swift in Sources */,
 				FB5D39042E355791004B9D85 /* ImageMetadataService.swift in Sources */,
@@ -707,27 +731,33 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B20100000000000000000009 /* ImageInsightCore.swift in Sources */,
-				B2010000000000000000000A /* ImageInsightViewModel.swift in Sources */,
+				FBF6CAA6304CF59100ADFEEB /* ViewingLifecycleRegressionTests.swift in Sources */,
+				FBF6CAAC304CF61600ADFEEB /* FolderContentTests.swift in Sources */,
+				FBF6CAB4304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift in Sources */,
 				B2010000000000000000000B /* ImageInsightTests.swift in Sources */,
-				B201000000000000000000F6 /* ImageContentTypeClassifier.swift in Sources */,
-				B201000000000000000000F7 /* ImagePerceptionService.swift in Sources */,
-				B201000000000000000000F8 /* Logger.swift in Sources */,
-				B201000000000000000000F3 /* ImageContentTypeClassifierTests.swift in Sources */,
+				FBF6CAAA304CF60B00ADFEEB /* ImageFileTests.swift in Sources */,
 				B2010000000000000000AA01 /* ImagePerceptionServiceTests.swift in Sources */,
-				B201000000000000000000A5 /* InsightOutputValidator.swift in Sources */,
 				B201000000000000000000A3 /* InsightOutputValidatorTests.swift in Sources */,
+				FBF6CAA8304CF5DF00ADFEEB /* ImageViewportTests.swift in Sources */,
 				C0C0C0C0C0C0C0C0C0C0C0D1 /* SmokeTests.swift in Sources */,
-				B30100000000000000000003 /* ViewerMode.swift in Sources */,
-				B30100000000000000000007 /* ImageMetadataService.swift in Sources */,
 				B30100000000000000000009 /* ImageMetadataFormattingTests.swift in Sources */,
 				B30100000000000000000005 /* ViewerModeTests.swift in Sources */,
+				FBF6CAB2304CF63E00ADFEEB /* ImageCacheAccountingRegressionTests.swift in Sources */,
+				FBF6CAAE304CF62100ADFEEB /* FileSystemServiceTests.swift in Sources */,
 				B30100000000000000000018 /* BeforeAfterSliderViewTests.swift in Sources */,
-				B30100000000000000000016 /* BeforeAfterSliderView.swift in Sources */,
+				FBF6CAB0304CF63200ADFEEB /* ImageDecodingRegressionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FBF6CAA4304CF4A400ADFEEB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A0FFFFFC /* StillView - Simple Image Viewer */;
+			targetProxy = FBF6CAA3304CF4A400ADFEEB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A0FFFFBB /* Debug */ = {
@@ -785,7 +815,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -845,7 +875,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -863,7 +893,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 34;
+				CURRENT_PROJECT_VERSION = 40;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				ENABLE_APP_SANDBOX = YES;
@@ -876,7 +906,7 @@
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_LSMinimumSystemVersion = 26.0;
+				INFOPLIST_KEY_LSMinimumSystemVersion = 27.0;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
 				INFOPLIST_KEY_NSHumanReadableDescription = "A lightweight, distraction-free image viewer for macOS by Vinny Carpenter (https://vinny.dev). Source code available at https://github.com/vscarpenter/SimpleImageViewer";
 				INFOPLIST_KEY_NSSupportsAutomaticTermination = YES;
@@ -889,8 +919,8 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Services\"",
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 4.5.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 5.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -907,7 +937,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 34;
+				CURRENT_PROJECT_VERSION = 40;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"StillView - Simple Image Viewer/Preview Content\"";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 52HVJ3VDSM;
@@ -921,7 +951,7 @@
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_LSMinimumSystemVersion = 26.0;
+				INFOPLIST_KEY_LSMinimumSystemVersion = 27.0;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
 				INFOPLIST_KEY_NSHumanReadableDescription = "A lightweight, distraction-free image viewer for macOS by Vinny Carpenter (https://vinny.dev). Source code available at https://github.com/vscarpenter/SimpleImageViewer";
 				INFOPLIST_KEY_NSSupportsAutomaticTermination = YES;
@@ -934,8 +964,8 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Services\"",
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 4.5.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 5.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -961,12 +991,12 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Services\"",
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.StillViewTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/StillView - Simple Image Viewer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/StillView - Simple Image Viewer";
 			};
 			name = Debug;
 		};
@@ -988,12 +1018,12 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Services\"",
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.StillViewTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/StillView - Simple Image Viewer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/StillView - Simple Image Viewer";
 			};
 			name = Release;
 		};

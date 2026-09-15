@@ -24,7 +24,7 @@ What actually happened? Include error messages or logs.
 If applicable, add images or a short GIF.
 
 ## Environment
-- macOS: (e.g., 13.5 Ventura, 14.x Sonoma)
+- macOS: (e.g., 27.0 Golden Gate, build 26A428)
 - App version/build: (from About or Test build)
 - Architecture: (Apple Silicon / Intel)
 

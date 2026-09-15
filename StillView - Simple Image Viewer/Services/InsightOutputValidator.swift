@@ -1,83 +1,78 @@
 import Foundation
 
-/// A small final guard for the only prose Foundation Models still generates. Structural fields,
-/// titles, details, tags, and limitations are composed deterministically elsewhere.
+/// Shape checks do not establish visual accuracy. Exact excerpts always resolve to Vision's
+/// original observations. Generated prose is not a transcription channel: neither quotes nor
+/// digit-bearing values belong there, even when matching text appears elsewhere in the image.
 enum InsightOutputValidator {
-    private static let peopleWords: Set<String> = [
-        "adult", "boy", "child", "children", "family", "friend", "friends", "girl", "group",
-        "man", "men", "people", "person", "woman", "women"
-    ]
-
-    private static let unsupportedDetailWords: Set<String> = [
-        "black", "blue", "brown", "celebrating", "celebration", "drinking", "driving", "eating",
-        "gold", "golden", "green", "parked", "party", "purple", "race", "racing", "red", "running",
-        "sitting", "smiling", "speeds", "standing", "walking", "wedding", "white", "yellow"
-    ]
-
-    private static let allowedCapitalizedWords: Set<String> = ["Apple", "Vision"]
-
-    static func isAcceptable(summary: String, perception: ImagePerceptionResult) -> Bool {
-        let trimmed = summary.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard (12...320).contains(trimmed.count) else { return false }
-
-        let evidence = perception.evidence
-        let summaryWords = normalizedWords(trimmed)
-        let evidenceWords = evidenceTokens(evidence)
-        guard !summaryWords.isDisjoint(with: evidenceWords) else { return false }
-
-        if evidence.faceCount == 0, !summaryWords.isDisjoint(with: peopleWords) {
-            return false
+    static func validatedTextLineIndices(_ indices: [Int], lineCount: Int) -> [Int]? {
+        guard lineCount > 0,
+              (1...3).contains(indices.count),
+              Set(indices).count == indices.count,
+              indices.allSatisfy({ (0..<lineCount).contains($0) }) else {
+            return nil
         }
-        if evidence.recognizedText.isEmpty,
-           trimmed.contains("\"") || trimmed.contains("“") || trimmed.contains("”") {
-            return false
-        }
-
-        let unsupported = summaryWords.intersection(unsupportedDetailWords).subtracting(evidenceWords)
-        guard unsupported.isEmpty else { return false }
-
-        return hasNoUnsupportedProperNoun(in: trimmed, evidence: evidence)
+        return indices.sorted()
     }
 
-    private static func evidenceTokens(_ evidence: ImageInsightEvidence) -> Set<String> {
-        let labels = (evidence.subjectLabels + evidence.sceneLabels)
-            .flatMap { normalizedWords(displayLabel($0.identifier)) }
-        let text = evidence.recognizedText.flatMap(normalizedWords)
-        var tokens = Set(labels + text)
-
-        if evidence.faceCount > 0 {
-            tokens.formUnion(["face", "faces", "person", "people"])
+    static func result(
+        from generated: GeneratedImageInsight,
+        perception: ImagePerceptionResult,
+        provenance: ImageInsightProvenance,
+        modelTextLineIndices: [Int]? = nil
+    ) throws -> ImageInsightResult {
+        let title = generated.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let summary = generated.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        let details = [generated.additionalDetail].compactMap { $0 }
+        let uncertainties = [generated.uncertainty].compactMap { $0 }
+        let narrative = [title, summary] + details + generated.tags + uncertainties
+        guard !title.isEmpty, title.count <= 120,
+              !summary.isEmpty, summary.count <= 800,
+              generated.tags.count <= 5,
+              narrative.allSatisfy({ $0.count <= 800 }),
+              hasNoTranscriptions(narrative) else {
+            throw ImageInsightError.invalidGeneratedContent
         }
-        if !evidence.recognizedText.isEmpty {
-            tokens.formUnion(["text", "words", "visible", "recognized"])
+        let allowedIndices = Set(modelTextLineIndices ?? Array(perception.textObservations.indices))
+        let indices = validatedTextLineIndices(
+            generated.selectedTextLineIndices, lineCount: perception.recognizedText.count
+        ).flatMap { selected in selected.allSatisfy(allowedIndices.contains) ? selected : nil }
+        // An invalid optional selection cannot rewrite or replace OCR; fall back to original reading order.
+        let selected = indices?.map { perception.recognizedText[$0] }
+            ?? Array(perception.recognizedText.prefix(3))
+        var limitations = uncertainties
+        if perception.textWasTruncated {
+            limitations.append("Text extraction was limited for this image. Some lines are not included.")
         }
-        return tokens
-    }
-
-    private static func hasNoUnsupportedProperNoun(
-        in summary: String,
-        evidence: ImageInsightEvidence
-    ) -> Bool {
-        let evidenceWords = Set(evidence.recognizedText.flatMap(normalizedWords))
-        let rawWords = summary
-            .components(separatedBy: CharacterSet.letters.inverted)
-            .filter { !$0.isEmpty }
-
-        for (index, word) in rawWords.enumerated() where index > 0 {
-            guard word.first?.isUppercase == true else { continue }
-            guard !allowedCapitalizedWords.contains(word), !evidenceWords.contains(word.lowercased()) else {
-                continue
-            }
-            return false
+        if allowedIndices.count < perception.textObservations.count {
+            limitations.append("The description used limited text evidence. All extracted text is available below.")
         }
-        return true
-    }
-
-    private static func normalizedWords(_ text: String) -> Set<String> {
-        Set(
-            text.lowercased()
-                .components(separatedBy: CharacterSet.alphanumerics.inverted)
-                .filter { $0.count >= 2 }
+        return ImageInsightResult(
+            title: title,
+            summary: summary,
+            usefulDetails: details,
+            tags: generated.tags,
+            limitations: limitations,
+            recognizedText: perception.recognizedText,
+            selectedTextLines: selected,
+            textSelectionSource: indices == nil ? .vision : .appleIntelligence,
+            provenance: provenance
         )
+    }
+
+    private static func hasNoTranscriptions(_ prose: [String]) -> Bool {
+        // Exact token matches cannot prove that a price belongs to a particular table row.
+        // Keep every digit-bearing value in the separately displayed original OCR instead.
+        guard prose.allSatisfy({ $0.rangeOfCharacter(from: .decimalDigits) == nil }) else { return false }
+        let quotedPatterns = [
+            #"[\"“]([^\"”]+)[\"”]"#,
+            #"(?<![\p{L}])['‘]([^'’]+)['’](?![\p{L}])"#,
+            #"[「『«]([^」』»]+)[」』»]"#
+        ]
+        return quotedPatterns.allSatisfy { pattern in
+            guard let expression = try? NSRegularExpression(pattern: pattern) else { return false }
+            return prose.allSatisfy {
+                expression.firstMatch(in: $0, range: NSRange($0.startIndex..., in: $0)) == nil
+            }
+        }
     }
 }

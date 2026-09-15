@@ -2,7 +2,7 @@
 
 > **"Because sometimes, simple is perfect."**
 
-[![macOS](https://img.shields.io/badge/macOS-26.0+-blue)](https://www.apple.com/macos/)
+[![macOS](https://img.shields.io/badge/macOS-27.0+-blue)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.0+-orange)](https://swift.org/)
 [![App Store](https://img.shields.io/badge/Available_on-Mac_App_Store-blue?logo=apple)](https://apps.apple.com/us/app/stillview-image-viewer/id6749210445)
 
@@ -32,41 +32,43 @@ Browse through entire folders of images with intuitive keyboard shortcuts. No co
 - **Arrow keys** for navigation
 - **+/-** for zoom control
 - **F** or **Enter** for fullscreen
-- **Space** for next image (or pause/resume slideshow)
+- **Space** for next image (or stop an active slideshow)
 - **Home/End** for first/last image
 - **S** for slideshow mode
-- **I** for image information overlay
+- **I** for the Info and Insights inspector
 - **T** for thumbnail strip
 - **G** for grid view
 - **⌘?** for comprehensive help
 
-### 🎨 **Universal Format Support**
+### 🎨 **Supported Image Formats**
 View all your images with crystal-clear quality:
-- **Primary**: JPEG, PNG, GIF (animated), HEIF/HEIC, WebP
-- **Extended**: TIFF, BMP, SVG, PDF (first page)
+- JPEG, PNG, GIF, HEIF/HEIC, WebP, TIFF, and BMP
+- Animated GIF and WebP show the first frame only; multipage TIFF shows the first image
+- SVG and PDF are not supported
 
 ### 🖼️ **Advanced Viewing Modes**
 - **Thumbnail Strip**: Horizontal filmstrip for quick navigation
-- **Grid View**: Full-screen thumbnail grid for large collections
+- **Grid View**: Thumbnail grid in the viewing area, with density and sort controls
 - **Slideshow Mode**: Automatic progression with customizable timing
-- **Image Information**: Detailed metadata and EXIF data overlay
+- **Image Information**: An inspector with file details, dimensions, and available EXIF metadata
 - **Pan & Zoom**: Smooth navigation of large, high-resolution images
 
 ### ✨ **macOS Native Experience**
-- Full **VoiceOver** and accessibility support with detailed image descriptions
+- **Accessibility labels** and keyboard navigation with local metadata descriptions
 - **High contrast mode** compatibility
 - **Reduced motion** preferences respected
 - Native macOS design language with modern SF Symbols
-- Universal Binary (Intel + Apple Silicon)
+- Apple silicon, macOS 27 or later
 - **Comprehensive Help System** with searchable documentation
 
-### 🧠 **AI Insights (macOS 26+)**
-- **Apple Intelligence** - Uses Apple's Foundation Models framework when available
-- **On-device generation** - Images, metadata, prompts, and results stay on this Mac
-- **Metadata grounded** - Insights are based on local file metadata and available system signals
-- **Manual by design** - Open the inspector and choose Generate Insight for the current image
-- **Transparent limits** - Results include limitations and avoid claiming unsupported image details
-- **No bundled AI models** - StillView does not ship custom Core ML models for AI Insights
+### 🧠 **AI Insights (macOS 27+)**
+- **Direct image understanding** - Apple's on-device model receives the selected image and generates a short description and notable visual details
+- **Exact recognized text** - Expand Text in image to read or copy Vision's original OCR output, including repeated lines; OCR can still contain errors
+- **Useful actions** - Copy the description or refresh it; the previous result stays visible if a refresh fails
+- **Local results** - Images, recognized text, prompts, and results stay on this Mac
+- **Manual by design** - Open the inspector, choose Insights, enable it if prompted, then choose Analyze image
+- **Availability** - Requires Apple Intelligence enabled and its on-device model ready; the system selects the eligible model variant
+- **Honest limits** - Descriptions may miss or misinterpret details; extracted text is shown separately from generated observations
 
 ### 🔒 **Privacy & Security**
 - **No internet required** - works completely offline
@@ -78,8 +80,10 @@ View all your images with crystal-clear quality:
 
 ## 💻 System Requirements
 
-- **Operating System**: macOS 12.0 (Monterey) or later
-- **Architecture**: Universal Binary (Intel and Apple Silicon)
+This development checkout targets macOS 27. Public releases may have different system requirements.
+
+- **Operating System**: macOS 27.0 or later
+- **Architecture**: Apple silicon (arm64)
 - **Memory**: Minimum 4GB RAM (8GB recommended for large image collections)
 - **Storage**: 50MB for application installation
 - **Privileges**: Standard user account (no admin privileges required)
@@ -136,7 +140,7 @@ StillView - Simple Image Viewer/
 ├── Services/              # Business logic and system integration
 │   ├── FileSystemService.swift        # File operations and monitoring
 │   ├── ImageLoaderService.swift       # Async image loading
-│   ├── KeyboardHandler.swift          # Global keyboard shortcuts
+│   ├── KeyboardHandler.swift          # Viewer keyboard shortcuts
 │   ├── ErrorHandlingService.swift     # Centralized error management
 │   ├── SecurityScopedAccessManager.swift # Sandbox permissions
 │   └── ImageMetadataService.swift     # EXIF data extraction
@@ -278,22 +282,23 @@ StillView provides comprehensive support for modern and legacy image formats thr
 |--------|------------|----------|-------------|
 | **JPEG** | `.jpg`, `.jpeg` | EXIF metadata, progressive loading | Excellent |
 | **PNG** | `.png` | Transparency, lossless compression | Excellent |
-| **GIF** | `.gif` | Animation support, transparency | Good |
+| **GIF** | `.gif` | First frame only, transparency | Good |
 | **HEIF/HEIC** | `.heif`, `.heic` | Apple's high-efficiency format | Excellent |
-| **WebP** | `.webp` | Google's modern format, animation | Good |
+| **WebP** | `.webp` | Still image or first frame only | Good |
 
 ### Extended Formats (Basic Support)
 | Format | Extensions | Features | Notes |
 |--------|------------|----------|-------|
-| **TIFF** | `.tiff`, `.tif` | High quality, multiple pages | Large files |
+| **TIFF** | `.tiff`, `.tif` | First image only | Large files |
 | **BMP** | `.bmp` | Uncompressed bitmap | Legacy support |
-| **SVG** | `.svg` | Vector graphics, scalable | Basic rendering |
+
+SVG and PDF are excluded from folder scanning. Animation playback and additional pages are not supported.
 
 ### Format Detection
 ```swift
 extension UTType {
     static let supportedImageTypes: [UTType] = [
-        .jpeg, .png, .gif, .heif, .heic, .webP, .tiff, .bmp, .svg
+        .jpeg, .png, .gif, .heif, .heic, .webP, .tiff, .bmp
     ]
     
     var isSupportedImageType: Bool {
@@ -313,7 +318,7 @@ StillView implements comprehensive security measures for App Store compliance an
 <!-- Simple_Image_Viewer.entitlements -->
 <key>com.apple.security.app-sandbox</key>
 <true/>
-<key>com.apple.security.files.user-selected.read-only</key>
+<key>com.apple.security.files.user-selected.read-write</key>
 <true/>
 <key>com.apple.security.files.bookmarks.app-scope</key>
 <true/>
@@ -324,7 +329,7 @@ StillView implements comprehensive security measures for App Store compliance an
 // Persistent folder access across app launches
 func createSecurityScopedBookmark(for url: URL) -> Data? {
     return try? url.bookmarkData(
-        options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+        options: [.withSecurityScope],
         includingResourceValuesForKeys: nil,
         relativeTo: nil
     )
@@ -342,21 +347,22 @@ func resolveSecurityScopedBookmark(_ bookmarkData: Data) -> URL? {
 ```
 
 ### Privacy Guarantees
-- **No network access** - operates completely offline
+- **Local viewing and analysis** - no network connection required; sharing and external links are user-initiated
 - **No data collection** - no analytics or telemetry
-- **User-controlled access** - only reads user-selected folders
+- **User-controlled access** - reads selected folders and can move a confirmed image to Trash using read-write access
 - **Memory protection** - automatic cleanup of cached images
-- **Secure bookmarks** - encrypted folder access tokens
+- **Security-scoped bookmarks** - folder access bookmarks are stored locally
+- **Privacy policy** - [stillviewapp.com/privacy.html](https://stillviewapp.com/privacy.html)
 
 ## ⌨️ Keyboard Navigation
 
-Comprehensive keyboard shortcuts for efficient image browsing without mouse interaction.
+Built-in image shortcuts work while the viewer has focus. Text fields, controls, dialogs, and other windows keep their usual keys. Settings → Shortcuts provides a searchable, read-only reference. App commands remain available in the menu bar.
 
 ### Navigation Commands
 | Key | Action | Description |
 |-----|--------|-------------|
 | `←` / `→` | Previous/Next Image | Navigate through image sequence |
-| `Space` | Next Image | Alternative next image key |
+| `Space` | Next Image / Stop Slideshow | Stops an active slideshow; otherwise advances |
 | `Page Up` / `Page Down` | Previous/Next Image | Page-based navigation |
 | `Home` | First Image | Jump to beginning of collection |
 | `End` | Last Image | Jump to end of collection |
@@ -368,16 +374,19 @@ Comprehensive keyboard shortcuts for efficient image browsing without mouse inte
 | `-` | Zoom Out | Decrease image magnification |
 | `0` | Fit to Window | Auto-size image to fit window |
 | `1` | Actual Size | Display image at 100% scale |
-| `F` / `Enter` | Toggle Fullscreen | Enter/exit fullscreen mode |
-| `Escape` | Exit Fullscreen | Return to windowed mode |
+| `F` / `Enter` | Fullscreen / Open Grid Selection | Enter opens the selection in Grid; otherwise toggles fullscreen |
+| `Escape` | Step Back | Exit fullscreen, or return from Grid/Strip to Single |
 
 ### View Modes & Information
 | Key | Action | Description |
 |-----|--------|-------------|
 | `T` | Thumbnail Strip | Show horizontal thumbnail navigation |
-| `G` | Grid View | Display full-screen thumbnail grid |
+| `G` | Grid View | Display thumbnails in the viewing area |
 | `S` | Slideshow | Start/stop automatic image progression |
-| `I` | Image Info | Toggle metadata and EXIF overlay |
+| `I` | Inspector | Toggle the Info and Insights panel |
+| `⌘I` | AI Insights | Open the inspector on Insights |
+| `B` | Back | Return to folder selection |
+| `Delete` / `Backspace` | Move to Trash | Confirm the current image before moving it |
 | `⌘?` | Help System | Open comprehensive help documentation |
 
 ### Implementation Details
@@ -430,8 +439,7 @@ struct ImageFile: Identifiable, Equatable, Hashable {
     var displayName: String { /* filename without extension */ }
     var formattedSize: String { /* human-readable file size */ }
     var formatDescription: String { /* user-friendly format name */ }
-    var isAnimated: Bool { /* true for GIF files */ }
-    var isVectorImage: Bool { /* true for SVG files */ }
+    var isAnimated: Bool { /* format capability; viewer displays only the first frame */ }
     var isHighEfficiencyFormat: Bool { /* true for HEIF/HEIC/WebP */ }
 }
 ```
@@ -569,7 +577,7 @@ StillView - Simple Image Viewer Tests/
 
 #### Integration Tests
 - **Security-Scoped Access**: Bookmark creation and resolution
-- **File System Monitoring**: Real-time folder change detection
+- **File System Monitoring Service**: Service-level coverage; the viewer currently refreshes when a folder is reselected
 - **Image Loading Pipeline**: End-to-end image processing
 - **Memory Pressure**: System integration and cleanup
 
@@ -597,8 +605,8 @@ class MockImageLoaderService: ImageLoaderService {
 ## 🛠️ Development Setup
 
 ### Prerequisites
-- **Xcode 15.0+** (for SwiftUI and latest Swift features)
-- **macOS 14.0+** (for development, runs on macOS 12.0+)
+- **Xcode 27.0+** (with the macOS 27 SDK)
+- **macOS 27.0+** (for development and running the app)
 - **Apple Developer Account** (for code signing and App Store distribution)
 
 ### Development Environment Setup
@@ -615,8 +623,8 @@ xed .
 ```
 
 ### Project Configuration
-1. **Bundle Identifier**: `com.vinny.StillView-Simple-Image-Viewer`
-2. **Deployment Target**: macOS 12.0
+1. **Bundle Identifier**: `com.vinny.StillView-Image-Viewer`
+2. **Deployment Target**: macOS 27.0
 3. **Swift Version**: Swift 5.0+
 4. **Build System**: New Build System (Xcode 10+)
 

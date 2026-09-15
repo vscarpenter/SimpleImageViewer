@@ -1,0 +1,42 @@
+[
+  {
+    "name": "30 successful production service outcomes",
+    "passed": true,
+    "note": "30 records"
+  },
+  {
+    "name": "Receipt total survives OCR output",
+    "passed": false,
+    "note": "NORTH MARKET\nRECEIPT 1042\n2026-09-14 09:30\nItem 01\n$1.00\nItem 02\nItem 03\nItem 04\nItem 05\nItem 06\nItem 07\nItem 08\nItem 09\nItem 10\nItem 11\nItem 12"
+  },
+  {
+    "name": "Repeated table price preserved three times",
+    "passed": false,
+    "note": "ITEM\nApples\nPears\nPlums\nTOTAL\nQTY\nPRICE\n$2.00\n$6.00"
+  },
+  {
+    "name": "Single digit sign retained in OCR",
+    "passed": false,
+    "note": ""
+  },
+  {
+    "name": "CJK station sign retained",
+    "passed": true,
+    "note": "東京駅"
+  },
+  {
+    "name": "Single CJK sign retained",
+    "passed": false,
+    "note": ""
+  },
+  {
+    "name": "STOP sign retained",
+    "passed": true,
+    "note": "STOP"
+  },
+  {
+    "name": "Every selected OCR excerpt resolves to exact retained OCR",
+    "passed": true,
+    "note": "Membership check only; generated prose still needs visual assessment."
+  }
+]

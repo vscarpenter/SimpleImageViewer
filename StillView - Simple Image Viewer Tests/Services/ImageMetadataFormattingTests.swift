@@ -1,4 +1,5 @@
 import XCTest
+@testable import StillView___Simple_Image_Viewer
 
 /// Tests for the exposure-value formatters that feed the inspector's spec strip.
 final class ImageMetadataFormattingTests: XCTestCase {

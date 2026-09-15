@@ -9,8 +9,8 @@
 //  Source: https://github.com/vscarpenter/SimpleImageViewer
 //
 
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
@@ -105,6 +105,20 @@ struct AboutView: View {
                     }
                     
                     Spacer()
+                }
+
+                if let privacyPolicyURL = URL(string: "https://stillviewapp.com/privacy.html") {
+                    HStack(spacing: 8) {
+                        Image(systemName: "hand.raised")
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+
+                        Link("Privacy Policy", destination: privacyPolicyURL)
+                            .font(.subheadline)
+                            .accessibilityHint("Opens StillView's privacy policy in your default browser")
+
+                        Spacer()
+                    }
                 }
             }
             .padding(.horizontal)

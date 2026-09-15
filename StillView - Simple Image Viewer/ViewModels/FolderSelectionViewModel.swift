@@ -2,6 +2,31 @@ import Foundation
 import Combine
 import AppKit
 
+/// Presents the native picker independently of the view currently visible in the window.
+@MainActor
+protocol FolderPanelPresenting {
+    func present(initialDirectory: URL?, completion: @escaping @MainActor (URL?) -> Void)
+}
+
+@MainActor
+final class SystemFolderPanelPresenter: FolderPanelPresenting {
+    func present(initialDirectory: URL?, completion: @escaping @MainActor (URL?) -> Void) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = false
+        panel.title = "Select Image Folder"
+        panel.message = "Choose a folder containing images to browse"
+        panel.directoryURL = initialDirectory
+        panel.begin { response in
+            Task { @MainActor in
+                completion(response == .OK ? panel.url : nil)
+            }
+        }
+    }
+}
+
 /// ViewModel for managing folder selection and recent folders functionality
 @MainActor
 class FolderSelectionViewModel: ObservableObject {
@@ -35,11 +60,11 @@ class FolderSelectionViewModel: ObservableObject {
 
     private let fileSystemService: FileSystemService
     private var preferencesService: PreferencesService
-    private let errorHandlingService: ErrorHandlingService
-    private let accessManager = SecurityScopedAccessManager.shared
+    private let accessManager: SecurityScopedAccessManager
+    private let panelPresenter: FolderPanelPresenting
     private var cancellables = Set<AnyCancellable>()
     private var scanTask: Task<Void, Never>?
-    private var currentSecurityScopedURL: URL?
+    private var scanGeneration = UUID()
     
     // MARK: - Initialization
     
@@ -47,13 +72,14 @@ class FolderSelectionViewModel: ObservableObject {
     /// - Parameters:
     ///   - fileSystemService: Service for file system operations
     ///   - preferencesService: Service for managing user preferences
-    ///   - errorHandlingService: Service for handling errors and user feedback
     init(fileSystemService: FileSystemService = DefaultFileSystemService(),
          preferencesService: PreferencesService = DefaultPreferencesService(),
-         errorHandlingService: ErrorHandlingService = ErrorHandlingService.shared) {
+         panelPresenter: FolderPanelPresenting? = nil,
+         accessManager: SecurityScopedAccessManager = .shared) {
         self.fileSystemService = fileSystemService
         self.preferencesService = preferencesService
-        self.errorHandlingService = errorHandlingService
+        self.panelPresenter = panelPresenter ?? SystemFolderPanelPresenter()
+        self.accessManager = accessManager
 
         loadRecentFolders()
         setupBindings()
@@ -74,29 +100,19 @@ class FolderSelectionViewModel: ObservableObject {
         isShowingFolderPicker = true
         currentError = nil
         
-        let openPanel = NSOpenPanel()
-        openPanel.canChooseFiles = false
-        openPanel.canChooseDirectories = true
-        openPanel.allowsMultipleSelection = false
-        openPanel.canCreateDirectories = false
-        openPanel.title = "Select Image Folder"
-        openPanel.message = "Choose a folder containing images to browse"
-        
-        // Set initial directory to last selected folder or user's Pictures folder
+        let initialDirectory: URL?
         if let lastFolder = preferencesService.lastSelectedFolder,
            FileManager.default.fileExists(atPath: lastFolder.path) {
-            openPanel.directoryURL = lastFolder
+            initialDirectory = lastFolder
         } else {
-            openPanel.directoryURL = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first
+            initialDirectory = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first
         }
-        
-        openPanel.begin { [weak self] response in
-            DispatchQueue.main.async {
-                self?.isShowingFolderPicker = false
-                
-                if response == .OK, let selectedURL = openPanel.url {
-                    self?.handleFolderSelection(selectedURL)
-                }
+
+        panelPresenter.present(initialDirectory: initialDirectory) { [weak self] selectedURL in
+            guard let self else { return }
+            self.isShowingFolderPicker = false
+            if let selectedURL {
+                self.handleFolderSelection(selectedURL)
             }
         }
     }
@@ -104,6 +120,8 @@ class FolderSelectionViewModel: ObservableObject {
     /// Select a folder from the recent folders list
     /// - Parameter url: The folder URL to select
     func selectRecentFolder(_ url: URL) {
+        // A newer request supersedes an in-flight scan even when its bookmark cannot be resolved.
+        cancelScanning()
         currentError = nil
         
         // Find the corresponding bookmark for this URL
@@ -116,7 +134,6 @@ class FolderSelectionViewModel: ObservableObject {
             guard FileManager.default.fileExists(atPath: url.path) else {
                 let error = ImageViewerError.folderNotFound(url)
                 currentError = error
-                errorHandlingService.handleImageViewerError(error)
                 removeRecentFolder(url)
                 return
             }
@@ -130,15 +147,12 @@ class FolderSelectionViewModel: ObservableObject {
             // Bookmark resolution failed
             let error = ImageViewerError.bookmarkResolutionFailed(url)
             currentError = error
-            errorHandlingService.handleImageViewerError(error)
             removeRecentFolder(url)
             return
         }
         
-        // Use the resolved URL for folder selection
-        // Important: resolvedURL already has security-scoped access started
-        // handleFolderSelection will register this access with the SecurityScopedAccessManager
-        handleFolderSelection(resolvedURL)
+        // The resolver already started this scope. The scan owns it until success or cancellation.
+        handleFolderSelection(resolvedURL, accessAlreadyStarted: true)
     }
     
     /// Remove a folder from the recent folders list
@@ -174,6 +188,7 @@ class FolderSelectionViewModel: ObservableObject {
     
     /// Cancel the current folder scanning operation
     func cancelScanning() {
+        scanGeneration = UUID()
         scanTask?.cancel()
         scanTask = nil
         isScanning = false
@@ -216,13 +231,12 @@ class FolderSelectionViewModel: ObservableObject {
         for (index, folderURL) in storedFolders.enumerated() {
             if index < storedBookmarks.count {
                 let bookmarkData = storedBookmarks[index]
-                if let resolvedURL = fileSystemService.resolveSecurityScopedBookmark(bookmarkData),
-                   resolvedURL == folderURL {
-                    validFolders.append(folderURL)
-                    validBookmarks.append(bookmarkData)
-                    // Stop accessing the resource immediately after verification
-                    // This is just for validation, not for actual use
-                    resolvedURL.stopAccessingSecurityScopedResource()
+                if let resolvedURL = fileSystemService.resolveSecurityScopedBookmark(bookmarkData) {
+                    defer { resolvedURL.stopAccessingSecurityScopedResource() }
+                    if resolvedURL == folderURL {
+                        validFolders.append(folderURL)
+                        validBookmarks.append(bookmarkData)
+                    }
                 }
             } else {
                 // No bookmark for this folder, check if it exists normally
@@ -246,17 +260,7 @@ class FolderSelectionViewModel: ObservableObject {
         recentFolders = validFolders
     }
     
-    private func handleFolderSelection(_ url: URL) {
-        // Let SecurityScopedAccessManager handle stopping previous access
-        // It will stop any existing access and register the new one
-        _ = accessManager.startAccess(for: url)
-        
-        selectedFolderURL = url
-        
-        // Track this URL for security-scoped access management
-        // This ensures we maintain access throughout the session
-        currentSecurityScopedURL = url
-        
+    private func rememberSuccessfulFolder(_ url: URL) {
         // Check if this URL already exists in recent folders with a bookmark
         let storedFolders = preferencesService.recentFolders
         let storedBookmarks = preferencesService.folderBookmarks
@@ -264,7 +268,7 @@ class FolderSelectionViewModel: ObservableObject {
         
         // Create security-scoped bookmark for future access
         // Skip bookmark creation if we already have one and this URL has active security access
-        let shouldCreateBookmark = existingIndex == nil || existingIndex! >= storedBookmarks.count
+        let shouldCreateBookmark = existingIndex.map { $0 >= storedBookmarks.count } ?? true
         
         if shouldCreateBookmark, let bookmarkData = fileSystemService.createSecurityScopedBookmark(for: url) {
             // Remove existing entry if it exists
@@ -319,98 +323,73 @@ class FolderSelectionViewModel: ObservableObject {
         // Update recent folders list
         loadRecentFolders()
         
-        // Start scanning the folder
-        scanFolder(url)
     }
-    
-    private func scanFolder(_ url: URL) {
-        // Cancel any existing scan
+
+    private func handleFolderSelection(_ url: URL, accessAlreadyStarted: Bool = false) {
         cancelScanning()
-        
+        let generation = scanGeneration
+        // Starting a tentative scan must not revoke access to the folder still on screen.
+        let accessStarted = accessAlreadyStarted || url.startAccessingSecurityScopedResource()
+        let fileSystemService = fileSystemService
+        let accessManager = accessManager
         isScanning = true
-        scanProgress = 0.0
+        scanProgress = 0.1
         imageCount = 0
         currentError = nil
-        
+
         scanTask = Task { [weak self] in
+            var transferredAccess = false
+            defer {
+                // A canceled service may finish later; retain its grant until it actually returns.
+                if accessStarted && !transferredAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
             do {
-                // Update progress to show scanning started
-                await MainActor.run {
-                    self?.scanProgress = 0.1
+                let imageFiles = try await fileSystemService.scanFolder(url, recursive: false)
+                guard !Task.isCancelled, let self, self.scanGeneration == generation else { return }
+
+                if accessManager.currentURL != url {
+                    transferredAccess = accessManager.startAccess(for: url)
                 }
-                
-                // Perform the actual folder scan
-                let imageFiles = try await self?.fileSystemService.scanFolder(url, recursive: false) ?? []
-                
-                // Check if task was cancelled
-                if Task.isCancelled { return }
-                
-                await MainActor.run {
-                    self?.scanProgress = 1.0
-                    self?.imageCount = imageFiles.count
-                    self?.isScanning = false
-                    
-                    // Create folder content and post notification for navigation
-                    let folderContent = FolderContent(folderURL: url, imageFiles: imageFiles)
-                    self?.selectedFolderContent = folderContent
-                    
-                    // Post notification that folder was selected
-                    NotificationCenter.default.post(
-                        name: .folderSelected,
-                        object: folderContent
-                    )
-                }
-                
+                self.rememberSuccessfulFolder(url)
+                self.selectedFolderURL = url
+                self.selectedFolderContent = FolderContent(folderURL: url, imageFiles: imageFiles)
+                self.scanProgress = 1.0
+                self.imageCount = imageFiles.count
+                self.isScanning = false
+                self.scanTask = nil
             } catch {
-                // Check if task was cancelled
-                if Task.isCancelled { return }
-                
-                await MainActor.run {
-                    self?.isScanning = false
-                    self?.scanProgress = 0.0
-                    self?.imageCount = 0
-                    
-                    // Convert error to ImageViewerError
-                    if let fileSystemError = error as? FileSystemError {
-                        switch fileSystemError {
-                        case .folderAccessDenied:
-                            self?.currentError = .folderAccessDenied
-                        case .folderNotFound:
-                            self?.currentError = .folderNotFound(url)
-                        case .noImagesFound:
-                            self?.currentError = .noImagesFound
-                        case .scanningFailed(let underlyingError):
-                            self?.currentError = .folderScanningFailed(underlyingError)
-                        default:
-                            self?.currentError = .folderScanningFailed(error)
-                        }
-                    } else {
-                        self?.currentError = .folderScanningFailed(error)
-                    }
-                    
-                    // Error is already set in currentError property
-                }
+                guard !Task.isCancelled, let self, self.scanGeneration == generation else { return }
+                self.isScanning = false
+                self.scanProgress = 0.0
+                self.imageCount = 0
+                self.currentError = Self.scanError(error, folderURL: url)
+                self.scanTask = nil
             }
         }
     }
-    
-    /// Restore the last selected folder from preferences
-    /// - Parameter folderURL: The folder URL to restore
+
+    private static func scanError(_ error: Error, folderURL: URL) -> ImageViewerError {
+        guard let fileSystemError = error as? FileSystemError else {
+            return .folderScanningFailed(error)
+        }
+        switch fileSystemError {
+        case .folderAccessDenied:
+            return .folderAccessDenied
+        case .folderNotFound:
+            return .folderNotFound(folderURL)
+        case .noImagesFound:
+            return .noImagesFound
+        case .scanningFailed(let underlyingError):
+            return .folderScanningFailed(underlyingError)
+        default:
+            return .folderScanningFailed(error)
+        }
+    }
+
+    /// Restore through the same durable scan lifecycle, resolving a saved grant when available.
     func restoreLastFolder(_ folderURL: URL) {
-        // Check if we can still access this folder
-        guard folderURL.startAccessingSecurityScopedResource() else {
-            // Remove from recent folders if we can't access it
-            removeRecentFolder(folderURL)
-            return
-        }
-        
-        defer {
-            folderURL.stopAccessingSecurityScopedResource()
-        }
-        
-        // Set as selected folder and scan it
-        selectedFolderURL = folderURL
-        scanFolder(folderURL)
+        selectRecentFolder(folderURL)
     }
 }
-
