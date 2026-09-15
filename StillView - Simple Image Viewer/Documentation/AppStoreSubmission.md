@@ -26,7 +26,7 @@ Distraction-free image viewer
 ### Promotional text
 
 ```
-Browse photos in Single, Strip, or Grid. Read on-device image descriptions, visual details, and original recognized text. No accounts, analytics, or tracking.
+Apple Intelligence describes your photos and reads their text, entirely on your Mac. Browse any folder in Single, Strip, or Grid view. No account and no tracking.
 ```
 
 ### Description
@@ -60,17 +60,42 @@ Requires macOS 27 or later and Apple silicon. AI Insights additionally requires 
 ### Keywords
 
 ```
-image,viewer,photo,slideshow,JPEG,HEIC,thumbnail,EXIF,OCR,macOS,offline,sandbox
+photo,browser,folder,gallery,slideshow,JPEG,HEIC,WebP,thumbnail,EXIF,metadata,OCR,offline,privacy
 ```
+
+The app name and subtitle already carry "image" and "viewer," and the Mac App Store implies macOS, so those words are left out of the 100-character limit.
 
 ### What’s New
 
 ```
-This release requires macOS 27 and Apple silicon.
+StillView 5.0 requires macOS 27 and Apple silicon.
 
-• Apple Intelligence now receives image pixels directly to describe the visible scene and useful details on your Mac.
-• Copy the description, refresh it, and expand original recognized text without losing repeated or later lines within the analysis limit.
-• Analysis stays local, with clear unavailable/error states and cancellation when you navigate.
+AI INSIGHTS, REBUILT
+• Apple Intelligence now sees the image itself and describes the visible scene on your Mac.
+• Results include notable visual details, suggested tags, and anything the model is unsure about.
+• Text in image shows the original recognized text, keeps repeated lines, and says when it was cut short.
+• Copy the description, refresh it, or cancel a run. A failed refresh keeps the previous result.
+• Completed insights stay available when you switch inspector tabs or return to the app.
+
+NATIVE MAC SETTINGS
+• Settings replaces Preferences with General, Intelligence, and Shortcuts panes.
+• Search the built-in keyboard shortcuts by name.
+• Colors and keyboard focus follow your Mac.
+
+VIEWING
+• Fit to Window shows the whole image, and 100% uses the true pixel scale.
+• Panning stays inside the image.
+• Narrow windows keep the viewing controls visible and move extra actions into a More actions menu.
+
+FIXES
+• Stale image loads no longer interrupt navigation.
+• Folders with unreadable images show an error and a Retry button instead of loading forever.
+• The Insights tab stays open when the feature is off and offers to enable it.
+• Open Folder works from the viewer on the first try, and canceling keeps your current folder.
+• Image shortcuts leave focused controls and dialogs alone.
+• Moving an image to Trash keeps the collection and selection consistent while you keep browsing.
+
+Images, recognized text, and results stay on this Mac.
 ```
 
 ### URLs
