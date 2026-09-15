@@ -33,4 +33,4 @@ python3 /private/tmp/stillview-macos27-evidence/check-evidence.py fresh-label
 
 Never overwrite a recorded run label when evaluating changed source. The runner writes each result immediately to JSONL, preserving completed evidence if interrupted. Latency is elapsed service time including metadata, decoding, OCR, and generation; it excludes compilation.
 
-Native inspector verification is outside this CLI evidence and remains pending user approval for app launch. See the implementation task for independent build/app-hosted test results.
+Native inspector verification is separate from this CLI evidence and is now complete. See the [implementation report](../../reviews/2026-09-14-macos27-insights-implementation.md#native-ui-verification) for the observed native workflow, clipboard checks, copy corrections, and independent build/app-hosted test results.

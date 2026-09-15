@@ -41,7 +41,7 @@ Local evidence:
 
 The final prompt-v5 smoke check completed all seven fixtures: a scene photo, shapes, blank image, blurred image, receipt, repeated-value table, and EXIF-oriented image. The former receipt and EXIF failures resolved. The full comparison completed **29 of 30** analyses, including all 14 repository photographs. The remaining synthetic instruction-text image received a mapped model refusal; no API, validator, or unknown errors occurred. Median service time was **3.55 seconds** in the warmed final run (range 1.42–7.85 seconds, total 118.65 seconds). The separate smoke run reached 20.00 seconds, so warm timing does not describe first use.
 
-All repeated table prices/quantities and the receipt's late total are retained. Single-character OCR still misses the isolated numeral and CJK character in this corpus. Eighteen of 29 successful outputs contain one uncertainty, compared with two in every v4 success; some remain unhelpful. All successful v5 outputs still include one additional detail. Source hashes for all five production files match the evaluated snapshot.
+The long receipt retains 47 OCR observations, including its late total. All repeated table prices and quantities are retained. Single-character OCR still misses the isolated numeral and CJK character in this corpus. Eighteen of 29 successful outputs contain one uncertainty, compared with two in every v4 success; some remain unhelpful. All successful v5 outputs still include one additional detail. Source hashes for all five production files match the evaluated snapshot.
 
 See [the full comparison and evidence](../evaluations/2026-09-14-macos27-insights/README.md).
 
@@ -49,7 +49,23 @@ This remains a small, unblinded local quality assessment. Some circle/oval and s
 
 ## Native UI verification
 
-Pending explicit launch approval. Automatic approval review rejected opening the locally built app from the temporary build directory as software from an unrecognized source. No alternative launch mechanism was used. Inspector rendering, clipboard actions, and interaction timing still require the native walkthrough.
+Completed on September 14, 2026, after the user explicitly approved launching the built app. The walkthrough used macOS 27.0 (26A428), the final Debug app at `/private/tmp/stillview-final-verification/Build/Products/Debug/StillView - Simple Image Viewer.app`, native accessibility observations, screenshots, and actual clipboard pastes into TextEdit.
+
+The initially running process (PID 28621, started 19:02 CDT) predated the final 19:16 build and reproduced the already-fixed attachment token-count failure. It was quit and restarted as PID 34041 at 19:37:56 before the final engine walkthrough. Fresh photo and receipt analyses then succeeded.
+
+| Check | Observed result |
+| --- | --- |
+| Photo and document analysis | The brick-alley photo and long receipt produced image-specific descriptions and details. The 300-point inspector rendered without clipping in the 1180 by 740 window. |
+| Copy description | An actual paste into TextEdit contained only the displayed summary, without title or uncertainty text. |
+| Exact OCR and Copy text | The receipt disclosure showed 47 original lines. The actual pasted text retained eighteen `$1.00` amounts and the final `SUBTOTAL`, `$18.00`, `TAX`, `$1.44`, `TOTAL`, `$19.44`, `PAID VISA`, and `THANK YOU` lines in order. |
+| Long text layout | Expanded OCR scrolled to the final lines and Copy text action. Copy description and Refresh remained visible in the fixed footer. |
+| Refresh and Cancel | Refresh displayed its progress state while preserving the previous result. Cancel restored the completed result. A separate receipt refresh completed successfully and returned to Refresh with no error. |
+| Navigation and cache | Leaving a pending receipt analysis discarded its work; returning to that receipt showed Analyze image. Returning to the previously completed photo immediately restored its cached result. |
+| Inspector lifecycle | Switching Info to Insights and hiding/reopening the inspector retained the completed receipt result. |
+
+The walkthrough found obsolete “visual matches” wording in Settings. The visible subtitle and accessibility hint now say “Describe images, highlight details, and recognize text on this Mac.” The same retired wording in the bundled What's New description was updated. After these text-only changes, the Debug app rebuilt successfully (`/private/tmp/stillview-native-copy-build.log`), the changed Swift file passed SwiftLint, and the release-note JSON parsed successfully. Fresh PID 35996, started 20:04:39 CDT, displayed both corrected surfaces without clipping. The earlier 228-test result covers the unchanged engine and lifecycle code; the full suite was not repeated for these copy-only changes.
+
+The original AI Insights preference (off) was restored and the task's temporary recent-folder entry was removed. The rebuilt app remains open at folder selection. This walkthrough does not establish comprehensive VoiceOver, keyboard-only, Reduce Motion, appearance, or failure-state coverage.
 
 ## Scope and release status
 

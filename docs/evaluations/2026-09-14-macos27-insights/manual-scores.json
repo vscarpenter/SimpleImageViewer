@@ -250,8 +250,8 @@
       "v5_main_subject": 2,
       "v5_usefulness": 2,
       "v5_status": "success",
-      "v4_notes": "Retains49 OCR entries incl late total in diagnostic but result rejected: invented count19 versus actual18.",
-      "v5_notes": "Now succeeds, retains 49 OCR entries including late TOTAL and $19.44. Highlights omit total despite retaining it. No invented item count."
+      "v4_notes": "Retains 47 OCR entries incl late total in diagnostic but result rejected: invented count19 versus actual18.",
+      "v5_notes": "Now succeeds, retains 47 OCR entries including late TOTAL and $19.44. Highlights omit total despite retaining it. No invented item count."
     },
     {
       "file": "screenshot-error.png",

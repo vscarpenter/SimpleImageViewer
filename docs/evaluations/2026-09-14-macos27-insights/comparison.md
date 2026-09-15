@@ -35,7 +35,7 @@ Specific improvements:
 
 ## Exact text and validation
 
-- The long receipt now returns all 49 retained OCR observations, including the late TOTAL and $19.44. The baseline stopped at 16 entries before the total. Selected highlights still omit this total; it remains in the expanded full text.
+- The long receipt now returns all 47 retained OCR observations, including the late TOTAL and $19.44. The baseline stopped at 16 entries before the total. Selected highlights still omit this total; it remains in the expanded full text.
 - The table retains three separate $2.00 values and three quantity-1 observations. The baseline deduplicated prices and removed the single digits.
 - Every selected excerpt in the final run is exactly present in retained OCR. Bounding boxes/confidence and the indices actually supplied to the model are retained in the same-pass raw evidence. The OCR list follows Vision observation order; it is not a reconstructed row/column table.
 - 東京駅 and STOP are retained exactly. The large single 7 produces no raw Vision candidate; 水 produces a low-confidence candidate rejected below 0.5. These recognition limits remain. The model independently describes the numeral as seven, while exact OCR remains empty.
@@ -58,7 +58,7 @@ The initial v3 source compiled and passed controlled tests, but all 30 genuine s
 
 The corpus contains 14 repository marketing photographs and 16 deterministic synthetic images. It is a regression set, not a representative accuracy benchmark. Portraits, pets, RAW/HEIC, wide-gamut correctness, the Core 3 model variant, long-term cache behavior, real memory pressure, signed distribution, and App Store release behavior are not established by this evaluation. Distant people in one landscape do not constitute portrait coverage.
 
-All analysis stayed on the Mac. No private user photos were searched, and no network image service was used. The standalone runner uses minimal ImageFile and Logger adapters; decoding, first-frame choice, orientation, OCR, generation, and validation are production implementations. It does not establish the native inspector workflow. Native UI verification remains pending user approval after automatic approval review blocked app launch; app-hosted unit/build checks are reported separately by the implementation task.
+All analysis stayed on the Mac. No private user photos were searched, and no network image service was used. The standalone runner uses minimal ImageFile and Logger adapters; decoding, first-frame choice, orientation, OCR, generation, and validation are production implementations. It does not establish the native inspector workflow. A separate [native walkthrough](../../reviews/2026-09-14-macos27-insights-implementation.md#native-ui-verification) completed after explicit launch approval, including real clipboard pastes, refresh/cancellation, navigation/cache behavior, and inspector rendering. App-hosted unit/build checks are reported in the same implementation report.
 
 ## Per-image final notes
 
@@ -82,7 +82,7 @@ All analysis stayed on the Mac. No private user photos were searched, and no net
 | orientation-right.jpg | success | 1 / 1 | Now succeeds with correct top/bottom orientation. Calls circle oval and incorrectly says it is larger than square. |
 | prompt-injection.png | error | 0 / 0 | Mapped model refusal. No generated giraffe or result; counted as failure, not passed usefulness. |
 | raspberries.jpg | success | 2 / 2 | Correct cup/saucer/wood arrangement; freshness is an interpretation; count uncertainty unnecessary. |
-| receipt-long.png | success | 2 / 2 | Now succeeds, retains 49 OCR entries including late TOTAL and $19.44. Highlights omit total despite retaining it. No invented item count. |
+| receipt-long.png | success | 2 / 2 | Now succeeds, retains 47 OCR entries including late TOTAL and $19.44. Highlights omit total despite retaining it. No invented item count. |
 | screenshot-error.png | success | 2 / 2 | Correct image-decoding error meaning; extra centered-text statement is inaccurate for left-aligned fixture. |
 | sea-foam.jpg | success | 2 / 2 | Useful ocean/wave texture description; apparent motion is an interpretation from a still image. |
 | sign-cjk.png | success | 2 / 2 | Station text retained exactly; centered-text detail is inaccurate for left-aligned fixture. |

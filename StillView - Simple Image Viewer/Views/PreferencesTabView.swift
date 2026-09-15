@@ -65,10 +65,10 @@ struct IntelligencePreferencesView: View {
             Section {
                 Toggle(isOn: $viewModel.enableAIAnalysis) {
                     Text("AI Insights")
-                    Text("Find visual matches and recognize text in your images.")
+                    Text("Describe images, highlight details, and recognize text on this Mac.")
                 }
                 .accessibilityLabel("AI Insights")
-                .accessibilityHint("Find visual matches and recognize text in your images.")
+                .accessibilityHint("Describe images, highlight details, and recognize text on this Mac.")
             } header: {
                 Text("Image analysis")
             } footer: {
