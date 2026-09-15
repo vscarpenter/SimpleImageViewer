@@ -1,7 +1,8 @@
 import Foundation
 
 /// Shape checks do not establish visual accuracy. Exact excerpts always resolve to Vision's
-/// original observations, and literal quotes or numeric transcriptions must exist in that evidence.
+/// original observations. Generated prose is not a transcription channel: neither quotes nor
+/// digit-bearing values belong there, even when matching text appears elsewhere in the image.
 enum InsightOutputValidator {
     static func validatedTextLineIndices(_ indices: [Int], lineCount: Int) -> [Int]? {
         guard lineCount > 0,
@@ -21,12 +22,14 @@ enum InsightOutputValidator {
     ) throws -> ImageInsightResult {
         let title = generated.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let summary = generated.summary.trimmingCharacters(in: .whitespacesAndNewlines)
-        let narrative = [title, summary] + generated.details + generated.tags + generated.uncertainties
+        let details = [generated.additionalDetail].compactMap { $0 }
+        let uncertainties = [generated.uncertainty].compactMap { $0 }
+        let narrative = [title, summary] + details + generated.tags + uncertainties
         guard !title.isEmpty, title.count <= 120,
               !summary.isEmpty, summary.count <= 800,
-              generated.details.count <= 3, generated.tags.count <= 5, generated.uncertainties.count <= 2,
+              generated.tags.count <= 5,
               narrative.allSatisfy({ $0.count <= 800 }),
-              hasOnlySupportedTranscriptions(narrative, recognizedText: perception.recognizedText) else {
+              hasNoTranscriptions(narrative) else {
             throw ImageInsightError.invalidGeneratedContent
         }
         let allowedIndices = Set(modelTextLineIndices ?? Array(perception.textObservations.indices))
@@ -36,7 +39,7 @@ enum InsightOutputValidator {
         // An invalid optional selection cannot rewrite or replace OCR; fall back to original reading order.
         let selected = indices?.map { perception.recognizedText[$0] }
             ?? Array(perception.recognizedText.prefix(3))
-        var limitations = generated.uncertainties
+        var limitations = uncertainties
         if perception.textWasTruncated {
             limitations.append("Text extraction was limited for this image. Some lines are not included.")
         }
@@ -46,7 +49,7 @@ enum InsightOutputValidator {
         return ImageInsightResult(
             title: title,
             summary: summary,
-            usefulDetails: generated.details,
+            usefulDetails: details,
             tags: generated.tags,
             limitations: limitations,
             recognizedText: perception.recognizedText,
@@ -56,27 +59,20 @@ enum InsightOutputValidator {
         )
     }
 
-    private static func hasOnlySupportedTranscriptions(_ prose: [String], recognizedText: [String]) -> Bool {
-        let quotedPatterns = [#"[\"“]([^\"”]+)[\"”]"#, #"(?<![\p{L}])['‘]([^'’]+)['’](?![\p{L}])"#]
-        for pattern in quotedPatterns {
+    private static func hasNoTranscriptions(_ prose: [String]) -> Bool {
+        // Exact token matches cannot prove that a price belongs to a particular table row.
+        // Keep every digit-bearing value in the separately displayed original OCR instead.
+        guard prose.allSatisfy({ $0.rangeOfCharacter(from: .decimalDigits) == nil }) else { return false }
+        let quotedPatterns = [
+            #"[\"“]([^\"”]+)[\"”]"#,
+            #"(?<![\p{L}])['‘]([^'’]+)['’](?![\p{L}])"#,
+            #"[「『«]([^」』»]+)[」』»]"#
+        ]
+        return quotedPatterns.allSatisfy { pattern in
             guard let expression = try? NSRegularExpression(pattern: pattern) else { return false }
-            let quotes = prose.flatMap { excerpts(in: $0, matching: expression, capture: 1) }
-            guard quotes.allSatisfy({ quote in recognizedText.contains { $0.contains(quote) } }) else { return false }
-        }
-        // Compare complete digit-bearing tokens: RX999, 12A, and $0058.00 cannot be accepted
-        // through a partial digit match. Plain contractions are not treated as transcriptions.
-        let tokenPattern = #"(?<![\p{L}\p{N}])[$€£]?[+-]?[\p{L}\p{N}]+(?:[.,:/%_\-][\p{L}\p{N}]+)*%?"#
-        guard let expression = try? NSRegularExpression(pattern: tokenPattern) else { return false }
-        let observed = Set(recognizedText.flatMap { excerpts(in: $0, matching: expression) })
-        return prose.flatMap { excerpts(in: $0, matching: expression) }
-            .filter { $0.rangeOfCharacter(from: .decimalDigits) != nil }
-            .allSatisfy(observed.contains)
-    }
-
-    private static func excerpts(in text: String, matching expression: NSRegularExpression, capture: Int = 0) -> [String] {
-        expression.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { match in
-            guard let range = Range(match.range(at: capture), in: text) else { return nil }
-            return String(text[range])
+            return prose.allSatisfy {
+                expression.firstMatch(in: $0, range: NSRange($0.startIndex..., in: $0)) == nil
+            }
         }
     }
 }

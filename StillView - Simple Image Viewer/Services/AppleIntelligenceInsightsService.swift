@@ -226,18 +226,21 @@ struct ImageInsightModelResponse: Sendable {
     let textLineIndices: [Int]
 }
 
-@Generable(description: "A concise description grounded in the attached image, with optional exact OCR references.")
+@Generable(
+    description: "A concise image description. Supplementary detail and uncertainty are normally nil.",
+    representNilExplicitlyInGeneratedContent: true
+)
 struct GeneratedImageInsight: Equatable, Sendable {
-    @Guide(description: "A short descriptive title naming the visible subject; at most eight words.")
+    @Guide(description: "A short visible-subject title, at most eight words. No transcribed labels or digit-bearing tokens.")
     let title: String
-    @Guide(description: "One or two concise sentences describing the visible scene. No invented facts or transcribed text.")
+    @Guide(description: "One or two brief sentences. For documents describe kind and layout, without labels or values.")
     let summary: String
-    @Guide(description: "Up to three useful visible details, without repeating the summary.", .count(0...3))
-    let details: [String]
-    @Guide(description: "Up to five short tags about visible content.", .count(0...5))
+    @Guide(description: "Normally nil. One important visible fact absent from the summary; no repeated details.")
+    let additionalDetail: String?
+    @Guide(description: "Up to five short tags about visible content, without transcribed labels or values.", .count(0...5))
     let tags: [String]
-    @Guide(description: "Specific uncertainty only when it affects an observation. Usually empty.", .count(0...2))
-    let uncertainties: [String]
-    @Guide(description: "Up to three different original OCR line indices for useful exact excerpts. Empty if unnecessary.", .count(0...3))
+    @Guide(description: "Normally nil. Only an ambiguity that changes the main interpretation; absent details do not count.")
+    let uncertainty: String?
+    @Guide(description: "Up to three different supplied OCR indices for exact excerpts. Empty if unnecessary.", .count(0...3))
     let selectedTextLineIndices: [Int]
 }

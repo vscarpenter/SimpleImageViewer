@@ -1,3 +1,4 @@
+import FoundationModels
 import XCTest
 @testable import StillView___Simple_Image_Viewer
 
@@ -83,10 +84,38 @@ final class InsightOutputValidatorTests: XCTestCase {
         XCTAssertTrue(result.limitations.contains { $0.contains("limited text evidence") })
     }
 
-    func test_resultAllowsLiteralEvidenceWhileKeepingItSeparateFromExtractedText() throws {
-        let result = try validate(draft(summary: "A receipt shows a total of $0058.00."), text: ["Total $0058.00"])
-        XCTAssertEqual(result.summary, "A receipt shows a total of $0058.00.")
-        XCTAssertEqual(result.recognizedText, ["Total $0058.00"])
+    func test_resultRejectsNumericTranscriptionEvenWhenDigitsExistInOCR() {
+        XCTAssertThrowsError(try validate(
+            draft(summary: "A receipt shows a total of $0058.00."), text: ["Total $0058.00"]
+        ))
+    }
+
+    func test_resultRejectsWrongTableAssociationEvenWhenAmountExistsElsewhere() {
+        XCTAssertThrowsError(try validate(
+            draft(summary: "The table lists Plums at $6.00."), text: ["Plums", "$2.00", "TOTAL", "$6.00"]
+        ))
+        XCTAssertThrowsError(try validate(draft(summary: "A sign reads 'UP'."), text: ["UP"]))
+    }
+
+    func test_optionalGeneratedSupplementFieldsCanBeNil() throws {
+        let generated = try GeneratedImageInsight(GeneratedContent(json: """
+            {"title":"Simple shapes","summary":"A red square and a blue circle appear on white.",
+             "additionalDetail":null,"tags":[],"uncertainty":null,"selectedTextLineIndices":[]}
+            """))
+        let result = try validate(generated)
+        XCTAssertTrue(result.usefulDetails.isEmpty)
+        XCTAssertTrue(result.limitations.isEmpty)
+    }
+
+    func test_optionalGeneratedSupplementFieldsMapToExistingResultSections() throws {
+        let generated = try GeneratedImageInsight(GeneratedContent(json: """
+            {"title":"Distant waterfall","summary":"A waterfall descends between rocky cliffs.",
+             "additionalDetail":"Mist rises above the pool.","tags":[],
+             "uncertainty":"Mist obscures the base of the waterfall.","selectedTextLineIndices":[]}
+            """))
+        let result = try validate(generated)
+        XCTAssertEqual(result.usefulDetails, ["Mist rises above the pool."])
+        XCTAssertEqual(result.limitations, ["Mist obscures the base of the waterfall."])
     }
 
     func test_resultReportsTruncationAsSpecificLimitation() throws {
@@ -122,8 +151,8 @@ final class InsightOutputValidatorTests: XCTestCase {
         summary: String = "Water falls between steep cliffs into a shaded pool.", indices: [Int] = []
     ) -> GeneratedImageInsight {
         GeneratedImageInsight(
-            title: "Waterfall between cliffs", summary: summary, details: ["Mist rises above the pool."],
-            tags: ["waterfall"], uncertainties: [], selectedTextLineIndices: indices
+            title: "Waterfall between cliffs", summary: summary, additionalDetail: "Mist rises above the pool.",
+            tags: ["waterfall"], uncertainty: nil, selectedTextLineIndices: indices
         )
     }
 }

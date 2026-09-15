@@ -168,7 +168,7 @@ final class ImagePerceptionServiceTests: XCTestCase {
                 XCTAssertEqual(perception, .empty)
                 return ImageInsightModelResponse(content: GeneratedImageInsight(
                     title: "Gray rectangle", summary: "A plain gray rectangle fills the image.",
-                    details: [], tags: ["abstract"], uncertainties: [], selectedTextLineIndices: []
+                    additionalDetail: nil, tags: ["abstract"], uncertainty: nil, selectedTextLineIndices: []
                 ), textLineIndices: [])
             }
         )
@@ -214,7 +214,7 @@ final class ImagePerceptionServiceTests: XCTestCase {
                 try Data("Changed file revision during inference".utf8).write(to: url)
                 return ImageInsightModelResponse(content: GeneratedImageInsight(
                     title: "Old image", summary: "A gray rectangle fills the image.",
-                    details: [], tags: [], uncertainties: [], selectedTextLineIndices: []
+                    additionalDetail: nil, tags: [], uncertainty: nil, selectedTextLineIndices: []
                 ), textLineIndices: [])
             }
         )
@@ -261,7 +261,7 @@ final class ImagePerceptionServiceTests: XCTestCase {
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
                 return ImageInsightModelResponse(content: GeneratedImageInsight(
                     title: "Late response", summary: "A gray rectangle fills the image.",
-                    details: [], tags: [], uncertainties: [], selectedTextLineIndices: []
+                    additionalDetail: nil, tags: [], uncertainty: nil, selectedTextLineIndices: []
                 ), textLineIndices: [])
             }
         )
@@ -288,7 +288,7 @@ final class ImagePerceptionServiceTests: XCTestCase {
             }
             return ImageInsightModelResponse(content: GeneratedImageInsight(
                 title: "Document", summary: "A document contains a list of items.",
-                details: [], tags: [], uncertainties: [], selectedTextLineIndices: []
+                additionalDetail: nil, tags: [], uncertainty: nil, selectedTextLineIndices: []
             ), textLineIndices: indices)
         }
         XCTAssertEqual(attempts, [[0, 29], []])
