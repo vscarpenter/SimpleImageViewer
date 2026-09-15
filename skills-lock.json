@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "add-component": {
+      "source": "signerlabs/ShipSwift",
+      "sourceType": "github",
+      "skillPath": "skills/add-component/SKILL.md",
+      "computedHash": "5476495adccda6d3a79eb782c8d6ca0e6649afec625689e52c3e93801fabcfa5"
+    },
+    "build-feature": {
+      "source": "signerlabs/ShipSwift",
+      "sourceType": "github",
+      "skillPath": "skills/build-feature/SKILL.md",
+      "computedHash": "63de6397c3d3a22841a280347e8804cf2cca4bd3937a13dc45b5631f59866fde"
+    },
+    "explore-recipes": {
+      "source": "signerlabs/ShipSwift",
+      "sourceType": "github",
+      "skillPath": "skills/explore-recipes/SKILL.md",
+      "computedHash": "31bca10d9815046dbeaf4b1847483884f9a7677578ec1bf957bc87c33e491a1b"
+    }
+  }
+}
