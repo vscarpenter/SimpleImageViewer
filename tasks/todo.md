@@ -74,3 +74,21 @@ Tier: Trivial. Branch: main.
 - Decision (Vinny): whats-new.json inside build 44 still says releaseDate 2026-09-06. Changing it means build 45 and a fresh archive.
 - Blockers: none in-repo.
 - Note: local `xcodebuild test` needs CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO, as in ci.yml. Without them the ad-hoc test bundle fails to load into the team-signed app.
+
+# App Store Connect metadata pass for 5.0.0 (44), 2026-09-15
+
+Tier: Trivial. Branch: main. Driven through Chrome against App Store Connect.
+
+- [x] Promotional text, keywords, and What's New drafted and recorded in AppStoreSubmission.md
+- [x] Description replaced in App Store Connect: the saved copy still had the macOS 26 AI Insights paragraph, a Generate Insight button, and "Includes Intel and Apple Silicon builds"
+- [x] What's New narrowed to changes since 4.6.0 (36), which shipped September 6 with native Settings and the folder, keyboard, Trash, zoom, and loading fixes
+- [x] Review notes trimmed to 3,905 characters and pasted into App Review Information; AppStoreReviewNotes.md now holds that text
+- [x] Screenshots reordered in Media Manager to 01 through 08
+- [x] Subtitle changed to "Distraction-free image viewer" on App Information (ships with 5.0.0)
+- [x] Verified: build 5.0.0 (44) selected, Data Not Collected, privacy URL, 4+ rating, Photo & Video category, automatic release, no phased release, sign-in not required, live privacy and terms pages carry the Foundation Models copy
+
+## Resuming From Here (2026-09-15, afternoon)
+- Done: App Store Connect fields saved and verified; Add for Review is enabled. Doc commits on main, not pushed.
+- Next (Vinny): click Add for Review in App Store Connect, then push main.
+- Decision (Vinny): the in-app What's New inside build 44 repeats the 4.6.0 items; left as is to avoid a new build.
+- Blockers: none in-repo.

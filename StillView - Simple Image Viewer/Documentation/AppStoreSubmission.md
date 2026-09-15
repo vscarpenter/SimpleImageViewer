@@ -9,8 +9,8 @@ Metadata for the macOS 27 release. The project identity below matches the curren
 | Bundle ID | `com.vinny.StillView-Image-Viewer` |
 | App Name | StillView - Image Viewer |
 | Marketing Version | 5.0.0 |
-| Build Number | 40 |
-| Primary Category | Photography |
+| Build Number | 44 |
+| Primary Category | Photo & Video (secondary: Utilities) |
 | Minimum macOS | 27.0 |
 
 Build 44 must exceed the last build uploaded to App Store Connect. If another build number is needed, run `scripts/update-version.sh --bump-build` and rebuild.
@@ -94,7 +94,7 @@ The Mac App Store shipped 4.6.0 (36) on September 6, 2026, with native Settings,
 | Privacy Policy URL | https://stillviewapp.com/privacy.html |
 | Website Terms of Use | https://stillviewapp.com/terms.html |
 
-Both pages returned HTTPS 200 on September 15, 2026, with a September 6 effective date. The folder, sharing, and GitHub-draft corrections from `docs/reviews/2026-09-06-live-policy-copy.md` are live. The AI Insights section on both pages still describes the macOS 26 pipeline (Vision categories and face counts, and a language model that never receives image pixels) and names macOS 26. That copy is now wrong for 5.0.0; replacement wording is in `docs/reviews/2026-09-15-macos27-launch-readiness.md`. Publish it before submission. The website Terms URL is recorded for reference, not as confirmation of an App Store Connect EULA selection.
+Both pages returned HTTPS 200 on September 15, 2026, with a September 15 effective date and the Foundation Models description of AI Insights from `docs/reviews/2026-09-15-macos27-launch-readiness.md`. The privacy URL in App Store Connect matches. The website Terms URL is recorded for reference, not as confirmation of an App Store Connect EULA selection.
 
 ## App Privacy and review information
 
@@ -112,15 +112,15 @@ Paste [AppStoreReviewNotes.md](AppStoreReviewNotes.md) into App Review Informati
 
 ## Pre-submission checks
 
-- [ ] Verify 5.0.0 (44), the bundle ID, and the macOS 27 deployment target against the selected archive and App Store Connect.
+- [x] Verify 5.0.0 (44), the bundle ID, and the macOS 27 deployment target against the selected archive and App Store Connect.
 - [ ] Set `releaseDate` in `Resources/whats-new.json` to the submission date so the in-app What's New sheet shows the right day.
 - [ ] Run the repository’s lint and tests, and confirm CI for the exact submission commit.
 - [ ] Create a distribution archive in Xcode and validate it in Organizer.
 - [ ] Inspect the signed app’s entitlements with `codesign -d --entitlements - "<App>.app"`: App Sandbox, user-selected read-write files, and app-scope bookmarks are expected; `get-task-allow` must be absent from the distribution app.
 - [ ] Verify `PrivacyInfo.xcprivacy` and the app icon exist inside the archived app’s `Contents/Resources` directory.
 - [x] Verify the privacy and terms pages are publicly reachable over HTTPS.
-- [ ] Publish the AI Insights policy-copy correction on both pages and recheck the privacy link from the distribution-signed app.
+- [x] Publish the AI Insights policy-copy correction on both pages and recheck the privacy link from the distribution-signed app.
 - [ ] Exercise opening/canceling a folder, viewer keyboard focus, Trash confirmation, narrow Grid layout, and all remaining preferences in the signed app.
 - [ ] Exercise AI Insights on eligible hardware with the on-device model ready, plus its disabled/unavailable states.
-- [ ] Upload the archive through Xcode Organizer, wait for processing, and select that build in App Store Connect.
-- [ ] Review all metadata, privacy answers, age rating, screenshots, and reviewer notes before submission.
+- [x] Upload the archive through Xcode Organizer, wait for processing, and select that build in App Store Connect.
+- [x] Review all metadata, privacy answers, age rating, screenshots, and reviewer notes before submission. Verified in App Store Connect on September 15, 2026; see `tasks/todo.md`.
