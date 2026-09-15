@@ -2,7 +2,7 @@
 
 > **"Because sometimes, simple is perfect."**
 
-[![macOS](https://img.shields.io/badge/macOS-26.0+-blue)](https://www.apple.com/macos/)
+[![macOS](https://img.shields.io/badge/macOS-27.0+-blue)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.0+-orange)](https://swift.org/)
 [![App Store](https://img.shields.io/badge/Available_on-Mac_App_Store-blue?logo=apple)](https://apps.apple.com/us/app/stillview-image-viewer/id6749210445)
 
@@ -58,17 +58,17 @@ View all your images with crystal-clear quality:
 - **High contrast mode** compatibility
 - **Reduced motion** preferences respected
 - Native macOS design language with modern SF Symbols
-- Universal Binary (Intel + Apple Silicon)
+- Apple silicon, macOS 27 or later
 - **Comprehensive Help System** with searchable documentation
 
-### 🧠 **AI Insights (macOS 26+)**
-- **Vision analysis** - On-device image classification, text recognition (OCR), and face counts
-- **Exact text excerpts** - Apple Intelligence can select up to three existing OCR lines; it does not receive image pixels or rewrite the text
-- **Local results** - Visual matches, recognized text, metadata, and results stay on this Mac
-- **Manual by design** - Open the inspector, choose Insights, enable the feature if prompted, then choose Generate Insight
-- **Availability** - Requires Apple Intelligence eligible hardware, Apple Intelligence enabled, and its on-device model ready
-- **Transparent limits** - Results include limitations and avoid claiming unsupported image details
-- **No bundled AI models** - StillView does not ship custom Core ML models for AI Insights
+### 🧠 **AI Insights (macOS 27+)**
+- **Direct image understanding** - Apple's on-device model receives the selected image and generates a short description and notable visual details
+- **Exact recognized text** - Expand Text in image to read or copy Vision's original OCR output, including repeated lines; OCR can still contain errors
+- **Useful actions** - Copy the description or refresh it; the previous result stays visible if a refresh fails
+- **Local results** - Images, recognized text, prompts, and results stay on this Mac
+- **Manual by design** - Open the inspector, choose Insights, enable it if prompted, then choose Analyze image
+- **Availability** - Requires Apple Intelligence enabled and its on-device model ready; the system selects the eligible model variant
+- **Honest limits** - Descriptions may miss or misinterpret details; extracted text is shown separately from generated observations
 
 ### 🔒 **Privacy & Security**
 - **No internet required** - works completely offline
@@ -80,10 +80,10 @@ View all your images with crystal-clear quality:
 
 ## 💻 System Requirements
 
-This checkout is version **4.5.1 (build 35)**.
+This development checkout targets macOS 27. Public releases may have different system requirements.
 
-- **Operating System**: macOS 26.0 or later
-- **Architecture**: Universal Binary (Intel and Apple Silicon)
+- **Operating System**: macOS 27.0 or later
+- **Architecture**: Apple silicon (arm64)
 - **Memory**: Minimum 4GB RAM (8GB recommended for large image collections)
 - **Storage**: 50MB for application installation
 - **Privileges**: Standard user account (no admin privileges required)
@@ -605,8 +605,8 @@ class MockImageLoaderService: ImageLoaderService {
 ## 🛠️ Development Setup
 
 ### Prerequisites
-- **Xcode 26.0+** (with the macOS 26 SDK)
-- **macOS 26.0+** (for development and running the app)
+- **Xcode 27.0+** (with the macOS 27 SDK)
+- **macOS 27.0+** (for development and running the app)
 - **Apple Developer Account** (for code signing and App Store distribution)
 
 ### Development Environment Setup
@@ -624,7 +624,7 @@ xed .
 
 ### Project Configuration
 1. **Bundle Identifier**: `com.vinny.StillView-Image-Viewer`
-2. **Deployment Target**: macOS 26.0
+2. **Deployment Target**: macOS 27.0
 3. **Swift Version**: Swift 5.0+
 4. **Build System**: New Build System (Xcode 10+)
 

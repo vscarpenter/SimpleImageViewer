@@ -1,48 +1,35 @@
-# AI Insights Architecture
+# AI Insights architecture
 
-AI Insights is an accuracy-first, on-device pipeline for macOS 26. The existing macOS and Apple
-Intelligence availability requirements still apply. Images, observations, and results stay on this Mac.
+AI Insights uses direct image understanding on macOS 27 and Apple silicon. The user starts analysis in the inspector. All images, prompts, evidence, and results remain on the Mac.
 
-## Grounding boundary
+## Production path
 
-Apple Vision supplies image categories, recognized text, and face detections. All titles, descriptions,
-counts, tags, and limitations are composed by the app from those observations. Foundation Models never
-supplies a displayed description, quotation, number, or spatial relationship.
+1. Build revision identity from the selected file and current model/prompt identity. File names, camera metadata, and GPS are excluded from the visual prompt.
+2. Decode the first frame at a bounded size and apply EXIF orientation. Analyze that same image with Vision OCR and attach its pixels to a fresh Foundation Models session.
+3. Ask the system-selected on-device model for a concise structured title and description, one optional additional detail, optional tags, and one optional uncertainty that changes interpretation. Count supported text, instructions, and schema against the runtime context capacity, reserving space for image input, 800 response tokens, and 256 framing tokens. On macOS 27.0 (26A428), token counting a prompt containing an image attachment throws even though image generation works. Reduce supplied OCR to original head/tail indices when needed and retry a genuine context overflow once with a fresh image-only session. Preserve all retained OCR for the text disclosure.
+4. Validate the result's structure and resolve exact text against original OCR observations. Keep quoted and digit-bearing transcriptions out of generated prose, even if the same token occurs in OCR: token membership cannot establish which row a price belongs to. Shape validation is not factual verification of a scene description.
+5. Return the result and the actual perception evidence together. The inspector uses the result; the DEBUG evaluation harness uses both without running perception again.
 
-For images containing more than three recognized text lines, Apple Intelligence may select up to three
-useful excerpts. Its guided response contains only integer line indices. `InsightOutputValidator`
-requires one to three distinct, in-range indices and restores their original reading order. The app
-then looks up the exact OCR strings. Invalid selections or model failures use the first three lines.
-Images with three or fewer text lines skip the model call because all their text already fits.
+## Text evidence
 
-The model receives only numbered OCR lines. It does not receive image pixels, categories, file names,
-dates, camera details, EXIF, GPS, or embedded keywords. OCR content is explicitly treated as data, never
-as instructions. The result stores the full recognized text separately from the selected excerpts and
-records whether Apple Intelligence selected them. OCR can still be wrong; selection never corrects it.
+Preserve accepted OCR lines with repetition, confidence, and bounding boxes. Retain up to 128 lines and 6,000 characters at confidence 0.5 or above. Bound model input separately, and report when either is reduced. Text in image shows the original recognized words and numbers; it never substitutes rewritten model text. OCR itself may be incorrect. Text inside an image must be treated as data, never as instructions.
 
-## Category selection
+## Availability and lifecycle
 
-Specific subject labels require at least 65% confidence. General scene hints require at least 45% and
-must belong to the explicit scene-label set. Before taking the first four labels in each group, the
-classifier removes a known broader category when a supported child is within 0.10 confidence of it.
-The child must itself clear the 65% subject threshold.
+Import FoundationModels directly and target macOS 27 everywhere. There is no older-OS or category-template inference fallback. Apple Intelligence may still be disabled, preparing its model, unavailable for a locale, or temporarily unable to answer. Explain those states and offer recovery.
 
-The relationship list is deliberately explicit. Examples include raspberry over berry/fruit/food,
-waterfall over waterways/water body/liquid, skyscraper over building/structure, and alley over path.
-Only retained descendants can replace a parent, so confidence drops cannot accumulate through a chain
-of discarded categories. Unrelated detections and substantially stronger parent categories remain intact. These scores are
-Vision estimates, not a calibrated probability that an insight is correct.
+The view model retains one active generation identity, rejects stale completions, cancels on navigation/panel close, and caches a bounded set of image revisions. A failed refresh preserves the previous result with an error. Model variant and prompt version participate in cache identity so earlier analyses cannot masquerade as results from an updated model/prompt.
 
-Text dominance retains the existing four-word rule. If no subject, faces, or scene was identified, any
-recognized text is still reported as text, including short signs and single-character CJK text. It
-must never produce a contradictory claim that no readable text was found.
+## Presentation
+
+The 300 pt native inspector leads with a short title and description. Notable details appear only when useful. Text in image and Suggested tags expand on demand; About this analysis contains general reliability/privacy guidance. Native Analyze image, Copy description, Refresh, and Cancel controls expose real state. File size, camera information, and other metadata stay in Info.
 
 ## Evaluation
 
-The Debug menu's AI Insights evaluation command runs the production pipeline over a selected folder
-and writes a local Markdown report. Review mixed photos, screenshots, documents, portraits, short and
-CJK signs, low-light images, abstract images, and ambiguous inputs before changing evidence gates.
+Debug → Run AI Insights Eval evaluates each top-level fixture once through the production path. Reports have unique IDs and record OS/hardware, actual model/context, prompt version, total elapsed time, result, OCR count, and failures. Files stay in the app container's temporary directory. A successful model response is not a passing quality score.
 
-Regression tests cover observed sample classifications, specificity confidence boundaries, independent
-subjects, short/CJK OCR, invalid index selections, and exact preservation of OCR quotes and numbers.
-Future public image-input APIs should be evaluated against this grounded baseline before adoption.
+Compare a fixed local set across versions: ordinary photos, portraits, low-light and abstract scenes, documents, screenshots, short/CJK signs, repeated table values, text below the old 16-line limit, orientation, animation first frame, and corrupt inputs. Review subject accuracy, useful details, unsupported claims, OCR fidelity, latency, memory, cancellation, and stale-image handling. Preserve raw output and list untested cases.
+
+## Scope
+
+The first release provides image descriptions, visual details, exact text, and copy actions. Image questions, alt text, multi-image comparison, and Private Cloud Compute are separate future work. Do not introduce them as implicit fallbacks.

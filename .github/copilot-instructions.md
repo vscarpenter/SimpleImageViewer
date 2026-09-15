@@ -1,12 +1,12 @@
 ## Quick orientation for code suggestions
 
-This repo is a macOS SwiftUI image viewer (MVVM + Combine) with protocol-oriented services and on-device AI analysis (macOS 26+).
+This repo is a macOS SwiftUI image viewer (MVVM + Combine) with protocol-oriented services and on-device AI analysis (macOS 27+, Apple silicon only).
 Keep suggestions small, concrete, and consistent with existing patterns (MVVM, protocol-driven services, @MainActor for UI updates).
 
 ### Big-picture architecture (what matters)
 - Root: `StillView - Simple Image Viewer/` (App, Models, ViewModels, Views, Services, Extensions, Resources, Documentation).
 - Core patterns: MVVM for UI, Protocols for services (see `Services/*.swift`), Combine publishers for async state.
-- Important service boundaries: File system & bookmarks (`Services/FileSystemService.swift`, `Services/SecurityScopedAccessManager.swift`), image loading & caching (`Services/ImageLoaderService.swift`, `Models/ImageCache.swift`), AI analysis (`Services/AIImageAnalysisService.swift`, `Services/AIConsentManager.swift`).
+- Important service boundaries: File system & bookmarks (`Services/FileSystemService.swift`, `Services/SecurityScopedAccessManager.swift`), image loading & caching (`Services/ImageLoaderService.swift`, `Models/ImageCache.swift`), image insights (`Services/AppleIntelligenceInsightsService.swift`, `Services/ImagePerceptionService.swift`, `Models/ImageInsightCore.swift`).
 
 ### What to keep in mind when changing code
 - Avoid editing the Xcode project file by hand; use Xcode to update `StillView - Simple Image Viewer.xcodeproj`.
@@ -26,11 +26,12 @@ Keep suggestions small, concrete, and consistent with existing patterns (MVVM, p
 - Tests: placed under `StillView - Simple Image Viewer Tests/` mirroring source layout. Name test files `TypeNameTests.swift` and test methods `test_<behavior>_<condition>()`.
 - Keyboard handling: AppKit NSEvent wrapped by `KeyCaptureViewRepresentable` (see `App/WindowAccessor.swift` and `Documentation/KeyboardNavigation.md`).
 - Security/sandbox: Persist folder access with security-scoped bookmarks; use `SecurityScopedAccessManager` and the entitlements at `StillView - Simple Image Viewer/Simple_Image_Viewer.entitlements`.
-- AI features: On-device only. See `Services/AIImageAnalysisService.swift` and `Services/AIConsentManager.swift` for consent, model fallbacks, and privacy-first behavior.
+- AI Insights: On-device only. Attach bounded, oriented pixels to Foundation Models and preserve original Vision OCR. See `Documentation/AI_Insights_Architecture.md`. Keep model readiness and locale errors actionable; no category templates or older-OS path.
 
 ### Integration points and external deps
-- Uses Swift frameworks: SwiftUI, Combine, AppKit, Vision, CoreML, ImageIO, UniformTypeIdentifiers.
-- Bundled Core ML models live in Resources and are used with Vision fallbacks; prefer on-device models and graceful fallback logic.
+- Uses Swift frameworks: SwiftUI, Combine, AppKit, FoundationModels, Vision, CoreImage, ImageIO, UniformTypeIdentifiers.
+- Use the current system on-device model. Do not add bundled model downloads, cloud inference, or legacy fallbacks.
+- Before building, run `bash scripts/check-macos-toolchain.sh` with Xcode 27 or later selected.
 - No network calls for AI or telemetry; avoid adding third-party telemetry or analytics.
 
 ### PR + commit guidance for generated changes

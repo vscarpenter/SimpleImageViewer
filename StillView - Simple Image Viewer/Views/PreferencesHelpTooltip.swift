@@ -278,7 +278,7 @@ extension PreferencesHelpTooltip {
     static func aiAnalysis() -> PreferencesHelpTooltip {
         PreferencesHelpTooltip(
             title: "AI Insights",
-            content: "Uses Apple Intelligence on this Mac when available to generate short notes from local image metadata and available system signals.",
+            content: "Describes the selected image with Apple Intelligence on this Mac and preserves recognized text for reading and copying.",
             type: .information
         )
     }

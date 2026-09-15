@@ -1,6 +1,6 @@
-# App Store Review Notes — StillView 4.6.0 (Build 36)
+# App Store Review Notes: macOS 27 development draft
 
-Reviewer-facing context for App Store Connect. StillView requires macOS 26 or later. It has no account system, sign-in, or test credentials.
+Draft reviewer context for the next App Store submission. Assign a new release version and build before use. StillView requires macOS 27 or later. It has no account system, sign-in, or test credentials.
 
 ## Basic navigation
 
@@ -15,15 +15,17 @@ Supported formats are JPEG, PNG, GIF, HEIF/HEIC, WebP, TIFF, and BMP. Animated G
 
 ## Testing AI Insights
 
-On an Apple Intelligence eligible Mac running macOS 26 or later:
+On an Apple Intelligence eligible Mac running macOS 27 or later:
 
 1. Enable **System Settings → Apple Intelligence & Siri → Apple Intelligence** and wait for the on-device model to be ready.
 2. Open a local image folder in StillView, select an image, and open the inspector’s **Insights** tab. **⌘I** opens this tab while the viewer has focus.
 3. If the feature is disabled in StillView, choose **Enable Insights**. It can also be enabled in **Settings → Intelligence**.
-4. Choose **Generate Insight**. The result shows local visual evidence and its limitations, with recognized text when available.
-5. Try a scene photo, a sign or screenshot containing text, and a portrait. Vision reports category matches, OCR lines, and face counts; it does not identify people.
+4. Choose **Analyze image**. The result shows a description and notable visual details. Copy description copies its summary. Expand Text in image to read or copy original OCR text.
+5. Try a scene photo, a sign or screenshot containing text, and a portrait. Apple Intelligence describes visible content; Vision supplies original OCR text. The app does not identify people.
 
-The app uses Apple Vision to inspect image pixels. When suitable OCR text is present, Apple’s on-device Foundation Models framework may select up to three indices referring to existing OCR lines. The app displays those exact lines without rewriting them. The language model receives recognized text rather than image pixels; visual matches and summaries are assembled from the local evidence. If text selection fails, the app uses original reading order.
+The app passes the selected, oriented first-frame image directly to Apple's on-device Foundation Models framework. A fresh session generates a compact description, visual details, suggested tags, and specific uncertainties. Vision supplies exact OCR observations with repetition and location retained under an explicit evidence budget. Recognized text is displayed without model rewriting, and any truncation is disclosed. Inference errors show a recoverable failure; a failed refresh preserves the previous result.
+
+Images, prompts, evidence, and results stay on the Mac. The operating system chooses the on-device model variant. No server model or older-OS fallback is used.
 
 On an ineligible Mac, with Apple Intelligence disabled, or while its model is preparing, the panel explains why generation is unavailable. When appropriate, **Open System Settings** helps resolve that state. StillView’s normal image viewing remains available.
 

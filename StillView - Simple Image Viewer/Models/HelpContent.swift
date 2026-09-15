@@ -347,18 +347,18 @@ extension HelpSection {
         icon: "brain.head.profile",
         items: [
             HelpContentItem(
-                title: "Generate an Insight",
-                description: "Open the inspector with I, choose Insights, and select Generate Insight. You can also press ⌘I while the viewer has focus. If Insights are disabled in StillView, choose Enable Insights first.",
+                title: "Analyze an Image",
+                description: "Open the inspector with I, choose Insights, and select Analyze image. You can also press ⌘I while the viewer has focus. If Insights are disabled in StillView, choose Enable Insights first.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Visual Matches and Text",
-                description: "Apple Vision analyzes the current image on this Mac for image categories, recognized text (OCR), and face counts. Results include confidence-based matches and limits; face detection does not identify people.",
+                title: "Image Descriptions",
+                description: "Apple Intelligence receives the selected image on this Mac and writes a short description with notable visible details. Copy description copies the summary. Refresh runs a new analysis; Cancel stops an in-flight request.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Apple Intelligence Text Selection",
-                description: "When useful recognized text is available, Apple’s on-device Foundation Models framework can select up to three existing OCR lines. StillView displays those exact lines without rewriting them. The language model does not receive image pixels.",
+                title: "Text in Image",
+                description: "Expand Text in image to read or copy the original words recognized by Vision. Repeated lines are preserved within the analysis limit. Recognized text is separate from the generated description and may contain OCR errors.",
                 type: .information
             ),
             HelpContentItem(
@@ -378,7 +378,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Limitations",
-                description: "Visual matches may be incomplete or incorrect, and recognized text may contain OCR errors. The feature does not identify people, organize files, perform smart search, or generate a free-form description of unseen image details.",
+                description: "Descriptions may miss details or misinterpret the scene. Specific uncertainties appear with the result. Recognized text may contain OCR errors. The app does not identify people or modify your files during analysis.",
                 type: .warning
             )
         ]
@@ -548,12 +548,12 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "AI Privacy Commitment",
-                description: "AI Insights uses on-device Vision for visual matches, OCR, and face counts. Apple Intelligence can select exact existing OCR lines without receiving image pixels. Inputs and results stay on this Mac. You can disable Insights in Settings → Intelligence.",
+                description: "AI Insights gives Apple Intelligence the selected image to describe its visible content on this Mac. Expand Text in image for original recognized text, or use Copy description. Descriptions and OCR may contain errors. Inputs and results stay local. Disable Insights in Settings → Intelligence.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Universal Binary",
-                description: "StillView requires macOS 26 or later and includes Intel and Apple Silicon builds. AI Insights additionally requires Apple Intelligence support.",
+                description: "StillView requires macOS 27 or later and Apple silicon. AI Insights requires Apple Intelligence enabled and its on-device model ready.",
                 type: .information
             ),
             HelpContentItem(

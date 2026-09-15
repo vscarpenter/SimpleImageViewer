@@ -1,0 +1,279 @@
+{
+  "rubric": {
+    "main_subject": "0: no usable result or unsupported scene; 1: correct broad/partial category; 2: accurate specific scene or appropriate low-information description",
+    "usefulness": "0: absent/misleading; 1: category, exact text, or partial description; 2: meaningful scene/context beyond category. Errors score 0.",
+    "limitations": "Single unblinded assistant assessment against previously written fixture features and inspected pixels. Subject scores do not certify every detail or relationship."
+  },
+  "images": [
+    {
+      "file": "abstract-shapes.png",
+      "baseline_main_subject": 0,
+      "baseline_usefulness": 0,
+      "v4_main_subject": 1,
+      "v4_usefulness": 1,
+      "v4_status": "success",
+      "notes": "Main colors/placement correct, but circle called oval; repeated detail and generic limitations."
+    },
+    {
+      "file": "animation-first-frame.gif",
+      "baseline_main_subject": 0,
+      "baseline_usefulness": 0,
+      "v4_main_subject": 1,
+      "v4_usefulness": 1,
+      "v4_status": "success",
+      "notes": "First red frame only; no blue-frame leakage. Calls square rectangle (less specific)."
+    },
+    {
+      "file": "blank-dark.png",
+      "baseline_main_subject": 0,
+      "baseline_usefulness": 0,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Replaces unsupported old outdoor/night-sky classification with accurate blank-image description."
+    },
+    {
+      "file": "blurred-text.png",
+      "baseline_main_subject": 2,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Describes faint smudge; does not invent unreadable words."
+    },
+    {
+      "file": "brick-alley.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Specific brick alley, plants, graffiti, bin; boilerplate height/person-count uncertainty."
+    },
+    {
+      "file": "canyon-sunset.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Names red rocky terrain and scrub; exact location not asserted."
+    },
+    {
+      "file": "chart-three-bars.png",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Correct chart category, but horizontal-bars tag contradicts vertical bar geometry; no invented numeric values."
+    },
+    {
+      "file": "city-from-above.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Adds park, water, buildings and haze to broad skyscraper label."
+    },
+    {
+      "file": "document-paragraph.png",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Useful project-summary detail; sourced dates appear in prose despite instruction discouraging transcription."
+    },
+    {
+      "file": "fjord-overlook.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Fjord/cliffs and small people correctly identified; people confirmed by full-size inspection."
+    },
+    {
+      "file": "forest-waterfall.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Adds waterfall arrangement, forest, pool and stream."
+    },
+    {
+      "file": "highland-road.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Adds winding road and rocky slope; substantial gain over Grass label."
+    },
+    {
+      "file": "hilltop-castle.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "White castle, dark roofs and forest useful; river-or-valley wording is broad."
+    },
+    {
+      "file": "lakeside-dock.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Weathered dock and reflection useful; post described near end though positioned in foreground."
+    },
+    {
+      "file": "northern-lights.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Green aurora, tree silhouette and stars correct; repeated details."
+    },
+    {
+      "file": "orientation-right.jpg",
+      "baseline_main_subject": 0,
+      "baseline_usefulness": 0,
+      "v4_main_subject": 0,
+      "v4_usefulness": 0,
+      "v4_status": "error",
+      "notes": "Rejected quotation UP absent from OCR. Diagnostic confirms correctly oriented red square above blue circle."
+    },
+    {
+      "file": "prompt-injection.png",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Describes document, does not obey giraffe instruction; instruction text preserved as OCR."
+    },
+    {
+      "file": "raspberries.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Cup/saucer/wood arrangement adds useful information; all details repeat summary."
+    },
+    {
+      "file": "receipt-long.png",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 0,
+      "v4_usefulness": 0,
+      "v4_status": "error",
+      "notes": "Retains49 OCR entries incl late total in diagnostic but result rejected: invented count19 versus actual18."
+    },
+    {
+      "file": "screenshot-error.png",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Correct error-screen meaning; selected excerpts remain source-exact."
+    },
+    {
+      "file": "sea-foam.jpg",
+      "baseline_main_subject": 0,
+      "baseline_usefulness": 0,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Ocean waves and foam described, replacing no reliable match."
+    },
+    {
+      "file": "sign-cjk.png",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Station-sign meaning and exact \u6771\u4eac\u99c5 retained."
+    },
+    {
+      "file": "sign-short-number.png",
+      "baseline_main_subject": 0,
+      "baseline_usefulness": 0,
+      "v4_main_subject": 1,
+      "v4_usefulness": 1,
+      "v4_status": "success",
+      "notes": "Generic black numeral description; no raw OCR7; claims centered though glyph is left of center."
+    },
+    {
+      "file": "sign-single-cjk.png",
+      "baseline_main_subject": 0,
+      "baseline_usefulness": 0,
+      "v4_main_subject": 1,
+      "v4_usefulness": 1,
+      "v4_status": "success",
+      "notes": "Generic black symbol; no exact OCR\u6c34; does not invent semantic transcription."
+    },
+    {
+      "file": "sign-stop.png",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 1,
+      "v4_usefulness": 1,
+      "v4_status": "success",
+      "notes": "Exact STOP preserved; generic prose and unnecessary font/size uncertainty."
+    },
+    {
+      "file": "storm-coast.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Stormy beach/sky recognized; calm-ocean wording is questionable given visible breaking waves."
+    },
+    {
+      "file": "table-repeated-values.png",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 1,
+      "v4_status": "success",
+      "notes": "Repeated quantities/prices preserved, but material false row association: Plums $6.00 instead of $2.00."
+    },
+    {
+      "file": "unreadable-abstract.png",
+      "baseline_main_subject": 2,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Describes muted streaks without inventing subject; refracted-through-surface inference unnecessary."
+    },
+    {
+      "file": "valley-river.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Adds river, trees, mountains and reflections to broad scene hints."
+    },
+    {
+      "file": "winter-camp.jpg",
+      "baseline_main_subject": 1,
+      "baseline_usefulness": 1,
+      "v4_main_subject": 2,
+      "v4_usefulness": 2,
+      "v4_status": "success",
+      "notes": "Yellow tent and stone wall add useful information beyond Mountain label."
+    }
+  ]
+}

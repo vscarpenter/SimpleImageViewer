@@ -1,0 +1,5 @@
+FILE sign-short-number.png
+RETAINED []
+FILE sign-single-cjk.png
+{"confidence":0.30000001192092896,"rawText":"水"}
+RETAINED []

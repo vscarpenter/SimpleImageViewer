@@ -1,6 +1,6 @@
-# App Store Submission Package — v4.6.0 (Build 36)
+# App Store Submission Package: macOS 27 development draft
 
-Draft metadata for this checkout. Verify the signed archive, App Store Connect fields, and public privacy page before submission; this document does not confirm upload or approval.
+Draft metadata for the next release. Version 4.6.0/build 36 below is the existing project identity, not a new submission build; assign a new version/build through Xcode before packaging. Verify the signed archive, App Store Connect fields, and public privacy page before submission; this document does not confirm upload or approval.
 
 ## Version and identity
 
@@ -11,7 +11,7 @@ Draft metadata for this checkout. Verify the signed archive, App Store Connect f
 | Marketing Version | 4.6.0 |
 | Build Number | 36 |
 | Primary Category | Photography |
-| Minimum macOS | 26.0 |
+| Minimum macOS | 27.0 |
 
 Build 36 must exceed the previous uploaded build for this version. If another build number is needed, update the target’s Version and Build fields in Xcode and rebuild.
 
@@ -26,7 +26,7 @@ Distraction-free image viewer
 ### Promotional text
 
 ```
-Browse photos in Single, Strip, or Grid. Inspect image details and on-device visual matches and recognized text. No accounts, analytics, or tracking.
+Browse photos in Single, Strip, or Grid. Read on-device image descriptions, visual details, and original recognized text. No accounts, analytics, or tracking.
 ```
 
 ### Description
@@ -44,9 +44,9 @@ SUPPORTED FORMATS
 JPEG, PNG, GIF, HEIF/HEIC, WebP, TIFF, and BMP. Animated GIF and WebP display their first frame only; multipage TIFF displays its first image. SVG and PDF are not supported.
 
 ON-DEVICE INSIGHTS
-AI Insights uses Apple Vision for image classification, text recognition, and face counts. When recognized text is available, Apple Intelligence can select useful existing OCR lines without rewriting them. The language model does not receive image pixels. Visual matches include their limits and can be incorrect; face detection does not identify people.
+AI Insights gives Apple Intelligence the selected image to describe its visible content on your Mac. Read a concise description and notable details, copy the description, or expand original recognized text. Generated descriptions and OCR may contain errors. The app does not identify people.
 
-Insights requires an Apple Intelligence eligible Mac, Apple Intelligence enabled in System Settings, and its on-device model ready. Enable Insights in the app, then choose Generate Insight. Images, recognized text, metadata, and results stay on this Mac.
+Insights requires an Apple Intelligence eligible Mac, Apple Intelligence enabled in System Settings, and its on-device model ready. Enable Insights in the app, then choose Analyze image. Images, recognized text, metadata, and results stay on this Mac.
 
 EVERYDAY CONTROLS
 Start a slideshow with adjustable duration and automatic repeat. Share the current image through macOS sharing services, or confirm its name before moving it to Trash. The Shortcuts tab provides a searchable reference to built-in image commands.
@@ -54,7 +54,7 @@ Start a slideshow with adjustable duration and automatic repeat. Share the curre
 PRIVACY AND PERMISSIONS
 No data collection, analytics, or tracking. StillView uses App Sandbox and accesses folders you select. Read-write access supports moving a confirmed image to Trash. Optional display enhancements preserve the original file. Sharing and external website links open when you choose them.
 
-Requires macOS 26 or later. Includes Intel and Apple Silicon builds; AI Insights additionally requires Apple Intelligence support.
+Requires macOS 27 or later and Apple silicon. AI Insights additionally requires Apple Intelligence enabled and its on-device model ready.
 ```
 
 ### Keywords
@@ -66,13 +66,11 @@ image,viewer,photo,slideshow,JPEG,HEIC,thumbnail,EXIF,OCR,macOS,offline,sandbox
 ### What’s New
 
 ```
-StillView 4.6.0 introduces a compact, native Mac Settings window and improves folder navigation, keyboard behavior, and compact window controls.
+This release requires macOS 27 and Apple silicon.
 
-• Open Folder works from the welcome screen and image viewer, preserving the current image when you cancel.
-• Image shortcuts respect viewer focus and leave controls, text fields, dialogs, and other windows their usual keys.
-• Moving an image to Trash keeps the collection and selection consistent when navigation changes during the operation.
-• The toolbar adapts to narrow windows, including Grid controls.
-• Settings and Help now describe the supported settings, built-in shortcuts, image formats, and on-device Insights behavior.
+• Apple Intelligence now receives image pixels directly to describe the visible scene and useful details on your Mac.
+• Copy the description, refresh it, and expand original recognized text without losing repeated or later lines within the analysis limit.
+• Analysis stays local, with clear unavailable/error states and cancellation when you navigate.
 ```
 
 ### URLs
@@ -102,7 +100,7 @@ Paste [AppStoreReviewNotes.md](AppStoreReviewNotes.md) into App Review Informati
 
 ## Pre-submission checks
 
-- [ ] Verify version 4.6.0, build 36, bundle ID, and macOS 26 deployment target against the selected archive and App Store Connect.
+- [ ] Assign a new version/build, then verify its identity, bundle ID, and macOS 27 deployment target against the selected archive and App Store Connect.
 - [ ] Run the repository’s lint and tests, and confirm CI for the exact submission commit.
 - [ ] Create a distribution archive in Xcode and validate it in Organizer.
 - [ ] Inspect the signed app’s entitlements with `codesign -d --entitlements - "<App>.app"`: App Sandbox, user-selected read-write files, and app-scope bookmarks are expected; `get-task-allow` must be absent from the distribution app.

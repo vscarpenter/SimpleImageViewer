@@ -1,0 +1,4 @@
+DIAGNOSTIC instruction 233, schema 331
+DIAGNOSTIC text prompt tokens 6
+DIAGNOSTIC response usage FoundationModels.LanguageModelSession.Usage(input: FoundationModels.LanguageModelSession.Usage.Input(totalTokenCount: 700, cachedTokenCount: 0), output: FoundationModels.LanguageModelSession.Usage.Output(totalTokenCount: 147, reasoningTokenCount: 0), metadata: [:])
+textcount-diagnostic: 1/1 brick-alley.jpg success 19.21s
