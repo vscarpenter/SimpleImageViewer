@@ -13,7 +13,6 @@ REQUIRED_TESTS = {
     "FileSystemServiceTests.swift",
     "FolderContentTests.swift",
     "ImageCacheAccountingRegressionTests.swift",
-    "ImageContentTypeClassifierTests.swift",
     "ImageDecodingRegressionTests.swift",
     "ImageFileTests.swift",
     "ImageInsightTests.swift",

@@ -6,7 +6,7 @@ import Combine
 import Metal
 import MetalPerformanceShaders
 
-/// Enhanced image processing service with macOS 26 capabilities
+/// Enhanced image processing service using Vision and Core Image
 @MainActor
 final class EnhancedImageProcessingService: ObservableObject {
     

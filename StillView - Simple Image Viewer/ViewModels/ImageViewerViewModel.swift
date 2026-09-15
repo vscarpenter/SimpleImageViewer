@@ -94,7 +94,7 @@ class ImageViewerViewModel: ObservableObject {
     private let thumbnailCache = NSCache<NSURL, NSImage>()
     private let sharingDelegate = SharingServiceDelegate()
     
-    // MARK: - macOS 26 Enhanced Services
+    // MARK: - Enhanced Services
     private let enhancedSecurity = EnhancedSecurityService.shared
     private let insightAvailabilityProvider: () -> ImageInsightAvailability
     private let insightInputProvider: (ImageFile) -> ImageInsightInput

@@ -94,7 +94,7 @@ struct ImageViewportState {
     }
 }
 
-/// Enhanced image display view with macOS 26 capabilities
+/// Image display with zoom, gestures, and image enhancements
 struct EnhancedImageDisplayView: View {
     @ObservedObject var viewModel: ImageViewerViewModel
     @StateObject private var enhancedProcessing = EnhancedImageProcessingService.shared

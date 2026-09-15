@@ -3,7 +3,7 @@ import Security
 import AppKit
 import Combine
 
-/// Enhanced security service with macOS 26 capabilities
+/// Security-scoped access and permission management
 @MainActor
 final class EnhancedSecurityService: ObservableObject {
     
@@ -35,7 +35,7 @@ final class EnhancedSecurityService: ObservableObject {
     
     // MARK: - Public Methods
     
-    /// Request advanced permissions for macOS 26 features
+    /// Request permissions for enhanced features
     func requestAdvancedPermissions() async -> SecurityPermissionResult {
         var grantedPermissions: [SecurityPermission] = []
         var deniedPermissions: [SecurityPermission] = []

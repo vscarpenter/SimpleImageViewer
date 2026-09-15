@@ -15,15 +15,14 @@ permissions:
 jobs:
   analyze:
     name: Analyze (Swift)
-    runs-on: macos-latest
+    # GitHub public preview: macOS 27 and Xcode 27 on Apple silicon.
+    runs-on: xcode-27
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
+      - name: Verify macOS 27 toolchain
+        run: bash scripts/check-macos-toolchain.sh
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3

@@ -46,8 +46,6 @@
 		B2010000000000000000000D /* ImagePerceptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000000E /* ImagePerceptionService.swift */; };
 		B201000000000000000000A1 /* InsightOutputValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000A2 /* InsightOutputValidator.swift */; };
 		B201000000000000000000A3 /* InsightOutputValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000A4 /* InsightOutputValidatorTests.swift */; };
-		B201000000000000000000F1 /* ImageContentTypeClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000F2 /* ImageContentTypeClassifier.swift */; };
-		B201000000000000000000F3 /* ImageContentTypeClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B201000000000000000000F4 /* ImageContentTypeClassifierTests.swift */; };
 		B2010000000000000000AA01 /* ImagePerceptionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */; };
 		B2010000000000000000AA05 /* InsightEvalHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2010000000000000000AA06 /* InsightEvalHarness.swift */; };
 		B30100000000000000000001 /* ViewerMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30100000000000000000002 /* ViewerMode.swift */; };
@@ -76,6 +74,7 @@
 		FB2E7C902E556A31000525C4 /* UnifiedErrorHandlingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2E7C8E2E556A31000525C4 /* UnifiedErrorHandlingService.swift */; };
 		FB2E7C912E556A31000525C4 /* MemoryManagementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2E7C8C2E556A31000525C4 /* MemoryManagementService.swift */; };
 		FB2E7C932E556A5F000525C4 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2E7C922E556A5F000525C4 /* Logger.swift */; };
+		FB495D0A3058B4FE00CAC231 /* ThinkingIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB495D093058B4FE00CAC231 /* ThinkingIndicatorView.swift */; };
 		FB49A3702E80D50800F77575 /* PreferencesEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A36F2E80D50800F77575 /* PreferencesEnums.swift */; };
 		FB49A3742E80D51E00F77575 /* EnhancedImageDisplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A3722E80D51E00F77575 /* EnhancedImageDisplayView.swift */; };
 		FB49A37E2E80D54000F77575 /* EnhancedAccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49A37B2E80D54000F77575 /* EnhancedAccessibilityService.swift */; };
@@ -179,8 +178,6 @@
 		B2010000000000000000000E /* ImagePerceptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePerceptionService.swift; sourceTree = "<group>"; };
 		B201000000000000000000A2 /* InsightOutputValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightOutputValidator.swift; sourceTree = "<group>"; };
 		B201000000000000000000A4 /* InsightOutputValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightOutputValidatorTests.swift; sourceTree = "<group>"; };
-		B201000000000000000000F2 /* ImageContentTypeClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageContentTypeClassifier.swift; sourceTree = "<group>"; };
-		B201000000000000000000F4 /* ImageContentTypeClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageContentTypeClassifierTests.swift; sourceTree = "<group>"; };
 		B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePerceptionServiceTests.swift; sourceTree = "<group>"; };
 		B2010000000000000000AA06 /* InsightEvalHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightEvalHarness.swift; sourceTree = "<group>"; };
 		B30100000000000000000002 /* ViewerMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerMode.swift; sourceTree = "<group>"; };
@@ -210,6 +207,7 @@
 		FB2E7C8D2E556A31000525C4 /* PerformanceOptimizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceOptimizationService.swift; sourceTree = "<group>"; };
 		FB2E7C8E2E556A31000525C4 /* UnifiedErrorHandlingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedErrorHandlingService.swift; sourceTree = "<group>"; };
 		FB2E7C922E556A5F000525C4 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		FB495D093058B4FE00CAC231 /* ThinkingIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThinkingIndicatorView.swift; sourceTree = "<group>"; };
 		FB49A36F2E80D50800F77575 /* PreferencesEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesEnums.swift; sourceTree = "<group>"; };
 		FB49A3722E80D51E00F77575 /* EnhancedImageDisplayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedImageDisplayView.swift; sourceTree = "<group>"; };
 		FB49A37B2E80D54000F77575 /* EnhancedAccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedAccessibilityService.swift; sourceTree = "<group>"; };
@@ -328,7 +326,6 @@
 				B20100000000000000000006 /* AppleIntelligenceInsightsService.swift */,
 				B2010000000000000000AA06 /* InsightEvalHarness.swift */,
 				B2010000000000000000000E /* ImagePerceptionService.swift */,
-				B201000000000000000000F2 /* ImageContentTypeClassifier.swift */,
 				B201000000000000000000A2 /* InsightOutputValidator.swift */,
 				FB4EE8272E916AEA00B4AA4D /* FeedbackService.swift */,
 				FB49A37B2E80D54000F77575 /* EnhancedAccessibilityService.swift */,
@@ -388,6 +385,7 @@
 				A100009D /* NotificationView.swift */,
 				A100009E /* KeyCaptureViewRepresentable.swift */,
 				A10000A7 /* AboutView.swift */,
+				FB495D093058B4FE00CAC231 /* ThinkingIndicatorView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -474,7 +472,6 @@
 		B201000000000000000000F5 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				B201000000000000000000F4 /* ImageContentTypeClassifierTests.swift */,
 				B2010000000000000000AA02 /* ImagePerceptionServiceTests.swift */,
 				B201000000000000000000A4 /* InsightOutputValidatorTests.swift */,
 				B30100000000000000000008 /* ImageMetadataFormattingTests.swift */,
@@ -644,7 +641,6 @@
 				B20100000000000000000005 /* AppleIntelligenceInsightsService.swift in Sources */,
 				B2010000000000000000AA05 /* InsightEvalHarness.swift in Sources */,
 				B2010000000000000000000D /* ImagePerceptionService.swift in Sources */,
-				B201000000000000000000F1 /* ImageContentTypeClassifier.swift in Sources */,
 				B201000000000000000000A1 /* InsightOutputValidator.swift in Sources */,
 				FB231AB52E45B2B600763700 /* WhatsNewContentView.swift in Sources */,
 				FB231AB62E45B2B600763700 /* WhatsNewSectionView.swift in Sources */,
@@ -689,6 +685,7 @@
 				FBF3C8A92E5FE1CD00F10DC8 /* KeyboardNavigation+Preferences.swift in Sources */,
 				A10000AD /* Color+Adaptive.swift in Sources */,
 				FBC4F84F2E35216900AE62AA /* KeyboardHandler.swift in Sources */,
+				FB495D0A3058B4FE00CAC231 /* ThinkingIndicatorView.swift in Sources */,
 				FBA5E0AC2E45ABA0009F3D00 /* WhatsNewContentProvider.swift in Sources */,
 				FBA5E0AD2E45ABA0009F3D00 /* WhatsNewService.swift in Sources */,
 				FB5D39042E355791004B9D85 /* ImageMetadataService.swift in Sources */,
@@ -738,7 +735,6 @@
 				FBF6CAAC304CF61600ADFEEB /* FolderContentTests.swift in Sources */,
 				FBF6CAB4304CFA2D00ADFEEB /* ImageInsightLifecycleRegressionTests.swift in Sources */,
 				B2010000000000000000000B /* ImageInsightTests.swift in Sources */,
-				B201000000000000000000F3 /* ImageContentTypeClassifierTests.swift in Sources */,
 				FBF6CAAA304CF60B00ADFEEB /* ImageFileTests.swift in Sources */,
 				B2010000000000000000AA01 /* ImagePerceptionServiceTests.swift in Sources */,
 				B201000000000000000000A3 /* InsightOutputValidatorTests.swift in Sources */,
@@ -819,7 +815,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -879,7 +875,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -910,7 +906,7 @@
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_LSMinimumSystemVersion = 26.0;
+				INFOPLIST_KEY_LSMinimumSystemVersion = 27.0;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
 				INFOPLIST_KEY_NSHumanReadableDescription = "A lightweight, distraction-free image viewer for macOS by Vinny Carpenter (https://vinny.dev). Source code available at https://github.com/vscarpenter/SimpleImageViewer";
 				INFOPLIST_KEY_NSSupportsAutomaticTermination = YES;
@@ -923,7 +919,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Services\"",
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 4.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -955,7 +951,7 @@
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_LSMinimumSystemVersion = 26.0;
+				INFOPLIST_KEY_LSMinimumSystemVersion = 27.0;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
 				INFOPLIST_KEY_NSHumanReadableDescription = "A lightweight, distraction-free image viewer for macOS by Vinny Carpenter (https://vinny.dev). Source code available at https://github.com/vscarpenter/SimpleImageViewer";
 				INFOPLIST_KEY_NSSupportsAutomaticTermination = YES;
@@ -968,7 +964,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Services\"",
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 4.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vinny.StillView-Image-Viewer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -995,7 +991,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Services\"",
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.StillViewTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
@@ -1022,7 +1018,7 @@
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Services\"",
 					"\"$(SRCROOT)/StillView - Simple Image Viewer/Models\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.StillViewTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
