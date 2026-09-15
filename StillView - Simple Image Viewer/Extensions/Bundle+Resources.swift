@@ -19,6 +19,11 @@ extension Bundle {
     var fullVersionString: String {
         return "Version \(appVersion) (\(buildNumber))"
     }
+
+    /// The copyright notice from NSHumanReadableCopyright, so About and Finder show the same text
+    var copyrightNotice: String {
+        return infoDictionary?["NSHumanReadableCopyright"] as? String ?? ""
+    }
     
     /// Loads and parses a JSON file from the bundle with comprehensive error handling
     func loadJSON<T: Codable>(_ type: T.Type, from filename: String) -> T? {

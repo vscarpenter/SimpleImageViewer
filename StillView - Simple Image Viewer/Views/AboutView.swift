@@ -24,7 +24,7 @@ struct AboutView: View {
             if let appIcon = NSApplication.shared.applicationIconImage {
                 Image(nsImage: appIcon)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
+                    .scaledToFit()
                     .frame(width: 128, height: 128)
             }
             
@@ -127,7 +127,7 @@ struct AboutView: View {
                 .padding(.horizontal)
             
             // Copyright
-            Text("Copyright © 2025 Vinny Carpenter. All rights reserved.")
+            Text(Bundle.main.copyrightNotice)
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

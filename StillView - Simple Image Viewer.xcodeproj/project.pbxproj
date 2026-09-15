@@ -907,7 +907,7 @@
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_LSMinimumSystemVersion = 27.0;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Vinny Carpenter. All rights reserved.";
 				INFOPLIST_KEY_NSHumanReadableDescription = "A lightweight, distraction-free image viewer for macOS by Vinny Carpenter (https://vinny.dev). Source code available at https://github.com/vscarpenter/SimpleImageViewer";
 				INFOPLIST_KEY_NSSupportsAutomaticTermination = YES;
 				INFOPLIST_KEY_NSSupportsSuddenTermination = YES;
@@ -952,7 +952,7 @@
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_LSMinimumSystemVersion = 27.0;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Vinny Carpenter. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Vinny Carpenter. All rights reserved.";
 				INFOPLIST_KEY_NSHumanReadableDescription = "A lightweight, distraction-free image viewer for macOS by Vinny Carpenter (https://vinny.dev). Source code available at https://github.com/vscarpenter/SimpleImageViewer";
 				INFOPLIST_KEY_NSSupportsAutomaticTermination = YES;
 				INFOPLIST_KEY_NSSupportsSuddenTermination = YES;
