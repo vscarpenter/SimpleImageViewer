@@ -67,7 +67,7 @@ struct HelpView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
                 
-                TextField("Search help...", text: $searchText)
+                TextField("Search help…", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                 
                 if !searchText.isEmpty {

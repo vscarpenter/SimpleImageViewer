@@ -104,12 +104,12 @@ struct SimpleImageViewerApp: App {
                     }
                 }
                 .keyboardShortcut(",", modifiers: .command)
-                .help("Open application preferences")
+                .help("Open StillView settings")
             }
             
             // Add File menu commands
             CommandGroup(replacing: .newItem) {
-                Button("Open Folder...") {
+                Button("Open Folder…") {
                     // Bring window to foreground and open the folder picker
                     Task { @MainActor in
                         appDelegate.showMainWindow()
@@ -150,12 +150,12 @@ struct SimpleImageViewerApp: App {
 
                 Divider()
 
-                Button("Send Feedback via GitHub...") {
+                Button("Send Feedback via GitHub…") {
                     feedbackService.openGitHubFeedbackForm()
                 }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
 
-                Button("Send Feedback via Email...") {
+                Button("Send Feedback via Email…") {
                     feedbackService.openEmailFeedbackForm()
                 }
                 .keyboardShortcut("e", modifiers: [.command, .shift])

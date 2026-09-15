@@ -340,19 +340,23 @@ private struct CopyableRow: View {
                 .fill(copied ? Color.systemAccent.opacity(0.18) : Color.clear)
         )
         .contentShape(Rectangle())
-        .onTapGesture {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(value, forType: .string)
-            copied = true
-            Task {
-                try? await Task.sleep(for: .seconds(1.2))
-                copied = false
-            }
-        }
+        .onTapGesture(perform: copyValue)
         .help("Click to copy")
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(value)")
         .accessibilityHint("Copies the value")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: "Copy", copyValue)
+    }
+
+    private func copyValue() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
+        copied = true
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            copied = false
+        }
     }
 }
 

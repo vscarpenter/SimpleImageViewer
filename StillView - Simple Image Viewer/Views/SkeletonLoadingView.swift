@@ -87,7 +87,7 @@ struct SkeletonLoadingView: View {
                 .accessibilityHidden(true)
             
             // Loading text with pulse animation
-            Text("Loading...")
+            Text("Loading…")
                 .font(.headline)
                 .foregroundColor(.primary)
                 .opacity(pulseOpacity)
@@ -112,7 +112,7 @@ struct SkeletonLoadingView: View {
                 .accessibilityLabel("Loading image")
             
             // Loading text with pulse animation
-            Text("Loading...")
+            Text("Loading…")
                 .font(.headline)
                 .foregroundColor(.primary)
                 .opacity(pulseOpacity)
@@ -216,7 +216,7 @@ struct ProgressiveLoadingView: View {
                 // Low-resolution preview with blur
                 Image(nsImage: previewImage)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
+                    .scaledToFit()
                     .blur(radius: blurRadius)
                     .overlay(
                         // Loading overlay

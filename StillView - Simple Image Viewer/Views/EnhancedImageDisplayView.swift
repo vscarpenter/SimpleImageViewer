@@ -249,7 +249,7 @@ struct EnhancedImageDisplayView: View {
                 .scaleEffect(1.2)
                 .progressViewStyle(CircularProgressViewStyle())
             
-            Text("Loading Image...")
+            Text("Loading Image…")
                 .font(.headline)
                 .foregroundColor(.primary)
             
@@ -269,7 +269,7 @@ struct EnhancedImageDisplayView: View {
                 .scaleEffect(1.2)
                 .progressViewStyle(CircularProgressViewStyle())
             
-            Text("Enhancing Image...")
+            Text("Enhancing Image…")
                 .font(.headline)
                 .foregroundColor(.primary)
             

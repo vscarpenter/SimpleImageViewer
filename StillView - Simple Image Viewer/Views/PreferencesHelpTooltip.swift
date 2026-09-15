@@ -194,7 +194,7 @@ extension PreferencesHelpTooltip {
             title: "Hover Effects",
             content: "Visual feedback when hovering over interface elements like buttons and thumbnails. " +
                      "Includes subtle scaling, color changes, and shadow effects. " +
-                     "Automatically disabled when Reduce Motion is enabled in System Preferences.",
+                     "Automatically disabled when Reduce Motion is enabled in System Settings.",
             type: .accessibility
         )
     }

@@ -76,16 +76,6 @@ class ContextMenuService: ObservableObject {
         )
     }
     
-    /// Remove an image from the current view (doesn't delete the file)
-    func removeFromView(_ imageFile: ImageFile, viewModel: ImageViewerViewModel) {
-        // This would need to be implemented in the view model
-        // For now, we'll show a notification that this feature is coming
-        ErrorHandlingService.shared.showNotification(
-            "Remove from view functionality will be available in a future update",
-            type: .info
-        )
-    }
-    
     // MARK: - Empty Area Context Menu Actions
     
     /// Open folder selection dialog
@@ -115,7 +105,7 @@ class ContextMenuService: ObservableObject {
         switch action {
         case .copyImage, .copyPath, .share, .revealInFinder, .moveToTrash:
             return imageFile != nil
-        case .jumpToImage, .removeFromView:
+        case .jumpToImage:
             return imageFile != nil
         case .selectFolder, .toggleViewMode, .openPreferences:
             return true
@@ -131,7 +121,6 @@ enum ContextMenuAction: String, CaseIterable {
     case revealInFinder = "reveal_in_finder"
     case moveToTrash = "move_to_trash"
     case jumpToImage = "jump_to_image"
-    case removeFromView = "remove_from_view"
     case selectFolder = "select_folder"
     case toggleViewMode = "toggle_view_mode"
     case openPreferences = "open_preferences"
@@ -143,21 +132,19 @@ enum ContextMenuAction: String, CaseIterable {
         case .copyPath:
             return "Copy Path"
         case .share:
-            return "Share..."
+            return "Share…"
         case .revealInFinder:
             return "Reveal in Finder"
         case .moveToTrash:
             return "Move to Trash"
         case .jumpToImage:
             return "Jump to Image"
-        case .removeFromView:
-            return "Remove from View"
         case .selectFolder:
-            return "Select Folder..."
+            return "Select Folder…"
         case .toggleViewMode:
             return "Change View"
         case .openPreferences:
-            return "Preferences..."
+            return "Settings…"
         }
     }
     
@@ -175,8 +162,6 @@ enum ContextMenuAction: String, CaseIterable {
             return "trash"
         case .jumpToImage:
             return "arrow.right.circle"
-        case .removeFromView:
-            return "eye.slash"
         case .selectFolder:
             return "folder.badge.plus"
         case .toggleViewMode:

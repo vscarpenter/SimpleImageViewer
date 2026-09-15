@@ -81,7 +81,7 @@ extension HelpSection {
         items: [
             HelpContentItem(
                 title: "Opening Images",
-                description: "Use 'Open Folder...' from the File menu or press ⌘O to select a folder containing images. StillView will automatically scan the folder and display all supported image files.",
+                description: "Use 'Open Folder…' from the File menu or press ⌘O to select a folder containing images. StillView will automatically scan the folder and display all supported image files.",
                 shortcut: "⌘O",
                 type: .information
             ),

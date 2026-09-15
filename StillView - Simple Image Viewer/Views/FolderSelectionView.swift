@@ -3,6 +3,7 @@ import AppKit
 
 /// View for selecting folders and managing recent folders
 struct FolderSelectionView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var viewModel: FolderSelectionViewModel
     var body: some View {
         folderSelectionContent
@@ -73,7 +74,7 @@ struct FolderSelectionView: View {
             Button(action: {
                 viewModel.selectFolder()
             }) {
-                Label("Select Folder...", systemImage: "folder.badge.plus")
+                Label("Select Folder…", systemImage: "folder.badge.plus")
             }
             .keyboardShortcut("o", modifiers: .command)
 
@@ -90,7 +91,7 @@ struct FolderSelectionView: View {
                     }
                     
                     if viewModel.recentFolders.count > 5 {
-                        Text("... and \(viewModel.recentFolders.count - 5) more")
+                        Text("… and \(viewModel.recentFolders.count - 5) more")
                             .foregroundColor(.secondary)
                     }
                     
@@ -110,7 +111,7 @@ struct FolderSelectionView: View {
             Button(action: {
                 NotificationCenter.default.post(name: .openPreferences, object: nil)
             }) {
-                Label("Preferences...", systemImage: "gearshape")
+                Label("Settings…", systemImage: "gearshape")
             }
             .keyboardShortcut(",", modifiers: .command)
         }
@@ -123,7 +124,7 @@ struct FolderSelectionView: View {
             if let appIcon = NSImage(named: "AppIcon") {
                 Image(nsImage: appIcon)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
+                    .scaledToFit()
                     .frame(width: 96, height: 96)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .shadow(color: Color.appBorder.opacity(0.3), radius: 12, x: 0, y: 6)
@@ -198,7 +199,7 @@ struct FolderSelectionView: View {
             HStack(spacing: 16) {
                 Image(systemName: "folder")
                     .font(.system(size: 18, weight: .medium))
-                Text("Browse for Folder...")
+                Text("Browse for Folder…")
                     .font(.system(size: 17, weight: .semibold))
             }
             .frame(maxWidth: .infinity)
@@ -217,11 +218,11 @@ struct FolderSelectionView: View {
             .foregroundColor(.white)
             .cornerRadius(12)
             .shadow(color: Color.systemAccent.opacity(0.4), radius: 8, x: 0, y: 4)
-            .scaleEffect(viewModel.isScanning ? 0.95 : 1.0)
+            .scaleEffect(viewModel.isScanning && !reduceMotion ? 0.95 : 1.0)
         }
         .buttonStyle(.plain)
         .disabled(viewModel.isScanning)
-        .animation(.easeInOut(duration: 0.2), value: viewModel.isScanning)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: viewModel.isScanning)
         .help("Select a folder containing images to browse")
         .accessibilityLabel("Browse for folder")
         .accessibilityHint("Opens a dialog to select a folder containing images")
@@ -236,7 +237,7 @@ struct FolderSelectionView: View {
                 .accessibilityLabel("Scanning folder")
             
             VStack(spacing: 8) {
-                Text("Scanning folder...")
+                Text("Scanning folder…")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.appText)
                 
@@ -352,6 +353,7 @@ struct FolderSelectionView: View {
 
 /// Row view for displaying recent folders
 private struct RecentFolderRow: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let folderURL: URL
     let onSelect: () -> Void
     let onRemove: () -> Void
@@ -408,7 +410,7 @@ private struct RecentFolderRow: View {
                 .buttonStyle(.plain)
                 .help("Remove \(folderURL.lastPathComponent) from recent folders")
                 .accessibilityLabel("Remove \(folderURL.lastPathComponent) from recent folders")
-                .transition(.scale.combined(with: .opacity))
+                .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
             }
         }
         .padding(.horizontal, 16)

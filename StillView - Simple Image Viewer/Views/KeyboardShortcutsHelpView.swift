@@ -61,7 +61,7 @@ struct KeyboardShortcutsHelpView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
                 
-                TextField("Search shortcuts...", text: $searchText)
+                TextField("Search shortcuts…", text: $searchText)
                     .textFieldStyle(.roundedBorder)
                 
                 if !searchText.isEmpty {

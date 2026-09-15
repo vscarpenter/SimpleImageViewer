@@ -39,7 +39,7 @@ struct ContextMenuProvider {
                         viewModel.shareCurrentImage(from: sourceView)
                     }
                 }) {
-                    Label("Share...", systemImage: "square.and.arrow.up")
+                    Label("Share…", systemImage: "square.and.arrow.up")
                 }
                 .disabled(!viewModel.canShareCurrentImage)
                 
@@ -110,14 +110,6 @@ struct ContextMenuProvider {
             }) {
                 Label("Reveal in Finder", systemImage: "folder")
             }
-            
-            // Remove from view (placeholder)
-            Button(action: {
-                ContextMenuService.shared.removeFromView(imageFile, viewModel: viewModel)
-            }) {
-                Label("Remove from View", systemImage: "eye.slash")
-            }
-            .disabled(true) // Disabled until implemented
         }
     }
     
@@ -131,7 +123,7 @@ struct ContextMenuProvider {
             Button(action: {
                 ContextMenuService.shared.selectFolder(viewModel: viewModel)
             }) {
-                Label("Select Folder...", systemImage: "folder.badge.plus")
+                Label("Select Folder…", systemImage: "folder.badge.plus")
             }
             .keyboardShortcut("o", modifiers: .command)
             
@@ -167,7 +159,7 @@ struct ContextMenuProvider {
             Button(action: {
                 ContextMenuService.shared.openPreferences()
             }) {
-                Label("Preferences...", systemImage: "gearshape")
+                Label("Settings…", systemImage: "gearshape")
             }
             .keyboardShortcut(",", modifiers: .command)
         }

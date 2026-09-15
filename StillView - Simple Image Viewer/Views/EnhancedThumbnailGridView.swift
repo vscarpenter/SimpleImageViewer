@@ -228,7 +228,7 @@ private struct ThumbnailGridItem: View {
         if let thumbnail = thumbnail {
             Image(nsImage: thumbnail)
                 .resizable()
-                .aspectRatio(contentMode: .fill)
+                .scaledToFill()
                 .frame(width: thumbnailSize.width, height: thumbnailSize.height)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .transition(.opacity.combined(with: .scale))
