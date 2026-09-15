@@ -533,8 +533,9 @@ StillView includes a comprehensive test suite covering all major components and 
 
 ### Running Tests
 ```bash
-# Command line (using xcodebuild)
-xcodebuild test -project "StillView - Simple Image Viewer.xcodeproj" -scheme "StillView - Simple Image Viewer"
+# Command line (using xcodebuild). The signing flags match CI; the test bundle is ad-hoc signed.
+xcodebuild test -project "StillView - Simple Image Viewer.xcodeproj" -scheme "StillView - Simple Image Viewer" \
+  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 
 # In Xcode
 # Method 1: ⌘+U (run all tests)
