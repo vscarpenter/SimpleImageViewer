@@ -33,6 +33,7 @@ class WindowStateManager: ObservableObject {
     private weak var imageViewerViewModel: ImageViewerViewModel?
     private var currentFolderURL: URL?
     private var currentImageIndex: Int = 0
+    private var hasReceivedFolderState = false
     
     // Debounce saving to avoid excessive writes
     private let saveDebounceInterval: TimeInterval = 2.0
@@ -80,6 +81,7 @@ class WindowStateManager: ObservableObject {
     ///   - folderURL: The currently selected folder URL
     ///   - imageIndex: The current image index
     func updateFolderState(folderURL: URL?, imageIndex: Int) {
+        hasReceivedFolderState = true
         currentFolderURL = folderURL
         currentImageIndex = imageIndex
         
@@ -105,6 +107,8 @@ class WindowStateManager: ObservableObject {
     
     /// Save the current window state immediately
     func saveWindowState() {
+        saveTimer?.invalidate()
+        saveTimer = nil
         updateCurrentState()
         preferencesService.saveWindowState(currentWindowState)
     }
@@ -141,6 +145,9 @@ class WindowStateManager: ObservableObject {
     
     /// Clear the saved window state
     func clearWindowState() {
+        hasReceivedFolderState = true
+        currentFolderURL = nil
+        currentImageIndex = 0
         currentWindowState = WindowState()
         preferencesService.windowState = nil
         preferencesService.savePreferences()
@@ -169,15 +176,6 @@ class WindowStateManager: ObservableObject {
     }
     
     private func setupAutoSave() {
-        // Save state when app will terminate
-        NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)
-            .sink { [weak self] _ in
-                Task { @MainActor in
-                    self?.saveWindowState()
-                }
-            }
-            .store(in: &cancellables)
-        
         // Save state when app becomes inactive (user switches away)
         NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)
             .sink { [weak self] _ in
@@ -364,13 +362,25 @@ class WindowStateManager: ObservableObject {
             currentWindowState.updateFullscreen(window.styleMask.contains(.fullScreen))
         }
         
-        // Update UI state from view model
-        if let viewModel = imageViewerViewModel {
+        // Capture live selection synchronously instead of waiting for Combine's queued index observer.
+        // An explicit nil folder update remains a request to clear the session.
+        if let viewModel = imageViewerViewModel, let folderURL = viewModel.currentFolderURL,
+           !hasReceivedFolderState || currentFolderURL != nil {
+            hasReceivedFolderState = true
+            currentFolderURL = folderURL
+            currentImageIndex = viewModel.currentIndex
+        }
+
+        if hasReceivedFolderState {
+            if let viewModel = imageViewerViewModel {
+                currentWindowState.updateUIState(from: viewModel)
+            }
+            currentWindowState.updateFolderState(folderURL: currentFolderURL, imageIndex: currentImageIndex)
+        } else if currentWindowState.lastFolderPath == nil, let viewModel = imageViewerViewModel {
             currentWindowState.updateUIState(from: viewModel)
         }
-        
-        // Update folder state
-        currentWindowState.updateFolderState(folderURL: currentFolderURL, imageIndex: currentImageIndex)
+        // Before the first folder handoff, retain the loaded folder and browsing identity verbatim.
+        // Window events can autosave while the restoration scan is still waiting to publish its first batch.
     }
     
     /// Apply UI state with preference checking for AI Insights

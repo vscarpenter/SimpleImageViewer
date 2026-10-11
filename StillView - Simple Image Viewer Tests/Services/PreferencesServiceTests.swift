@@ -172,7 +172,7 @@ final class PreferencesServiceTests: XCTestCase {
         XCTAssertEqual(service.recentFolderRecords, expected)
     }
 
-    func test_failedLaunchBookmarkCleanup_preservesURLsAndRecordPositions() throws {
+    func test_unresolvableLaunchBookmarks_retainsURLsAndGrantsUntilExplicitRemoval() throws {
         let service = try makePreferences()
         let records = ["a", "b", "c"].enumerated().map { index, name in
             RecentFolderRecord(url: URL(fileURLWithPath: "/fixture/\(name)"), bookmarkData: Data([UInt8(index + 1)]))
@@ -182,7 +182,7 @@ final class PreferencesServiceTests: XCTestCase {
 
         manager.restoreBookmarksOnLaunch()
 
-        XCTAssertEqual(service.recentFolderRecords, records.map { RecentFolderRecord(url: $0.url, bookmarkData: nil) })
+        XCTAssertEqual(service.recentFolderRecords, records)
     }
 
     private func makePreferences() throws -> DefaultPreferencesService {

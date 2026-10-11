@@ -853,6 +853,103 @@ final class PreferencesWindowLifecycleRegressionTests: XCTestCase {
 }
 
 @MainActor
+final class ApplicationPersistenceRegressionTests: XCTestCase {
+    func test_appHostedDelegate_reportsSwiftUIAdaptorRuntimeType() throws {
+        let delegate = try XCTUnwrap(NSApplication.shared.delegate)
+        print("APPLICATION_DELEGATE_RUNTIME_TYPE=\(String(reflecting: type(of: delegate)))")
+        print("APPLICATION_DELEGATE_DIRECT_CAST=\(delegate is AppDelegate)")
+    }
+
+    func test_termination_persistsFolderSynchronouslyBeforeCallbackReturns() throws {
+        let fixture = try LifecycleFixture(count: 1)
+        defer { fixture.cleanUp() }
+        let manager = WindowStateManager(preferencesService: fixture.preferences)
+        let delegate = AppDelegate()
+        delegate.windowStateManager = manager
+        manager.updateFolderState(folderURL: fixture.directory, imageIndex: 4)
+
+        let lifecycle: any NSApplicationDelegate = delegate
+        lifecycle.applicationWillTerminate?(Notification(name: NSApplication.willTerminateNotification))
+
+        let saved = try XCTUnwrap(fixture.preferences.loadWindowState())
+        XCTAssertEqual(saved.lastFolderPath, fixture.directory.path)
+        XCTAssertEqual(saved.lastImageIndex, 4)
+        XCTAssertNotNil(saved.lastFolderBookmark)
+    }
+
+    func test_save_capturesLiveCollectionWithoutSeparateFolderTracking() throws {
+        let fixture = try LifecycleFixture(count: 2)
+        defer { fixture.cleanUp() }
+        let manager = WindowStateManager(preferencesService: fixture.preferences)
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), expectedImageSizeLoader: { _ in nil })
+        manager.setImageViewerViewModel(model)
+        model.loadFolderContent(FolderContent(
+            folderURL: fixture.directory, imageFiles: fixture.files, includeSubfolders: true
+        ))
+        model.setViewMode(.grid)
+        model.applySortOrder(.size)
+        model.filteredFolderURL = fixture.directory
+        model.browserSearchText = "image-"
+        model.navigateToIndex(1)
+
+        manager.saveWindowState()
+
+        let saved = try XCTUnwrap(fixture.preferences.loadWindowState())
+        XCTAssertEqual(saved.lastFolderPath, fixture.directory.path)
+        XCTAssertEqual(saved.lastImageIndex, 1)
+        XCTAssertEqual(saved.selectedImagePath, fixture.files[1].url.path)
+        XCTAssertTrue(saved.includeSubfolders)
+        XCTAssertEqual(saved.viewMode, ViewMode.grid.rawValue)
+        XCTAssertEqual(saved.sortOrder, ImageSortOrder.size.rawValue)
+        XCTAssertEqual(saved.filteredFolderPath, fixture.directory.path)
+        XCTAssertEqual(saved.browserSearchText, "image-")
+        model.clearContent()
+    }
+
+    func test_earlySave_preservesLoadedSessionUntilExplicitFolderUpdate() throws {
+        let fixture = try LifecycleFixture(count: 2)
+        defer { fixture.cleanUp() }
+        var previous = WindowState()
+        previous.updateFolderState(folderURL: fixture.directory, imageIndex: 1)
+        previous.includeSubfolders = true
+        previous.viewMode = ViewMode.grid.rawValue
+        previous.sortOrder = ImageSortOrder.size.rawValue
+        previous.selectedImagePath = fixture.files[1].url.path
+        previous.filteredFolderPath = fixture.directory.path
+        previous.browserSearchText = "image-"
+        fixture.preferences.saveWindowState(previous)
+        let manager = WindowStateManager(preferencesService: fixture.preferences)
+
+        manager.saveWindowState()
+        let beforeAttachment = try XCTUnwrap(fixture.preferences.loadWindowState())
+        XCTAssertEqual(beforeAttachment.lastFolderBookmark, previous.lastFolderBookmark)
+        XCTAssertEqual(beforeAttachment.lastFolderPath, previous.lastFolderPath)
+        XCTAssertEqual(beforeAttachment.lastImageIndex, 1)
+
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), expectedImageSizeLoader: { _ in nil })
+        manager.setImageViewerViewModel(model)
+        manager.saveWindowState()
+        let beforeCollection = try XCTUnwrap(fixture.preferences.loadWindowState())
+        XCTAssertEqual(beforeCollection.lastFolderBookmark, previous.lastFolderBookmark)
+        XCTAssertEqual(beforeCollection.lastFolderPath, previous.lastFolderPath)
+        XCTAssertEqual(beforeCollection.lastImageIndex, 1)
+        XCTAssertEqual(beforeCollection.selectedImagePath, previous.selectedImagePath)
+        XCTAssertTrue(beforeCollection.includeSubfolders)
+        XCTAssertEqual(beforeCollection.viewMode, previous.viewMode)
+        XCTAssertEqual(beforeCollection.sortOrder, previous.sortOrder)
+        XCTAssertEqual(beforeCollection.filteredFolderPath, previous.filteredFolderPath)
+        XCTAssertEqual(beforeCollection.browserSearchText, previous.browserSearchText)
+
+        manager.updateFolderState(folderURL: nil, imageIndex: 0)
+        manager.saveWindowState()
+        let cleared = try XCTUnwrap(fixture.preferences.loadWindowState())
+        XCTAssertNil(cleared.lastFolderPath)
+        XCTAssertNil(cleared.lastFolderBookmark)
+        XCTAssertEqual(cleared.lastImageIndex, 0)
+    }
+}
+
+@MainActor
 private final class LifecycleTrashService: ImageTrashService {
     let confirmationStarted = XCTestExpectation(description: "Trash confirmation started")
     let recycleStarted = XCTestExpectation(description: "Recycle started")
@@ -1014,5 +1111,104 @@ private final class LifecycleSizeGate {
     func finish(_ size: CGSize?) {
         continuation?.resume(returning: size)
         continuation = nil
+    }
+}
+
+final class BookmarkStartupRegressionTests: XCTestCase {
+    private var preferenceSuites: [String] = []
+
+    override func tearDown() {
+        for suite in preferenceSuites {
+            UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        }
+        preferenceSuites.removeAll()
+        super.tearDown()
+    }
+
+    func test_unavailableLaunchFolder_checksUnderBalancedScopeAndRetainsItsGrant() throws {
+        let service = try makePreferences()
+        let root = URL(fileURLWithPath: "/Users/fixture/unavailable", isDirectory: true)
+        let record = RecentFolderRecord(url: root, bookmarkData: Data([0x42]))
+        service.recentFolderRecords = [record]
+        var scopeActive = false
+        var starts = 0
+        var stops = 0
+        var existenceChecks = 0
+        let manager = SecurityScopedBookmarkManager(
+            preferencesService: service,
+            resolveLaunchBookmark: { _ in root },
+            launchStartAccess: { url in
+                XCTAssertEqual(url, root)
+                starts += 1
+                scopeActive = true
+                return true
+            },
+            launchStopAccess: { url in
+                XCTAssertEqual(url, root)
+                stops += 1
+                scopeActive = false
+            },
+            launchFolderExists: { _ in
+                XCTAssertTrue(scopeActive, "Sandbox existence checks require the resolved grant to be active")
+                existenceChecks += 1
+                return false
+            }
+        )
+
+        manager.restoreBookmarksOnLaunch()
+
+        XCTAssertEqual(starts, 1)
+        XCTAssertEqual(stops, 1)
+        XCTAssertEqual(existenceChecks, 1)
+        XCTAssertFalse(scopeActive)
+        XCTAssertEqual(service.recentFolderRecords, [record], "Offline folders retain their durable grant for retry")
+        XCTAssertFalse(manager.hasBookmark(for: root), "An unavailable root must not gain an active background grant")
+    }
+
+    func test_launchScopeUnavailable_preservesGrantWithoutInspectingOrClaimingAccess() throws {
+        let service = try makePreferences()
+        let root = URL(fileURLWithPath: "/Users/fixture/access-unavailable", isDirectory: true)
+        let record = RecentFolderRecord(url: root, bookmarkData: Data([0x42]))
+        service.recentFolderRecords = [record]
+        var starts = 0
+        let manager = SecurityScopedBookmarkManager(
+            preferencesService: service,
+            resolveLaunchBookmark: { _ in root },
+            launchStartAccess: { _ in starts += 1; return false },
+            launchStopAccess: { _ in XCTFail("An unstarted scope must not be stopped") },
+            launchFolderExists: { _ in XCTFail("Do not inspect a folder without its grant"); return false }
+        )
+
+        manager.restoreBookmarksOnLaunch()
+
+        XCTAssertEqual(starts, 1)
+        XCTAssertEqual(service.recentFolderRecords, [record])
+        XCTAssertFalse(manager.hasBookmark(for: root))
+    }
+
+    func test_launchResolutionError_preservesOfflineProviderGrantWithoutStartingAccess() throws {
+        let service = try makePreferences()
+        let root = URL(fileURLWithPath: "/Users/fixture/offline-provider", isDirectory: true)
+        let record = RecentFolderRecord(url: root, bookmarkData: Data([0x42]))
+        service.recentFolderRecords = [record]
+        let manager = SecurityScopedBookmarkManager(
+            preferencesService: service,
+            resolveLaunchBookmark: { _ in throw CocoaError(.fileReadNoSuchFile) },
+            launchStartAccess: { _ in XCTFail("Unresolved grants must not start access"); return false },
+            launchStopAccess: { _ in XCTFail("Unresolved grants must not stop access") },
+            launchFolderExists: { _ in XCTFail("Unresolved grants must not inspect a folder"); return false }
+        )
+
+        manager.restoreBookmarksOnLaunch()
+
+        XCTAssertEqual(service.recentFolderRecords, [record])
+        XCTAssertFalse(manager.hasBookmark(for: root))
+    }
+
+    private func makePreferences() throws -> DefaultPreferencesService {
+        let suite = "BookmarkStartupRegressionTests." + UUID().uuidString
+        preferenceSuites.append(suite)
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        return DefaultPreferencesService(userDefaults: defaults)
     }
 }

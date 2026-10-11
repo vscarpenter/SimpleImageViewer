@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     // MARK: - State Properties
+    let windowStateManager: WindowStateManager
     @StateObject private var imageViewerViewModel = ImageViewerViewModel()
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
     @StateObject private var folderPicker = FolderSelectionViewModel()
@@ -377,12 +378,8 @@ struct ContentView: View {
     }
     
     private func setupWindowStateManager() {
-        // Get the app delegate and set up the window state manager with the view model
-        if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-            Task { @MainActor in
-                appDelegate.windowStateManager.setImageViewerViewModel(imageViewerViewModel)
-            }
-        }
+        // SwiftUI installs its own NSApplication delegate bridge; use the adaptor-owned manager directly.
+        windowStateManager.setImageViewerViewModel(imageViewerViewModel)
     }
     
     private func returnToFolderSelection() {
@@ -424,12 +421,10 @@ struct ContentView: View {
         }
         showImageViewer = true
 
-        if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-            appDelegate.windowStateManager.updateFolderState(
-                folderURL: content.folderURL,
-                imageIndex: imageViewerViewModel.currentIndex
-            )
-        }
+        windowStateManager.updateFolderState(
+            folderURL: content.folderURL,
+            imageIndex: imageViewerViewModel.currentIndex
+        )
     }
 
     private func handleWindowStateRestoration(_ notification: Notification) {
@@ -440,9 +435,7 @@ struct ContentView: View {
         }
         restoredImageIndex = imageIndex
         restorationApplied = false
-        if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-            restoringState = appDelegate.windowStateManager.currentWindowState
-        }
+        restoringState = windowStateManager.currentWindowState
         folderPicker.restoreLastFolder(folderURL, includeSubfolders: restoringState?.includeSubfolders ?? false)
     }
 
@@ -602,6 +595,6 @@ private struct StageHoverArrows: View {
 
 // MARK: - Preview
 #Preview {
-    ContentView()
+    ContentView(windowStateManager: WindowStateManager())
         .frame(width: 1000, height: 700)
 }

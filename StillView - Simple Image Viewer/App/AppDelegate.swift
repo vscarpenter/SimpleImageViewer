@@ -64,6 +64,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Don't terminate when last window is closed - keep app running
         return false
     }
+
+    @MainActor
+    func applicationWillTerminate(_ notification: Notification) {
+        // AppKit can exit as soon as this callback returns; persist before yielding the main thread.
+        windowStateManager.saveWindowState()
+        PerformanceOptimizationService.shared.stopMonitoring()
+    }
     
     // MARK: - Window Management
     

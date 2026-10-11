@@ -22,10 +22,32 @@ class SecurityScopedBookmarkManager: ObservableObject {
     private var preferencesService: PreferencesService
     private var activeBookmarks: [URL: Data] = [:]
     private var accessedURLs: Set<URL> = []
+    private let resolveLaunchBookmark: (Data) throws -> URL
+    private let launchStartAccess: (URL) -> Bool
+    private let launchStopAccess: (URL) -> Void
+    private let launchFolderExists: (URL) -> Bool
     
     // MARK: - Initialization
-    init(preferencesService: PreferencesService = DefaultPreferencesService.shared) {
+    init(
+        preferencesService: PreferencesService = DefaultPreferencesService.shared,
+        resolveLaunchBookmark: @escaping (Data) throws -> URL = { data in
+            var isStale = false
+            return try URL(
+                resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI],
+                relativeTo: nil, bookmarkDataIsStale: &isStale)
+        },
+        launchStartAccess: @escaping (URL) -> Bool = { $0.startAccessingSecurityScopedResource() },
+        launchStopAccess: @escaping (URL) -> Void = { $0.stopAccessingSecurityScopedResource() },
+        launchFolderExists: @escaping (URL) -> Bool = { url in
+            var isDirectory: ObjCBool = false
+            return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+        }
+    ) {
         self.preferencesService = preferencesService
+        self.resolveLaunchBookmark = resolveLaunchBookmark
+        self.launchStartAccess = launchStartAccess
+        self.launchStopAccess = launchStopAccess
+        self.launchFolderExists = launchFolderExists
         // Don't automatically restore bookmarks on initialization to prevent startup crashes
         // Bookmarks will be restored explicitly when the app is ready
     }
@@ -308,6 +330,14 @@ class SecurityScopedBookmarkManager: ObservableObject {
             path.hasPrefix(systemPath)
         }
     }
+
+    /// Existence is a sandboxed file operation. A temporary grant covers validation, then
+    /// is released before a usable root receives its separately owned background access.
+    private func isFolderAvailableForLaunch(_ url: URL) -> Bool {
+        guard !isSystemDirectory(url), launchStartAccess(url) else { return false }
+        defer { launchStopAccess(url) }
+        return launchFolderExists(url)
+    }
 }
 
 // MARK: - Convenience Extensions
@@ -352,7 +382,6 @@ extension SecurityScopedBookmarkManager {
         
         var successCount = 0
         var failureCount = 0
-        var failedURLs: Set<URL> = []
         
         for (index, record) in records.enumerated() {
             guard let bookmarkData = record.bookmarkData else { continue }
@@ -360,52 +389,35 @@ extension SecurityScopedBookmarkManager {
             
             do {
                 // Try to resolve the bookmark data first to check if it's valid
-                var isStale = false
-                let resolvedURL = try URL(
-                    resolvingBookmarkData: bookmarkData,
-                    options: [.withSecurityScope, .withoutUI],
-                    relativeTo: nil,
-                    bookmarkDataIsStale: &isStale
-                )
+                let resolvedURL = try resolveLaunchBookmark(bookmarkData)
                 
                 Logger.debug("Resolved bookmark to: \(resolvedURL.path)", context: "security")
                 
-                // Check if the resolved URL is accessible and not a system directory
-                if FileManager.default.fileExists(atPath: resolvedURL.path) && !isSystemDirectory(resolvedURL) {
+                if isFolderAvailableForLaunch(resolvedURL) {
                     if restoreAccess(from: bookmarkData, originalURL: record.url) {
                         successCount += 1
                         Logger.success("Successfully restored bookmark \(index + 1)", context: "security")
                     } else {
                         failureCount += 1
-                        failedURLs.insert(record.url)
-                        Logger.fail("Failed to restore bookmark \(index + 1)", context: "security")
+                        Logger.warning("Folder access is temporarily unavailable for bookmark \(index + 1)",
+                                       context: "security")
                     }
                 } else {
                     failureCount += 1
-                    failedURLs.insert(record.url)
-                    if isSystemDirectory(resolvedURL) {
-                        Logger.fail("Bookmark \(index + 1) points to system directory: \(resolvedURL.path)", context: "security")
-                    } else {
-                        Logger.fail("Bookmark \(index + 1) points to non-existent path: \(resolvedURL.path)", context: "security")
-                    }
+                    Logger.warning("Folder unavailable at launch; retaining its bookmark for retry: \(resolvedURL.path)",
+                                   context: "security")
                 }
                 
             } catch {
                 failureCount += 1
-                failedURLs.insert(record.url)
-                Logger.fail("Failed to resolve bookmark \(index + 1)", error: error, context: "security")
+                // Resolution can fail while a provider or volume is offline. Keep the bounded
+                // durable record until explicit removal; this error does not prove corruption.
+                Logger.warning("Could not resolve bookmark \(index + 1); retaining it for retry: \(error)",
+                               context: "security")
             }
         }
         
         Logger.info("Restored \(successCount) bookmarks, \(failureCount) failed", context: "security")
         
-        // Clean up failed bookmarks
-        if failureCount > 0 {
-            Logger.info("Cleaning up failed bookmarks", context: "security")
-            for url in failedURLs {
-                activeBookmarks.removeValue(forKey: url)
-            }
-            saveBookmarksToPreferences(removing: failedURLs)
-        }
     }
 }

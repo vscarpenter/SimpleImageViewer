@@ -42,7 +42,7 @@ struct SimpleImageViewerApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(windowStateManager: appDelegate.windowStateManager)
                 .frame(minWidth: 800, minHeight: 600)
                 .onAppear {
                     setupWindow()
@@ -50,9 +50,6 @@ struct SimpleImageViewerApp: App {
                     startPerformanceMonitoring()
                     // Initialize accessibility service
                     _ = AccessibilityService.shared
-                }
-                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                    handleAppWillTerminate()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .showWhatsNew)) { _ in
                     showingWhatsNew = true
@@ -252,20 +249,6 @@ struct SimpleImageViewerApp: App {
                 NotificationCenter.default.post(name: .whatsNewDismissed, object: nil)
             }
         }
-    }
-    
-    private func handleAppWillTerminate() {
-        // Handle app termination - save preferences and window state
-        let preferencesService = DefaultPreferencesService()
-        preferencesService.savePreferences()
-        
-        // Save window state through app delegate
-        Task { @MainActor in
-            appDelegate.windowStateManager.saveWindowState()
-        }
-        
-        // Stop performance monitoring
-        performanceService.stopMonitoring()
     }
     
     /// Start performance monitoring and optimization
