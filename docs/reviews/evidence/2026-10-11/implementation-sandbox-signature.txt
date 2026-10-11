@@ -1,20 +1,35 @@
+Final native verification checkpoint: 21a981b
+Executable SHA-256: 64d42d874abbd9d53227297aa4e119ba509e22f547b6b537bbf2eed92abc3651
+
 Executable=/private/tmp/stillview-sandbox-verification-2026-10-11/StillView - Simple Image Viewer.app/Contents/MacOS/StillView - Simple Image Viewer
 Identifier=com.vinny.StillView-Image-Viewer
 Format=app bundle with Mach-O thin (arm64)
 CodeDirectory v=20400 size=14233 flags=0x2(adhoc) hashes=434+7 location=embedded
 Hash type=sha256 size=32
-CandidateCDHash sha256=0a2b6188275389b21b42d35ce7ab0976f63cf7f8
-CandidateCDHashFull sha256=0a2b6188275389b21b42d35ce7ab0976f63cf7f89ac47cde1ffe975add64c429
+CandidateCDHash sha256=b393c9e1a5e845760cfe236dfd4ffde4614f6f28
+CandidateCDHashFull sha256=b393c9e1a5e845760cfe236dfd4ffde4614f6f284781f7a895fd2db19ccfd7c4
 Hash choices=sha256
-CMSDigest=0a2b6188275389b21b42d35ce7ab0976f63cf7f89ac47cde1ffe975add64c429
+CMSDigest=b393c9e1a5e845760cfe236dfd4ffde4614f6f284781f7a895fd2db19ccfd7c4
 CMSDigestType=2
-CDHash=0a2b6188275389b21b42d35ce7ab0976f63cf7f8
+CDHash=b393c9e1a5e845760cfe236dfd4ffde4614f6f28
 Signature=adhoc
 Info.plist entries=25
 TeamIdentifier=not set
 Sealed Resources version=2 rules=13 files=6
 Internal requirements count=0 size=12
-warning: Specifying ':' in the path is deprecated and will not work in a future release
 Total signatures=1
 Chosen signature=1
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>com.apple.security.app-sandbox</key><true/><key>com.apple.security.files.bookmarks.app-scope</key><true/><key>com.apple.security.files.user-selected.read-write</key><true/></dict></plist>
+[Dict]
+	[Key] com.apple.security.app-sandbox
+	[Value]
+		[Bool] true
+	[Key] com.apple.security.files.bookmarks.app-scope
+	[Value]
+		[Bool] true
+	[Key] com.apple.security.files.user-selected.read-write
+	[Value]
+		[Bool] true
+
+Strict verification:
+/tmp/stillview-sandbox-verification-2026-10-11/StillView - Simple Image Viewer.app: valid on disk
+/tmp/stillview-sandbox-verification-2026-10-11/StillView - Simple Image Viewer.app: satisfies its Designated Requirement

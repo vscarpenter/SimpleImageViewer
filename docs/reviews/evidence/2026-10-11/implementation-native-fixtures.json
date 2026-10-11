@@ -1,0 +1,35 @@
+{
+  "root": "/Users/vinnycarpenter/Documents/StillView-Codex-Browsing-2026-10-11",
+  "clipboard": {
+    "sha256": "88da503e6841da55762fcf7e5718eb5da3527983ea1056ae91734b2b2fc3d197",
+    "lines": 47,
+    "bytes": 353
+  },
+  "fixtures": [
+    {
+      "relativePath": "Family/duplicate.jpg",
+      "sha256": "0ae23cc10b7dd8ab4088497e95e2a2013811f87cf0b4bbb6f944f8ef36230cc4",
+      "bytes": 1687943
+    },
+    {
+      "relativePath": "Travel/Italy/duplicate.jpg",
+      "sha256": "282b30830de9d8583570a0c9e19b7237e4b505cc0bc8236b6827fae40c098657",
+      "bytes": 1618088
+    },
+    {
+      "relativePath": "Travel/Italy/receipt.png",
+      "sha256": "3dfb3c860e02544a48d4778aff5e072b75f7be4a151e89a7c3755b906a4ee047",
+      "bytes": 112477
+    },
+    {
+      "relativePath": "Travel/Japan/duplicate.jpg",
+      "sha256": "29abaaa86eb8c437b7bee8d8153f58408237aadb82d97d178ce5894aa0444fe5",
+      "bytes": 1598246
+    },
+    {
+      "relativePath": "root.jpg",
+      "sha256": "ed582545f4660cf080ecf72969b1567ec8d58572dee97fb6cec4e73a1f89b12f",
+      "bytes": 1567333
+    }
+  ]
+}

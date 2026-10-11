@@ -1,0 +1,33 @@
+Test Suite 'PreferencesServiceTests' started at 2026-10-11 14:33:41.595.
+Test Case '-[tests.PreferencesServiceTests test_launchResolutionError_preservesOfflineProviderGrantWithoutStartingAccess]' started.
+Test Case '-[tests.PreferencesServiceTests test_launchResolutionError_preservesOfflineProviderGrantWithoutStartingAccess]' passed (0.002 seconds).
+Test Case '-[tests.PreferencesServiceTests test_launchScopeUnavailable_preservesGrantWithoutInspectingOrClaimingAccess]' started.
+Test Case '-[tests.PreferencesServiceTests test_launchScopeUnavailable_preservesGrantWithoutInspectingOrClaimingAccess]' passed (0.000 seconds).
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_damagedBookmarkAtEveryPosition_keepsOtherGrants]' started.
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_damagedBookmarkAtEveryPosition_keepsOtherGrants]' passed (0.008 seconds).
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_matchesBookmarkURLsRatherThanDictionaryOrder]' started.
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_matchesBookmarkURLsRatherThanDictionaryOrder]' passed (0.004 seconds).
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_withMissingOrInvalidBookmarks_preservesUnpairedFolders]' started.
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_withMissingOrInvalidBookmarks_preservesUnpairedFolders]' passed (0.003 seconds).
+Test Case '-[tests.PreferencesServiceTests test_newRecentFolderWithoutBookmark_doesNotBorrowThePreviousFolderGrant]' started.
+Test Case '-[tests.PreferencesServiceTests test_newRecentFolderWithoutBookmark_doesNotBorrowThePreviousFolderGrant]' passed (0.001 seconds).
+Test Case '-[tests.PreferencesServiceTests test_orderedFolderRecords_deduplicatesAndLimitsWholeRecordsTogether]' started.
+Test Case '-[tests.PreferencesServiceTests test_orderedFolderRecords_deduplicatesAndLimitsWholeRecordsTogether]' passed (0.001 seconds).
+Test Case '-[tests.PreferencesServiceTests test_orderedFolderRecords_roundTripWithBookmarklessEntryInTheMiddle]' started.
+Test Case '-[tests.PreferencesServiceTests test_orderedFolderRecords_roundTripWithBookmarklessEntryInTheMiddle]' passed (0.000 seconds).
+Test Case '-[tests.PreferencesServiceTests test_recentFolderReordering_keepsEachBookmarkWithItsURL]' started.
+Test Case '-[tests.PreferencesServiceTests test_recentFolderReordering_keepsEachBookmarkWithItsURL]' passed (0.001 seconds).
+Test Case '-[tests.PreferencesServiceTests test_removeBookmark_preservesOtherOrderedRecordsAndFolderForReauthorization]' started.
+Test Case '-[tests.PreferencesServiceTests test_removeBookmark_preservesOtherOrderedRecordsAndFolderForReauthorization]' passed (0.000 seconds).
+Test Case '-[tests.PreferencesServiceTests test_removeRecentFolder_removesMatchingBookmarkAtEveryPosition]' started.
+Test Case '-[tests.PreferencesServiceTests test_removeRecentFolder_removesMatchingBookmarkAtEveryPosition]' passed (0.002 seconds).
+Test Case '-[tests.PreferencesServiceTests test_unavailableLaunchFolder_checksUnderBalancedScopeAndRetainsItsGrant]' started.
+Test Case '-[tests.PreferencesServiceTests test_unavailableLaunchFolder_checksUnderBalancedScopeAndRetainsItsGrant]' passed (0.000 seconds).
+Test Case '-[tests.PreferencesServiceTests test_unresolvableLaunchBookmarks_retainsURLsAndGrantsUntilExplicitRemoval]' started.
+Test Case '-[tests.PreferencesServiceTests test_unresolvableLaunchBookmarks_retainsURLsAndGrantsUntilExplicitRemoval]' passed (0.000 seconds).
+Test Case '-[tests.PreferencesServiceTests testEnableAIAnalysisDefaultsToFalseAndPersists]' started.
+Test Case '-[tests.PreferencesServiceTests testEnableAIAnalysisDefaultsToFalseAndPersists]' passed (0.000 seconds).
+Test Case '-[tests.PreferencesServiceTests testEnableImageEnhancementsDefaultsToFalse]' started.
+Test Case '-[tests.PreferencesServiceTests testEnableImageEnhancementsDefaultsToFalse]' passed (0.000 seconds).
+Test Suite 'PreferencesServiceTests' passed at 2026-10-11 14:33:41.621.
+	 Executed 15 tests, with 0 failures (0 unexpected) in 0.023 (0.026) seconds

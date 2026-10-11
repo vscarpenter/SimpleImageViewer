@@ -1,0 +1,47 @@
+NORTH MARKET
+RECEIPT 1042
+2026-09-14 09:30
+Item 01
+$1.00
+Item 02
+$1.00
+Item 03
+$1.00
+Item 04
+$1.00
+Item 05
+$1.00
+Item 06
+$1.00
+Item 07
+$1.00
+Item 08
+$1.00
+Item 09
+$1.00
+Item 10
+$1.00
+Item 11
+$1.00
+Item 12
+$1.00
+Item 13
+$1.00
+Item 14
+$1.00
+Item 15
+$1.00
+Item 16
+$1.00
+Item 17
+$1.00
+Item 18
+$1.00
+SUBTOTAL
+$18.00
+TAX
+$1.44
+TOTAL
+$19.44
+PAID VISA
+THANK YOU

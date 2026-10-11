@@ -1,0 +1,11 @@
+Test Suite 'Selected tests' started at 2026-10-11 14:31:22.111.
+Test Suite 'ApplicationPersistenceRegressionTests' started at 2026-10-11 14:31:22.112.
+APPLICATION_DELEGATE_RUNTIME_TYPE=SwiftUI.AppDelegate
+APPLICATION_DELEGATE_DIRECT_CAST=false
+Test Suite 'ApplicationPersistenceRegressionTests' passed at 2026-10-11 14:31:22.130.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.017 (0.018) seconds
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.011 (0.013) seconds
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.028 (0.031) seconds
+Test Suite 'Selected tests' passed at 2026-10-11 14:31:22.142.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.028 (0.031) seconds
+** TEST SUCCEEDED **
