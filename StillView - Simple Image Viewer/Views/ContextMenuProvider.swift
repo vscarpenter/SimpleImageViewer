@@ -131,7 +131,7 @@ struct ContextMenuProvider {
                 Button(action: {
                     ContextMenuService.shared.toggleViewMode(to: .single, viewModel: viewModel)
                 }) {
-                    Label("Normal View", systemImage: "photo")
+                    Label("Single", systemImage: "photo")
                 }
                 .disabled(viewModel.viewMode == .single)
                 

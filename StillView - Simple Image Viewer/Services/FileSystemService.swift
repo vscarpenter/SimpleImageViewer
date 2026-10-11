@@ -464,7 +464,7 @@ class DefaultFileSystemService: FileSystemService, @unchecked Sendable {
     func createSecurityScopedBookmark(for url: URL) -> Data? {
         do {
             let bookmarkData = try url.bookmarkData(
-                options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                options: [.withSecurityScope],
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
             )

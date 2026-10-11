@@ -818,7 +818,8 @@ final class RecursiveFolderScanTests: XCTestCase {
             defer { consumerFinished.fulfill() }
             for try await _ in service.scanEvents(root, recursive: true) {}
         }
-        await fulfillment(of: [source.firstEntryStarted], timeout: 2)
+        // Hosted CI runners can take several seconds to start the worker; fulfillment returns as soon as it starts.
+        await fulfillment(of: [source.firstEntryStarted], timeout: 15)
         task.cancel()
         let completion = await XCTWaiter.fulfillment(of: [consumerFinished], timeout: 0.05)
         XCTAssertEqual(completion, .timedOut, "Cancellation must wait for the blocked worker to exit")

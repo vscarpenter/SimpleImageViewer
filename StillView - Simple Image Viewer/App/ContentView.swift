@@ -383,7 +383,7 @@ struct ContentView: View {
     }
     
     private func returnToFolderSelection() {
-        folderPicker.cancelScanning()
+        folderPicker.cancelScanning(keepingPartialResults: false)
         imageViewerViewModel.cancelImageInsightGeneration()
         imageViewerViewModel.cancelImageTextExtraction()
         restoredImageIndex = nil

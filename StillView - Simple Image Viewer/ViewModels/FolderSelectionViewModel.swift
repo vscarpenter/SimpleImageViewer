@@ -122,7 +122,7 @@ class FolderSelectionViewModel: ObservableObject {
     /// - Parameter url: The folder URL to select
     func selectRecentFolder(_ url: URL) {
         // A newer request supersedes an in-flight scan even when its bookmark cannot be resolved.
-        cancelScanning()
+        cancelScanning(keepingPartialResults: false)
         currentError = nil
         
         guard let record = preferencesService.recentFolderRecords.first(where: { $0.url == url }),
@@ -169,14 +169,17 @@ class FolderSelectionViewModel: ObservableObject {
         loadRecentFolders()
     }
     
-    /// Cancel the current folder scanning operation
-    func cancelScanning() {
+    /// Cancel the current folder scanning operation.
+    /// - Parameter keepingPartialResults: Re-publishes the incomplete snapshot for an explicit user cancel.
+    ///   Pass false when a new folder or the welcome screen replaces the scan, so the viewer
+    ///   does not jump back to the previous folder.
+    func cancelScanning(keepingPartialResults: Bool = true) {
         scanGeneration = UUID()
         scanTask?.cancel()
         // Retain the draining task so a subsequent root waits for its cursor's exit.
         isScanning = false
         scanProgress = 0.0
-        if let content = selectedFolderContent, !content.isComplete {
+        if keepingPartialResults, let content = selectedFolderContent, !content.isComplete {
             selectedFolderContent = content
         }
     }
@@ -231,7 +234,7 @@ class FolderSelectionViewModel: ObservableObject {
 
     private func handleFolderSelection(_ url: URL, accessAlreadyStarted: Bool = false) {
         let previousTask = scanTask
-        cancelScanning()
+        cancelScanning(keepingPartialResults: false)
         let generation = scanGeneration
         let recursive = includeSubfolders
         let previousContent = selectedFolderURL == url ? selectedFolderContent : nil

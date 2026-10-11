@@ -492,6 +492,17 @@ private struct InspectorInsightsTab: View {
                 .buttonStyle(.bordered)
                 .help("Open Apple Intelligence settings to enable AI Insights")
             }
+
+            if case .unavailable(.modelNotReady) = viewModel.imageInsightAvailability {
+                Button {
+                    viewModel.updateAIInsightsAvailability()
+                } label: {
+                    Label("Check Again", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .help("Check whether the Apple Intelligence model is ready")
+            }
         }
     }
 

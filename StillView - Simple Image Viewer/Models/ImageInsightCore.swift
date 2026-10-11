@@ -139,7 +139,7 @@ enum ImageInsightAvailability: Equatable, Sendable {
         case .unavailable(.appleIntelligenceDisabled):
             return "Turn on Apple Intelligence in System Settings to use AI Insights."
         case .unavailable(.modelNotReady):
-            return "Apple Intelligence is preparing its on-device model. Try again later."
+            return "Apple Intelligence is preparing its on-device model. Choose Check Again once it’s ready."
         case .unavailable(.imageUnavailable):
             return "Select an image to analyze."
         case .unavailable(.unknown):
@@ -184,7 +184,7 @@ enum ImageInsightError: LocalizedError, Equatable {
         case .inputChanged:
             return "The image or on-device model changed during analysis. Analyze the image again."
         case .invalidGeneratedContent:
-            return "Apple Intelligence returned an incomplete or unsupported description. Try analyzing the image again."
+            return "Apple Intelligence couldn’t produce a reliable description for this image. Extract text is still available."
         }
     }
 }
