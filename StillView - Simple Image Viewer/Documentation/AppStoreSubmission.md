@@ -1,6 +1,6 @@
-# App Store Submission Package: StillView 5.0.0 (44)
+# App Store Submission Package: StillView 5.1.0 (45)
 
-Metadata for the macOS 27 release. The project identity below matches the current Xcode project. Verify the signed archive, App Store Connect fields, and public privacy page before submission; this document does not confirm upload or approval.
+Metadata for the 5.1 release on macOS 27. The project identity below matches the current Xcode project. Verify the signed archive, App Store Connect fields, and public privacy page before submission; this document does not confirm upload or approval.
 
 ## Version and identity
 
@@ -8,12 +8,12 @@ Metadata for the macOS 27 release. The project identity below matches the curren
 |---|---|
 | Bundle ID | `com.vinny.StillView-Image-Viewer` |
 | App Name | StillView - Image Viewer |
-| Marketing Version | 5.0.0 |
-| Build Number | 44 |
+| Marketing Version | 5.1.0 |
+| Build Number | 45 |
 | Primary Category | Photo & Video (secondary: Utilities) |
 | Minimum macOS | 27.0 |
 
-Build 44 must exceed the last build uploaded to App Store Connect. If another build number is needed, run `scripts/update-version.sh --bump-build` and rebuild.
+Build 45 must exceed the last build uploaded to App Store Connect (5.0.0 shipped as build 44). If another build number is needed, run `scripts/update-version.sh --bump-build` and rebuild.
 
 ## Metadata fields
 
@@ -35,7 +35,7 @@ Apple Intelligence describes your photos and reads their text, entirely on your 
 StillView is a native macOS image viewer for browsing local folders of photos and screenshots. No account is required. Image viewing and analysis work on your Mac.
 
 BROWSE YOUR IMAGES
-Open a folder and move through its images with arrow keys. Zoom, inspect at actual size, or fit an image to the window. Use fullscreen for a closer look.
+Open a folder and move through its images with arrow keys. Include subfolders to see every image together, then filter by branch in the folder tree or search by name. StillView reopens your last folder where you left off. Zoom, inspect at actual size, or fit an image to the window. Use fullscreen for a closer look.
 
 THREE VIEWING MODES
 Single keeps your attention on one image. Strip adds a docked filmstrip for navigation. Grid displays thumbnails with density and sorting controls. The Info inspector shows file details, dimensions, color information, and available EXIF camera metadata.
@@ -44,7 +44,7 @@ SUPPORTED FORMATS
 JPEG, PNG, GIF, HEIF/HEIC, WebP, TIFF, and BMP. Animated GIF and WebP display their first frame only; multipage TIFF displays its first image. SVG and PDF are not supported.
 
 ON-DEVICE INSIGHTS
-AI Insights gives Apple Intelligence the selected image to describe its visible content on your Mac. Read a concise description and notable details, copy the description, or expand original recognized text. Generated descriptions and OCR may contain errors. The app does not identify people.
+AI Insights gives Apple Intelligence the selected image to describe its visible content on your Mac. Read a concise description and notable details, copy the description, or expand original recognized text. Text extraction also works with Insights off. Generated descriptions and OCR may contain errors. The app does not identify people.
 
 Insights requires an Apple Intelligence eligible Mac, Apple Intelligence enabled in System Settings, and its on-device model ready. Enable Insights in the app, then choose Analyze image. Images, recognized text, metadata, and results stay on this Mac.
 
@@ -68,22 +68,27 @@ The app name and subtitle already carry "image" and "viewer," and the Mac App St
 ### What’s New
 
 ```
-StillView 5.0 requires macOS 27 and Apple silicon.
+BROWSE SUBFOLDERS
+• Choose View > Include Subfolders to see every image in a folder and its subfolders together.
+• A collapsible folder tree filters by branch, and search finds images by name or path.
+• Refresh Folder (⌘R) picks up changes without reopening the folder.
 
-AI INSIGHTS, REBUILT
-• Apple Intelligence now sees the image itself and describes the visible scene on your Mac.
-• Results include notable visual details, suggested tags, and anything the model is unsure about.
-• Text in image shows the original recognized text, keeps repeated lines, and says when it was cut short.
-• Copy the description, refresh it, or cancel a run. A failed refresh keeps the previous result.
+PICK UP WHERE YOU LEFT OFF
+• StillView reopens your last folder with the same image, sort, subfolder setting, filter, and search.
+
+TEXT AND INSIGHTS
+• Extract and copy text in an image even when AI Insights is off.
+• Recognized text stays available if a description fails.
+• Descriptions are shorter, and tall documents get a sharper text pass.
 
 ALSO IN THIS RELEASE
-• Inspector rows offer a VoiceOver Copy action.
-• The welcome screen honors Reduce Motion.
-
-Images, recognized text, and results stay on this Mac.
+• Up and Down move by row in Grid, and Return opens the selected image.
+• Large folders show images while they are still being scanned.
+• Recent folders keep their access, even on a disconnected drive.
+• Creation-time sorting is now labeled Date Created.
 ```
 
-The Mac App Store shipped 4.6.0 (36) on September 6, 2026, with native Settings, the compact toolbar, and the folder, keyboard, Trash, zoom, and loading fixes, so this text covers only what changed after it.
+5.0.0 (44) was submitted on September 15, 2026, with the rebuilt AI Insights, so this text covers only what changed after it.
 
 ### URLs
 
@@ -106,21 +111,22 @@ The project declares `ITSAppUsesNonExemptEncryption = NO`. Recheck the export-co
 
 ## Screenshots and reviewer notes
 
-Upload the 5.0.0 set from `marketing/screenshots-5.0.0/appstore-captioned/` (or the clean `appstore/` set, not both): eight 2880×1800 PNGs captured on September 15, 2026, covering Single, Insights with a real on-device result, Grid, Strip, Info, 100% zoom, and the Shortcuts reference. Both pages of `marketing/screenshots-5.0.0/README.md` list the order and captions.
+The 5.0.0 set remains accurate for 5.1. Consider adding a Grid capture with Include Subfolders and the folder tree visible, since that is the headline 5.1 feature. Otherwise reuse the 5.0.0 set from `marketing/screenshots-5.0.0/appstore-captioned/` (or the clean `appstore/` set, not both): eight 2880×1800 PNGs captured on September 15, 2026, covering Single, Insights with a real on-device result, Grid, Strip, Info, 100% zoom, and the Shortcuts reference. Both pages of `marketing/screenshots-5.0.0/README.md` list the order and captions.
 
 Paste [AppStoreReviewNotes.md](AppStoreReviewNotes.md) into App Review Information → Notes. The app has no sign-in or demo credentials. Reviewers can use a local image folder.
 
 ## Pre-submission checks
 
-- [x] Verify 5.0.0 (44), the bundle ID, and the macOS 27 deployment target against the selected archive and App Store Connect.
-- [ ] Set `releaseDate` in `Resources/whats-new.json` to the submission date so the in-app What's New sheet shows the right day.
+- [ ] Verify 5.1.0 (45), the bundle ID, and the macOS 27 deployment target against the selected archive and App Store Connect.
+- [ ] Confirm `releaseDate` in `Resources/whats-new.json` (currently 2026-10-11) matches the submission date; changing it after archiving requires a new build.
 - [ ] Run the repository’s lint and tests, and confirm CI for the exact submission commit.
 - [ ] Create a distribution archive in Xcode and validate it in Organizer.
 - [ ] Inspect the signed app’s entitlements with `codesign -d --entitlements - "<App>.app"`: App Sandbox, user-selected read-write files, and app-scope bookmarks are expected; `get-task-allow` must be absent from the distribution app.
 - [ ] Verify `PrivacyInfo.xcprivacy` and the app icon exist inside the archived app’s `Contents/Resources` directory.
-- [x] Verify the privacy and terms pages are publicly reachable over HTTPS.
-- [x] Publish the AI Insights policy-copy correction on both pages and recheck the privacy link from the distribution-signed app.
+- [ ] Verify the privacy and terms pages are publicly reachable over HTTPS.
+- [ ] Recheck that the privacy page still matches the app (on-device Vision text extraction now also runs with AI Insights off) and open the privacy link from the distribution-signed app.
+- [ ] Exercise Include Subfolders, the folder tree filter, search, Refresh Folder, and quit/relaunch session restore in the signed app.
 - [ ] Exercise opening/canceling a folder, viewer keyboard focus, Trash confirmation, narrow Grid layout, and all remaining preferences in the signed app.
 - [ ] Exercise AI Insights on eligible hardware with the on-device model ready, plus its disabled/unavailable states.
-- [x] Upload the archive through Xcode Organizer, wait for processing, and select that build in App Store Connect.
-- [x] Review all metadata, privacy answers, age rating, screenshots, and reviewer notes before submission. Verified in App Store Connect on September 15, 2026; see `tasks/todo.md`.
+- [ ] Upload the archive through Xcode Organizer, wait for processing, and select that build in App Store Connect.
+- [ ] Review all metadata, privacy answers, age rating, screenshots, and reviewer notes before submission.

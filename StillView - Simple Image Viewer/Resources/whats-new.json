@@ -1,29 +1,50 @@
 {
-  "version": "5.0.0",
-  "releaseDate": "2026-09-06T03:26:21Z",
+  "version": "5.1.0",
+  "releaseDate": "2026-10-11T12:00:00Z",
   "sections": [
+    {
+      "title": "New Features",
+      "type": "newFeatures",
+      "items": [
+        {
+          "title": "Browse Subfolders",
+          "description": "Choose View → Include Subfolders to see every image in a folder and its subfolders together. A collapsible folder tree filters by branch, and search finds images by name or path.",
+          "isHighlighted": true
+        },
+        {
+          "title": "Text Without AI Insights",
+          "description": "Read and copy the text in an image even when AI Insights is off or Apple Intelligence is unavailable. Recognized text stays available if a description fails.",
+          "isHighlighted": true
+        },
+        {
+          "title": "Pick Up Where You Left Off",
+          "description": "StillView reopens your last folder with the same image, sort order, subfolder setting, folder filter, and search.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Refresh Folder",
+          "description": "Press ⌘R to pick up added, removed, or changed images without reopening the folder. Your selected image stays in place.",
+          "isHighlighted": false
+        }
+      ]
+    },
     {
       "title": "Improvements",
       "type": "improvements",
       "items": [
         {
-          "title": "Native Mac Settings",
-          "description": "A compact Settings window brings familiar Mac controls, clear General and Intelligence panes, and searchable keyboard shortcuts. Colors and keyboard focus follow your Mac.",
-          "isHighlighted": true
-        },
-        {
           "title": "Clearer Image Insights",
-          "description": "Apple Intelligence describes visible image content on this Mac. Expand Text in image to read and copy the original recognized text.",
-          "isHighlighted": true
-        },
-        {
-          "title": "Keep Your Insights While Browsing",
-          "description": "Completed insights stay available when you switch inspector tabs or return to the app. Outdated results are cleared when the image file changes.",
+          "description": "Descriptions are shorter and stick to what is visible. Tall documents and receipts get a higher-resolution text pass for better recognition.",
           "isHighlighted": false
         },
         {
-          "title": "Controls That Fit",
-          "description": "Compact windows keep viewing controls visible and place additional actions in a More actions menu. Settings includes a searchable guide to built-in shortcuts.",
+          "title": "Faster Grid Navigation",
+          "description": "Up and Down arrows move by row in Grid, a visible outline marks the selection, and Return opens the selected image.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Smoother Large Folders",
+          "description": "Images appear while a large folder is still being scanned, and thumbnails load with less memory.",
           "isHighlighted": false
         }
       ]
@@ -33,28 +54,13 @@
       "type": "bugFixes",
       "items": [
         {
-          "title": "Accurate Fit and Actual Size",
-          "description": "Fit to Window shows the complete image, while 100% uses the correct pixel scale. Panning stays within the image bounds.",
-          "isHighlighted": true
-        },
-        {
-          "title": "More Reliable Image Loading",
-          "description": "Stale image updates no longer interrupt navigation. Folders with unreadable images show a clear error and Retry instead of staying stuck loading.",
+          "title": "Reliable Recent Folders",
+          "description": "Recent folders keep their access permission, including folders on a drive that is temporarily disconnected.",
           "isHighlighted": false
         },
         {
-          "title": "Easier Access to Insights",
-          "description": "The Insights tab now stays open when the feature is off, with a clear action to enable it.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Reliable Folder and Keyboard Controls",
-          "description": "Open Folder works from the viewer on the first try. Canceling keeps your current collection, and image shortcuts leave focused controls and dialogs their usual keys.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Consistent Trash Updates",
-          "description": "Moving an image to Trash keeps the collection and selection consistent if you navigate or sort while the operation finishes.",
+          "title": "Accurate Sort Labels",
+          "description": "Sorting by creation time is now labeled Date Created, and the chosen sort applies after every folder load.",
           "isHighlighted": false
         }
       ]
