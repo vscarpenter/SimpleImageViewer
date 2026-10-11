@@ -109,18 +109,31 @@ struct SimpleImageViewerApp: App {
             // Add File menu commands
             CommandGroup(replacing: .newItem) {
                 Button("Open Folder…") {
-                    openFolderAction?()
+                    if let openFolderAction {
+                        openFolderAction()
+                    } else {
+                        // A closed window is only hidden, so no scene is focused; reopen it first.
+                        Task { @MainActor in
+                            appDelegate.showMainWindow()
+                            NotificationCenter.default.post(name: .openFolderPanel, object: nil)
+                        }
+                    }
                 }
                 .keyboardShortcut("o", modifiers: .command)
-                .disabled(openFolderAction == nil)
                 
                 Divider()
                 
                 Button("Back to Folder Selection") {
-                    backToFoldersAction?()
+                    if let backToFoldersAction {
+                        backToFoldersAction()
+                    } else {
+                        Task { @MainActor in
+                            appDelegate.showMainWindow()
+                            NotificationCenter.default.post(name: .requestFolderSelection, object: nil)
+                        }
+                    }
                 }
                 .keyboardShortcut("b", modifiers: .command)
-                .disabled(backToFoldersAction == nil)
             }
 
             ViewerCommands()

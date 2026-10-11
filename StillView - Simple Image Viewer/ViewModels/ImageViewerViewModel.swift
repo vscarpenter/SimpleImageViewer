@@ -119,6 +119,7 @@ class ImageViewerViewModel: ObservableObject {
     private var enhancementTask: Task<Void, Never>?
     private var expectedImageSizeTask: Task<Void, Never>?
     private var failedImageURLs: Set<URL> = []
+    private var trashedImageURLs: Set<URL> = []
     private let imageLoaderService: ImageLoaderService
     private let imageEnhancer: (NSImage) async throws -> NSImage
     private let expectedImageSizeLoader: (URL) async -> CGSize?
@@ -234,9 +235,11 @@ class ImageViewerViewModel: ObservableObject {
     // MARK: - Public Methods
     
     /// Load images from folder content
-    /// - Parameter folderContent: The folder content containing image files
-    func loadFolderContent(_ folderContent: FolderContent) {
-        let sameRoot = currentFolderURL?.standardizedFileURL == folderContent.folderURL.standardizedFileURL
+    /// - Parameter incomingContent: The folder content containing image files
+    func loadFolderContent(_ incomingContent: FolderContent) {
+        let sameRoot = currentFolderURL?.standardizedFileURL == incomingContent.folderURL.standardizedFileURL
+        if !sameRoot { trashedImageURLs.removeAll() }
+        let folderContent = excludingTrashedFiles(from: incomingContent)
         // An async batch must preserve the selection at publication time, including user navigation during sorting.
         let selectedURL = asynchronousBrowsing ? nil
             : (sameRoot ? currentImageFile?.url : folderContent.currentImage?.url)
@@ -270,6 +273,19 @@ class ImageViewerViewModel: ObservableObject {
         if !sameRoot { initializeAIInsightsForNewSession() }
         rebuildVisibleCollection(preferredURL: selectedURL,
                                  fallbackIndex: sameRoot ? nil : folderContent.currentIndex)
+    }
+
+    /// A scan or refresh that started before a Trash operation still reports the file.
+    /// Keep it hidden while it remains in the Trash; a restored file reappears on the next snapshot.
+    private func excludingTrashedFiles(from content: FolderContent) -> FolderContent {
+        trashedImageURLs = trashedImageURLs.filter { FileManager.default.fileExists(atPath: $0.path) == false }
+        guard !trashedImageURLs.isEmpty,
+              content.imageFiles.contains(where: { trashedImageURLs.contains($0.url) }) else { return content }
+        return FolderContent(folderURL: content.folderURL,
+                             imageFiles: content.imageFiles.filter { !trashedImageURLs.contains($0.url) },
+                             currentIndex: content.currentIndex, includeSubfolders: content.includeSubfolders,
+                             discoveredFolders: content.discoveredFolders, scanIssues: content.scanIssues,
+                             isComplete: content.isComplete)
     }
 
     /// Production collections compute sorting, filtering and subtree counts on one serial worker.
@@ -1257,6 +1273,7 @@ class ImageViewerViewModel: ObservableObject {
     private func handleImageDeletion(at fileURL: URL, in folderURL: URL) {
         guard currentFolderURL == folderURL,
               discoveredImageFiles.contains(where: { $0.url == fileURL }) else { return }
+        trashedImageURLs.insert(fileURL)
 
         // A pending projection captured the pre-Trash snapshot and must never publish it again.
         collectionProjectionTask?.cancel()
