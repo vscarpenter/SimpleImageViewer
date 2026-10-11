@@ -456,7 +456,7 @@ private struct RecentFolderRow: View {
         .help("Click to open \(folderURL.lastPathComponent)")
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Recent folder: \(folderURL.lastPathComponent)")
-        .accessibilityHint("Double-tap to select this folder")
+        .accessibilityHint("Opens this folder")
         .accessibilityAction(named: "Select") {
             onSelect()
         }

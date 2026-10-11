@@ -97,7 +97,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Quick Start Tip",
-                description: "For the best experience, organize your images in folders and use StillView's keyboard shortcuts for fast, distraction-free browsing. Try the thumbnail views ('T' and 'G') for quick navigation through large collections. All controls are now consolidated in the top toolbar for easy access.",
+                description: "For the best experience, organize your images in folders and use StillView's keyboard shortcuts for fast, distraction-free browsing. Try the thumbnail views ('T' and 'G') for quick navigation through large collections. In large collections, Include Subfolders, the folder tree, and search help you narrow the view.",
                 type: .tip
             )
         ]
@@ -590,7 +590,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Accessibility",
-                description: "StillView includes keyboard navigation, accessibility labels, and support for Reduce Motion. Image descriptions use local metadata without uploading image data.",
+                description: "StillView includes keyboard navigation, accessibility labels, and support for Reduce Motion. Image descriptions and text extraction run on this Mac; images are never uploaded.",
                 type: .information
             ),
             HelpContentItem(
@@ -600,7 +600,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Support",
-                description: "For support, bug reports, or feature requests, visit the GitHub Issues page or contact the developer through the repository. For AI-related questions, see the AI Features section of this help guide.",
+                description: "For support, bug reports, or feature requests, visit the GitHub Issues page or contact the developer through the repository. For AI-related questions, see the AI Insights section of this help guide.",
                 type: .information
             ),
             HelpContentItem(

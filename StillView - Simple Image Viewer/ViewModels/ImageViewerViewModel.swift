@@ -784,29 +784,33 @@ class ImageViewerViewModel: ObservableObject {
                 }
                 let input = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
                 guard !Task.isCancelled, let self, self.currentImageFile?.url == imageFile.url else { return }
-                self.acceptInsightInput(input, for: imageFile, reloadIfChanged: reloadIfChanged)
+                guard self.acceptInsightInput(input, for: imageFile, reloadIfChanged: reloadIfChanged) else { return }
                 if generateAfterPreparing && self.canGenerateImageInsight { self.imageInsightViewModel.generate() }
                 if extractAfterPreparing { self.imageInsightViewModel.extractText() }
             }
         } else {
-            acceptInsightInput(insightInputProvider(imageFile), for: imageFile, reloadIfChanged: reloadIfChanged)
+            guard acceptInsightInput(insightInputProvider(imageFile), for: imageFile,
+                                     reloadIfChanged: reloadIfChanged) else { return }
             if generateAfterPreparing && canGenerateImageInsight { imageInsightViewModel.generate() }
             if extractAfterPreparing { imageInsightViewModel.extractText() }
         }
     }
 
-    private func acceptInsightInput(_ input: ImageInsightInput, for imageFile: ImageFile, reloadIfChanged: Bool) {
+    /// Returns false when an external edit triggered a reload, so callers skip work on the stale input.
+    private func acceptInsightInput(_ input: ImageInsightInput, for imageFile: ImageFile,
+                                    reloadIfChanged: Bool) -> Bool {
         let revision = ImageRevision(url: imageFile.url, byteCount: input.fileByteCount,
                                      modificationDate: input.fileModificationDate)
         if reloadIfChanged, let previousRevision = currentImageRevision,
            previousRevision.url == revision.url, previousRevision != revision {
             // The stage and Insights must refer to the same file revision after an external edit.
             loadCurrentImage()
-            return
+            return false
         }
         currentImageRevision = revision
         preparedInsightURL = imageFile.url
         imageInsightViewModel.prepareForImage(input, availability: imageInsightAvailability)
+        return true
     }
 
     private func cancelActiveImageLoad() {
