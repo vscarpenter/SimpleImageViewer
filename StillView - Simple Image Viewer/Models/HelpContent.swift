@@ -126,6 +126,12 @@ extension HelpSection {
                 type: .shortcut
             ),
             HelpContentItem(
+                title: "Previous or Next Image",
+                description: "Page Up shows the previous image; Page Down shows the next",
+                shortcut: "Page Up or Page Down",
+                type: .shortcut
+            ),
+            HelpContentItem(
                 title: "Grid Row Navigation",
                 description: "Move the selected Grid image up or down by the number of columns currently visible. Selection stops at the collection edges.",
                 shortcut: "↑ or ↓",
@@ -216,6 +222,36 @@ extension HelpSection {
                 type: .shortcut
             ),
             HelpContentItem(
+                title: "Single, Strip, or Grid",
+                description: "Switch viewing modes from the View menu",
+                shortcut: "⌘1, ⌘2, or ⌘3",
+                type: .shortcut
+            ),
+            HelpContentItem(
+                title: "Show or Hide Inspector",
+                description: "Show or hide the Info and Insights inspector from the View menu",
+                shortcut: "⌘⌥I",
+                type: .shortcut
+            ),
+            HelpContentItem(
+                title: "Copy Image",
+                description: "Copy the current image to the clipboard",
+                shortcut: "⌘⇧C",
+                type: .shortcut
+            ),
+            HelpContentItem(
+                title: "Copy Path",
+                description: "Copy the current image's file path",
+                shortcut: "⌘⌥C",
+                type: .shortcut
+            ),
+            HelpContentItem(
+                title: "Reveal in Finder",
+                description: "Show the current image in Finder",
+                shortcut: "⌘⇧R",
+                type: .shortcut
+            ),
+            HelpContentItem(
                 title: "Delete Image",
                 description: "Move current image to Trash (can be undone from Trash)",
                 shortcut: "Delete or Backspace",
@@ -224,7 +260,7 @@ extension HelpSection {
             HelpContentItem(
                 title: "Back to Folder Selection",
                 description: "Return to folder selection screen",
-                shortcut: "B",
+                shortcut: "B or ⌘B",
                 type: .shortcut
             ),
             HelpContentItem(

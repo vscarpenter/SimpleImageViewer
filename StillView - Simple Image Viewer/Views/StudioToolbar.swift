@@ -74,9 +74,10 @@ struct StudioToolbar: View {
             }
             VStack(alignment: .leading, spacing: 1) {
             Menu {
+                // Show the loaded scope, matching the View menu.
                 Toggle("Include Subfolders", isOn: Binding(
-                    get: { folderPicker.includeSubfolders },
-                    set: { folderPicker.setIncludeSubfolders($0) }
+                    get: { viewModel.includeSubfolders },
+                    set: { folderPicker.applyIncludeSubfolders($0) }
                 ))
                 Button("Refresh Folder") { folderPicker.refreshCurrentFolder() }
                 Divider()
@@ -96,7 +97,7 @@ struct StudioToolbar: View {
                     Divider()
                 }
 
-                Button("Choose Folder…") {
+                Button("Open Folder…") {
                     folderPicker.selectFolder()
                 }
             } label: {

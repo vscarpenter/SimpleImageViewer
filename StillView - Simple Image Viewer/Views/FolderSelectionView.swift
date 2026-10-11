@@ -74,7 +74,7 @@ struct FolderSelectionView: View {
             Button(action: {
                 viewModel.selectFolder()
             }) {
-                Label("Select Folder…", systemImage: "folder.badge.plus")
+                Label("Open Folder…", systemImage: "folder.badge.plus")
             }
             .keyboardShortcut("o", modifiers: .command)
 
@@ -199,7 +199,7 @@ struct FolderSelectionView: View {
             HStack(spacing: 16) {
                 Image(systemName: "folder")
                     .font(.system(size: 18, weight: .medium))
-                Text("Browse for Folder…")
+                Text("Open Folder…")
                     .font(.system(size: 17, weight: .semibold))
             }
             .frame(maxWidth: .infinity)
@@ -224,7 +224,7 @@ struct FolderSelectionView: View {
         .disabled(viewModel.isScanning)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: viewModel.isScanning)
         .help("Select a folder containing images to browse")
-        .accessibilityLabel("Browse for folder")
+        .accessibilityLabel("Open Folder")
         .accessibilityHint("Opens a dialog to select a folder containing images")
     }
     

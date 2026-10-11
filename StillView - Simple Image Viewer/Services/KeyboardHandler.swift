@@ -276,8 +276,8 @@ private struct BackToFoldersActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
-private struct ToggleSubfoldersActionKey: FocusedValueKey {
-    typealias Value = () -> Void
+private struct SetIncludeSubfoldersActionKey: FocusedValueKey {
+    typealias Value = (Bool) -> Void
 }
 
 private struct RefreshFolderActionKey: FocusedValueKey {
@@ -300,9 +300,9 @@ extension FocusedValues {
         set { self[BackToFoldersActionKey.self] = newValue }
     }
 
-    var toggleSubfoldersAction: (() -> Void)? {
-        get { self[ToggleSubfoldersActionKey.self] }
-        set { self[ToggleSubfoldersActionKey.self] = newValue }
+    var setIncludeSubfoldersAction: ((Bool) -> Void)? {
+        get { self[SetIncludeSubfoldersActionKey.self] }
+        set { self[SetIncludeSubfoldersActionKey.self] = newValue }
     }
 
     var refreshFolderAction: (() -> Void)? {

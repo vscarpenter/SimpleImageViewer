@@ -190,6 +190,16 @@ class FolderSelectionViewModel: ObservableObject {
         refreshCurrentFolder()
     }
 
+    /// Applies a scope chosen from a control that shows the viewer's loaded scope. A scan canceled
+    /// before its first batch can leave this flag ahead of the viewer; rescan instead of doing nothing.
+    func applyIncludeSubfolders(_ included: Bool) {
+        if includeSubfolders == included {
+            refreshCurrentFolder()
+        } else {
+            setIncludeSubfolders(included)
+        }
+    }
+
     /// Refresh the current folder by rescanning it
     func refreshCurrentFolder() {
         guard let currentFolder = selectedFolderURL else { return }
@@ -251,8 +261,10 @@ class FolderSelectionViewModel: ObservableObject {
             defer {
                 if accessStarted && !transferredAccess { url.stopAccessingSecurityScopedResource() }
             }
-            // Await a canceled cursor's exit before replacing its root grant.
-            await previousTask?.value
+            // Normally await a canceled cursor's exit before replacing its root grant. A worker blocked
+            // on slow I/O keeps its own grant until it exits, and the generation check discards its
+            // results, so it must not stall the next folder indefinitely.
+            await Self.awaitPreviousScan(previousTask, timeout: Self.previousScanExitTimeout)
             guard !Task.isCancelled else { return }
             var found: [URL: ImageFile] = [:]
             var folders: Set<URL> = [url]
@@ -312,6 +324,24 @@ class FolderSelectionViewModel: ObservableObject {
         }
     }
 
+    private static let previousScanExitTimeout: Duration = .seconds(1)
+
+    /// Waits for the previous scan task, or for the timeout, whichever comes first.
+    private static func awaitPreviousScan(_ task: Task<Void, Never>?, timeout: Duration) async {
+        guard let task else { return }
+        let gate = ScanWaitGate()
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            Task.detached {
+                await task.value
+                if gate.claim() { continuation.resume() }
+            }
+            Task.detached {
+                try? await Task.sleep(for: timeout)
+                if gate.claim() { continuation.resume() }
+            }
+        }
+    }
+
     private static func scanError(_ error: Error, folderURL: URL) -> ImageViewerError {
         guard let fileSystemError = error as? FileSystemError else {
             return .folderScanningFailed(error)
@@ -334,5 +364,19 @@ class FolderSelectionViewModel: ObservableObject {
     func restoreLastFolder(_ folderURL: URL, includeSubfolders: Bool = false) {
         self.includeSubfolders = includeSubfolders
         handleFolderSelection(folderURL)
+    }
+}
+
+/// Lets exactly one of two racing tasks resume a continuation.
+private final class ScanWaitGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var claimed = false
+
+    func claim() -> Bool {
+        lock.withLock {
+            guard !claimed else { return false }
+            claimed = true
+            return true
+        }
     }
 }
