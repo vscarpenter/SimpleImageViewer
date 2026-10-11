@@ -1,0 +1,20 @@
+Executable=/private/tmp/stillview-sandbox-verification-2026-10-11/StillView - Simple Image Viewer.app/Contents/MacOS/StillView - Simple Image Viewer
+Identifier=com.vinny.StillView-Image-Viewer
+Format=app bundle with Mach-O thin (arm64)
+CodeDirectory v=20400 size=14233 flags=0x2(adhoc) hashes=434+7 location=embedded
+Hash type=sha256 size=32
+CandidateCDHash sha256=0a2b6188275389b21b42d35ce7ab0976f63cf7f8
+CandidateCDHashFull sha256=0a2b6188275389b21b42d35ce7ab0976f63cf7f89ac47cde1ffe975add64c429
+Hash choices=sha256
+CMSDigest=0a2b6188275389b21b42d35ce7ab0976f63cf7f89ac47cde1ffe975add64c429
+CMSDigestType=2
+CDHash=0a2b6188275389b21b42d35ce7ab0976f63cf7f8
+Signature=adhoc
+Info.plist entries=25
+TeamIdentifier=not set
+Sealed Resources version=2 rules=13 files=6
+Internal requirements count=0 size=12
+warning: Specifying ':' in the path is deprecated and will not work in a future release
+Total signatures=1
+Chosen signature=1
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>com.apple.security.app-sandbox</key><true/><key>com.apple.security.files.bookmarks.app-scope</key><true/><key>com.apple.security.files.user-selected.read-write</key><true/></dict></plist>

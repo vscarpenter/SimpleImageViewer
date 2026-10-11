@@ -21,4 +21,8 @@ Use existing compiled suites; do not manually alter the Xcode project. Add behav
 
 ## Completion record
 
-Pending implementation and verification.
+Implemented and locally committed: approved plan/spec `21426b5`, scanner/bookmark foundation `4e0fd14`, usability/AI/recursive browsing `16641c4`.
+
+Final Release app-hosted tests pass: 300 tests, zero failures/skips. Release arm64 build, toolchain and test membership checks pass. SwiftLint has zero errors and one existing complexity warning. Actual fixed-corpus inference completed 30/30, with independently scored delivery/recognition and documented residual mistakes. Controlled 1k/10k/100k scanner and off-main projection measurements are recorded separately.
+
+The unsigned native walkthrough verified combined images, nested tree filters, scope, path captions and search. A final focus/OCR and ad hoc sandbox/relaunch pass is pending because the Mac locked; manual unlock was requested. Distribution, hosted CI and real external/cloud/SMB providers remain separate boundaries. See the [complete verification record](../reviews/2026-10-11-macos27-implementation-verification.md), [AI evidence](../evaluations/2026-10-11-ai-ocr/README.md), and [independent integration review](../reviews/evidence/2026-10-11/implementation-integration-review.md).

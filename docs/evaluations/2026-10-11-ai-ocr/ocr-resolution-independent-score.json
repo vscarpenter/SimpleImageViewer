@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "source": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/ocr-resolution-probe-warm.json",
+  "source_sha256": "1cfad4f3bcddff31a627a231952fce110a3c85459787ace43c9a7a54a03beac2",
+  "truth": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/tall-dense-receipt-ground-truth.json",
+  "truth_sha256": "8b030b524ce2e472133ce8d205f245e4c6af48e837879d67594016ec72e3aee0",
+  "truth_validation": "Verified 91 lines: fixed header plus formula-generated row numbers, codes, 1-9 cycling quantities, and exact USD amounts.",
+  "scope": "Separate fixed tall dense synthetic OCR-resolution probe, two warmed runs at each dimension; no model generation or general accuracy claim.",
+  "results": [
+    {
+      "dimension": 4096,
+      "decodedWidth": 1117,
+      "decodedHeight": 4096,
+      "exact_token_occurrences_recovered": 508,
+      "expected_token_occurrences": 724,
+      "extra_token_occurrences": 188,
+      "exact_lines": 40,
+      "expected_lines": 91,
+      "returned_lines": 83,
+      "elapsed_seconds": 0.40122016666282434,
+      "decoded_pixel_bytes_upper_bound": 18300928
+    },
+    {
+      "dimension": 2048,
+      "decodedWidth": 559,
+      "decodedHeight": 2048,
+      "exact_token_occurrences_recovered": 483,
+      "expected_token_occurrences": 724,
+      "extra_token_occurrences": 219,
+      "exact_lines": 29,
+      "expected_lines": 91,
+      "returned_lines": 84,
+      "elapsed_seconds": 0.3198783749976428,
+      "decoded_pixel_bytes_upper_bound": 4579328
+    },
+    {
+      "dimension": 4096,
+      "decodedWidth": 1117,
+      "decodedHeight": 4096,
+      "exact_token_occurrences_recovered": 508,
+      "expected_token_occurrences": 724,
+      "extra_token_occurrences": 188,
+      "exact_lines": 40,
+      "expected_lines": 91,
+      "returned_lines": 83,
+      "elapsed_seconds": 0.26209866667340975,
+      "decoded_pixel_bytes_upper_bound": 18300928
+    },
+    {
+      "dimension": 2048,
+      "decodedWidth": 559,
+      "decodedHeight": 2048,
+      "exact_token_occurrences_recovered": 483,
+      "expected_token_occurrences": 724,
+      "extra_token_occurrences": 219,
+      "exact_lines": 29,
+      "expected_lines": 91,
+      "returned_lines": 84,
+      "elapsed_seconds": 0.2681554583396064,
+      "decoded_pixel_bytes_upper_bound": 4579328
+    }
+  ],
+  "limitations": [
+    "All four runs process one fixture.",
+    "Token occurrence scoring ignores sequence and associations; exact lines supplement this.",
+    "Many recognition errors remain at both decode dimensions.",
+    "Decoded byte bounds use width*height*4, not whole-process peak memory.",
+    "Elapsed time is a small warmed sample, not a performance guarantee."
+  ]
+}

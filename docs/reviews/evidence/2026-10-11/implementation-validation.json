@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-11",
+  "implementationCommit": "16641c4",
+  "platform": {
+    "macOS": "27.0.1",
+    "osBuild": "26A434",
+    "xcode": "27.0",
+    "xcodeBuild": "27A266a",
+    "sdk": "27.0",
+    "architecture": "arm64"
+  },
+  "testConfiguration": "Release, ENABLE_TESTABILITY=YES, CODE_SIGNING_ALLOWED=NO",
+  "appHostedTests": {
+    "passed": 300,
+    "failed": 0,
+    "skipped": 0,
+    "activeTestSources": 15,
+    "inactiveSourcesOnDisk": 56
+  },
+  "releaseBuild": "passed",
+  "lint": {
+    "errors": 0,
+    "existingWarnings": 1,
+    "existingWarning": "PreferencesViewModel.swift:671 cyclomatic complexity 16",
+    "configurationWarning": "line_length is disabled but configured"
+  },
+  "projectionMeasurements": [
+    {
+      "records": 1000,
+      "elapsedMilliseconds": 55.418968200683594,
+      "maximumMainHeartbeatGapMilliseconds": 5.653023719787598
+    },
+    {
+      "records": 10000,
+      "elapsedMilliseconds": 475.54290294647217,
+      "maximumMainHeartbeatGapMilliseconds": 5.597949028015137
+    },
+    {
+      "records": 100000,
+      "elapsedMilliseconds": 4467.007994651794,
+      "maximumMainHeartbeatGapMilliseconds": 5.8890581130981445
+    }
+  ],
+  "projectionLimits": [
+    "One synthetic full snapshot per scale, injected cached/no-op image loader, main timer every 5ms",
+    "Not a full SwiftUI/provider/rendering benchmark",
+    "Sort cancellation is checked before and after synchronous sorting"
+  ],
+  "sandboxArtifact": {
+    "signature": "ad hoc",
+    "signatureVerification": "passed strict",
+    "entitlements": [
+      "app-sandbox",
+      "files.user-selected.read-write",
+      "files.bookmarks.app-scope"
+    ],
+    "nativeVerification": "pending Mac unlock"
+  },
+  "nativeUnsignedCheckpoint": {
+    "combinedImages": 5,
+    "directImages": 1,
+    "duplicateLeafNames": 3,
+    "travelBranchImages": 3,
+    "italyBranchImages": 2,
+    "verified": [
+      "CmdO folder picker",
+      "Single/Strip/Grid controls",
+      "single View menu",
+      "visible Including subfolders scope",
+      "combined grid with relative paths",
+      "native tree expansion and branch filtering",
+      "filename search and CmdA editing"
+    ],
+    "followup": [
+      "Final focus fix after tree/search native repro",
+      "Independent OCR completion/copy",
+      "Sandbox selected-folder access and relaunch"
+    ]
+  },
+  "externalBoundaries": [
+    "No push or hosted CI run",
+    "No distribution signing or notarization",
+    "No real SMB/cloud/external provider validation",
+    "No live VoiceOver session or system appearance toggles"
+  ]
+}
