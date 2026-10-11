@@ -32,8 +32,9 @@ class SecurityScopedBookmarkManager: ObservableObject {
         preferencesService: PreferencesService = DefaultPreferencesService.shared,
         resolveLaunchBookmark: @escaping (Data) throws -> URL = { data in
             var isStale = false
+            // Launch runs on the main thread; never block it mounting an unreachable network volume.
             return try URL(
-                resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI],
+                resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI, .withoutMounting],
                 relativeTo: nil, bookmarkDataIsStale: &isStale)
         },
         launchStartAccess: @escaping (URL) -> Bool = { $0.startAccessingSecurityScopedResource() },

@@ -159,7 +159,7 @@ struct WindowState: Codable {
             // Create security-scoped bookmark for the folder
             do {
                 self.lastFolderBookmark = try folderURL.bookmarkData(
-                    options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                    options: [.withSecurityScope],
                     includingResourceValuesForKeys: nil,
                     relativeTo: nil
                 )
@@ -222,7 +222,7 @@ struct WindowState: Codable {
             // Update security-scoped bookmark
             do {
                 self.lastFolderBookmark = try folderURL.bookmarkData(
-                    options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                    options: [.withSecurityScope],
                     includingResourceValuesForKeys: nil,
                     relativeTo: nil
                 )
@@ -346,7 +346,7 @@ struct WindowState: Codable {
                 }
                 do {
                     lastFolderBookmark = try url.bookmarkData(
-                        options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                        options: [.withSecurityScope],
                         includingResourceValuesForKeys: nil,
                         relativeTo: nil
                     )
