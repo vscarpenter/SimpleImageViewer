@@ -33,6 +33,31 @@ class ImageViewerViewModel: ObservableObject {
     @Published var gridDensity: Double = 160
     /// Published source of truth for filmstrip and grid content.
     @Published private(set) var allImageFiles: [ImageFile] = []
+    @Published private(set) var includeSubfolders = false
+    @Published private(set) var discoveredFolders: [URL] = []
+    @Published private(set) var scanIssues: [FolderScanIssue] = []
+    @Published private(set) var isCollectionComplete = true
+    @Published private(set) var discoveredImageCount = 0
+    @Published private(set) var folderImageCounts: [URL: Int] = [:]
+    @Published private(set) var isProjectingCollection = false
+    @Published var gridColumnCount = 1
+    @Published var filteredFolderURL: URL? {
+        didSet {
+            if oldValue != filteredFolderURL {
+                pendingRestoredImagePath = nil
+                rebuildVisibleCollection(fallbackIndex: 0)
+            }
+        }
+    }
+    @Published var browserSearchText = "" {
+        didSet {
+            if oldValue != browserSearchText {
+                pendingRestoredImagePath = nil
+                rebuildVisibleCollection(fallbackIndex: 0)
+            }
+        }
+    }
+    @Published var folderSidebarVisible = true
 
     // AI Insights state
     @Published private(set) var isAIAnalysisEnabled: Bool = false
@@ -77,6 +102,16 @@ class ImageViewerViewModel: ObservableObject {
 
     // MARK: - Private Properties
     private var folderContent: FolderContent?
+    private var discoveredImageFiles: [ImageFile] = []
+    private var asynchronousBrowsing = false
+    private var collectionProjectionTask: Task<Void, Never>?
+    private var projectionGeneration = UUID()
+    private var folderCountsNeedUpdate = true
+    private nonisolated static let projectionQueue = DispatchQueue(label: "com.vinny.stillview.collection", qos: .userInitiated)
+    private var pendingRestoredImagePath: String?
+    private var insightInputTask: Task<Void, Never>?
+    private var preparedInsightURL: URL?
+    private let usesDefaultInsightInputProvider: Bool
     private var cancellables = Set<AnyCancellable>()
     private var currentImageLoad: AnyCancellable?
     private var activeImageLoadID: UUID?
@@ -130,7 +165,9 @@ class ImageViewerViewModel: ObservableObject {
             return try await EnhancedImageProcessingService.shared.processImageAsync(image, with: features).currentImage
         }
         self.expectedImageSizeLoader = expectedImageSizeLoader ?? { url in
+            let workerLease = SecurityScopedAccessManager.shared.acquireWorkerAccess(for: url)
             let task = Task.detached(priority: .utility) {
+                defer { withExtendedLifetime(workerLease) {} }
                 guard !Task.isCancelled else { return nil as CGSize? }
                 return Self.readExpectedImageSize(at: url)
             }
@@ -145,6 +182,7 @@ class ImageViewerViewModel: ObservableObject {
         self.trashService = trashService ?? SystemImageTrashService()
         self.insightAvailabilityProvider = insightAvailabilityProvider ?? AppleIntelligenceInsightsService.shared.availability
         self.insightInputProvider = insightInputProvider ?? AppleIntelligenceInsightsService.shared.makeInput
+        self.usesDefaultInsightInputProvider = insightInputProvider == nil
         self.imageInsightViewModel = ImageInsightViewModel(service: imageInsightService)
         self.isAIAnalysisEnabled = preferencesService.enableAIAnalysis
         self.isEnhancedProcessingEnabled = preferencesService.enableImageEnhancements
@@ -198,23 +236,216 @@ class ImageViewerViewModel: ObservableObject {
     /// Load images from folder content
     /// - Parameter folderContent: The folder content containing image files
     func loadFolderContent(_ folderContent: FolderContent) {
-        cancelLoading()
-        failedImageURLs.removeAll()
+        let sameRoot = currentFolderURL?.standardizedFileURL == folderContent.folderURL.standardizedFileURL
+        // An async batch must preserve the selection at publication time, including user navigation during sorting.
+        let selectedURL = asynchronousBrowsing ? nil
+            : (sameRoot ? currentImageFile?.url : folderContent.currentImage?.url)
+        if !sameRoot {
+            cancelLoading()
+            failedImageURLs.removeAll()
+            filteredFolderURL = nil
+            browserSearchText = ""
+            if asynchronousBrowsing {
+                allImageFiles = []
+                currentImage = nil
+                expectedImageSize = nil
+                totalImages = 0
+                currentIndex = 0
+                preparedInsightURL = nil
+                imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
+            }
+        }
         self.folderContent = folderContent
-        self.allImageFiles = folderContent.imageFiles
-        self.totalImages = folderContent.totalImages
-        self.currentIndex = folderContent.currentIndex
-        
-        // Initialize AI Insights state for new folder session
-        initializeAIInsightsForNewSession()
+        if includeSubfolders && !folderContent.includeSubfolders { filteredFolderURL = nil }
+        self.includeSubfolders = folderContent.includeSubfolders
+        self.discoveredFolders = folderContent.discoveredFolders
+        self.scanIssues = folderContent.scanIssues
+        self.isCollectionComplete = folderContent.isComplete
+        self.discoveredImageFiles = folderContent.imageFiles
+        self.discoveredImageCount = folderContent.imageFiles.count
+        folderCountsNeedUpdate = true
+        if !asynchronousBrowsing { updateFolderCounts() }
 
-        // Load the current image
-        if folderContent.hasImages {
-            loadCurrentImage()
+        // Initialize AI Insights state for new folder session
+        if !sameRoot { initializeAIInsightsForNewSession() }
+        rebuildVisibleCollection(preferredURL: selectedURL,
+                                 fallbackIndex: sameRoot ? nil : folderContent.currentIndex)
+    }
+
+    /// Production collections compute sorting, filtering and subtree counts on one serial worker.
+    /// Tests and small injected clients may keep the synchronous projection API.
+    func enableAsynchronousBrowsing() { asynchronousBrowsing = true }
+
+    func waitForBrowsingProjection() async { await collectionProjectionTask?.value }
+
+    var selectedImagePathForRestoration: String? {
+        pendingRestoredImagePath ?? currentImageFile?.url.standardizedFileURL.path
+    }
+
+    /// The restored path may arrive in a later scan batch.
+    func restoreSelectedImage(path: String?) {
+        pendingRestoredImagePath = path
+        rebuildVisibleCollection()
+    }
+
+    func relativeFolderPath(for imageFile: ImageFile) -> String {
+        let path = relativePath(for: imageFile.url.deletingLastPathComponent())
+        return path == "." ? "This folder" : path
+    }
+
+    func relativePath(for url: URL) -> String {
+        guard let root = currentFolderURL else { return url.lastPathComponent }
+        let rootComponents = root.standardizedFileURL.pathComponents
+        let components = url.standardizedFileURL.pathComponents
+        guard components.starts(with: rootComponents) else { return url.lastPathComponent }
+        let suffix = components.dropFirst(rootComponents.count).joined(separator: "/")
+        return suffix.isEmpty ? "." : suffix
+    }
+
+    func clearBrowsingFilter() {
+        filteredFolderURL = nil
+        browserSearchText = ""
+    }
+
+    func moveGridSelection(byRows rows: Int) {
+        guard viewMode == .grid, totalImages > 0 else { return }
+        let columns = max(1, gridColumnCount)
+        let lastRow = (totalImages - 1) / columns
+        let targetRow = min(max(0, currentIndex / columns + rows), lastRow)
+        let target = min(targetRow * columns + currentIndex % columns, totalImages - 1)
+        if target != currentIndex { navigateToIndex(target) }
+    }
+
+    private func updateFolderCounts() {
+        guard let root = currentFolderURL else { folderImageCounts = [:]; return }
+        var counts: [URL: Int] = [root: 0]
+        for file in discoveredImageFiles {
+            var folder = file.url.deletingLastPathComponent()
+            while folder.standardizedFileURL.pathComponents.starts(with: root.standardizedFileURL.pathComponents) {
+                let isRoot = folder.standardizedFileURL.pathComponents == root.standardizedFileURL.pathComponents
+                counts[isRoot ? root : folder, default: 0] += 1
+                if isRoot { break }
+                folder.deleteLastPathComponent()
+            }
+        }
+        folderImageCounts = counts
+    }
+
+    private func rebuildVisibleCollection(preferredURL: URL? = nil, fallbackIndex: Int? = nil) {
+        guard folderContent != nil else { return }
+        if asynchronousBrowsing {
+            scheduleCollectionProjection(preferredURL: preferredURL, fallbackIndex: fallbackIndex)
+            return
+        }
+        guard let root = currentFolderURL else { return }
+        let projection = Self.buildProjection(images: discoveredImageFiles, root: root,
+                                              branch: filteredFolderURL, query: browserSearchText, order: sortOrder,
+                                              counts: folderImageCounts, isCancelled: { false })
+        guard let projection else { return }
+        applyProjection(projection, preferredURL: preferredURL, fallbackIndex: fallbackIndex)
+    }
+
+    private struct CollectionProjection: Sendable {
+        let images: [ImageFile]
+        let counts: [URL: Int]
+    }
+
+    private func scheduleCollectionProjection(preferredURL: URL?, fallbackIndex: Int?) {
+        collectionProjectionTask?.cancel()
+        let generation = UUID()
+        projectionGeneration = generation
+        guard let root = currentFolderURL else { return }
+        let images = discoveredImageFiles
+        let branch = filteredFolderURL
+        let query = browserSearchText
+        let order = sortOrder
+        let counts = folderCountsNeedUpdate ? nil : folderImageCounts
+        isProjectingCollection = true
+        collectionProjectionTask = Task { [weak self] in
+            let worker = Task.detached(priority: .userInitiated) {
+                let cancellation = ProjectionCancellation()
+                return await withTaskCancellationHandler {
+                    await withCheckedContinuation { continuation in
+                        Self.projectionQueue.async {
+                            let projection = Self.buildProjection(images: images, root: root, branch: branch,
+                                                                  query: query, order: order, counts: counts,
+                                                                  isCancelled: { cancellation.isCancelled })
+                            continuation.resume(returning: projection)
+                        }
+                    }
+                } onCancel: { cancellation.cancel() }
+            }
+            let projection = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
+            guard !Task.isCancelled, let self, self.projectionGeneration == generation, let projection else { return }
+            self.folderCountsNeedUpdate = false
+            self.isProjectingCollection = false
+            self.applyProjection(projection, preferredURL: preferredURL, fallbackIndex: fallbackIndex)
+        }
+    }
+
+    private nonisolated static func buildProjection(
+        images: [ImageFile], root: URL, branch: URL?, query: String, order: ImageSortOrder,
+        counts: [URL: Int]?, isCancelled: () -> Bool
+    ) -> CollectionProjection? {
+        guard !isCancelled() else { return nil }
+        let rootComponents = root.standardizedFileURL.pathComponents
+        let branchComponents = branch?.standardizedFileURL.pathComponents
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        var visible: [ImageFile] = []
+        var updatedCounts = counts ?? [root: 0]
+        for file in images {
+            guard !isCancelled() else { return nil }
+            let components = file.url.standardizedFileURL.pathComponents
+            if counts == nil {
+                var folder = file.url.deletingLastPathComponent()
+                while folder.standardizedFileURL.pathComponents.starts(with: rootComponents) {
+                    let isRoot = folder.standardizedFileURL.pathComponents == rootComponents
+                    updatedCounts[isRoot ? root : folder, default: 0] += 1
+                    if isRoot { break }
+                    folder.deleteLastPathComponent()
+                }
+            }
+            let inBranch = branchComponents.map { components.starts(with: $0) } ?? true
+            let path = components.dropFirst(rootComponents.count).joined(separator: "/")
+            if inBranch && (query.isEmpty || path.localizedStandardContains(query)) { visible.append(file) }
+        }
+        guard !isCancelled() else { return nil }
+        visible.sort { order.areInIncreasingOrder($0, $1) }
+        guard !isCancelled() else { return nil }
+        return CollectionProjection(images: visible, counts: updatedCounts)
+    }
+
+    private func applyProjection(_ projection: CollectionProjection, preferredURL: URL?, fallbackIndex: Int?) {
+        let previousFile = currentImageFile
+        let selectedURL = preferredURL ?? previousFile?.url
+        allImageFiles = projection.images
+        folderImageCounts = projection.counts
+        totalImages = allImageFiles.count
+        let restoredIndex = pendingRestoredImagePath.flatMap { path in
+            allImageFiles.firstIndex { $0.url.standardizedFileURL.path == URL(fileURLWithPath: path).standardizedFileURL.path }
+        }
+        if let restoredIndex {
+            currentIndex = restoredIndex
+            pendingRestoredImagePath = nil
+        } else if let selectedURL, let index = allImageFiles.firstIndex(where: { $0.url == selectedURL }) {
+            currentIndex = index
         } else {
+            currentIndex = min(max(0, fallbackIndex ?? currentIndex), max(0, totalImages - 1))
+        }
+        if isCollectionComplete { pendingRestoredImagePath = nil }
+        guard let file = currentImageFile else {
+            cancelLoading()
             currentImage = nil
+            expectedImageSize = nil
             prepareImageInsightForCurrentImage()
             errorMessage = "No images found in the selected folder"
+            stopSlideshow()
+            return
+        }
+        if previousFile?.url != file.url || previousFile?.size != file.size
+            || previousFile?.modificationDate != file.modificationDate || currentImage == nil && !isLoading {
+            if previousFile?.url == file.url { imageLoaderService.clearCache() }
+            loadCurrentImage()
         }
     }
     
@@ -251,6 +482,7 @@ class ImageViewerViewModel: ObservableObject {
     /// Navigate to a specific image index
     /// - Parameter index: The target image index
     func navigateToIndex(_ index: Int) {
+        pendingRestoredImagePath = nil
         guard index >= 0 && index < totalImages else { return }
         
         currentIndex = index
@@ -406,13 +638,25 @@ class ImageViewerViewModel: ObservableObject {
     }
 
     func generateImageInsight() {
-        prepareImageInsightForCurrentImage()
         guard canGenerateImageInsight else { return }
-        imageInsightViewModel.generate()
+        prepareImageInsightForCurrentImage(generateAfterPreparing: true)
+    }
+
+    func extractImageText() {
+        guard currentImageFile != nil else { return }
+        prepareImageInsightForCurrentImage(extractAfterPreparing: true)
     }
 
     func cancelImageInsightGeneration() {
+        insightInputTask?.cancel()
+        insightInputTask = nil
         imageInsightViewModel.cancelGeneration()
+    }
+
+    func cancelImageTextExtraction() {
+        insightInputTask?.cancel()
+        insightInputTask = nil
+        imageInsightViewModel.cancelTextExtraction()
     }
     
     // MARK: - Private Methods
@@ -511,15 +755,47 @@ class ImageViewerViewModel: ObservableObject {
         Logger.info("AI Insights state reset for session end")
     }
 
-    private func prepareImageInsightForCurrentImage(reloadIfChanged: Bool = true) {
+    private func prepareImageInsightForCurrentImage(
+        reloadIfChanged: Bool = true, generateAfterPreparing: Bool = false, extractAfterPreparing: Bool = false
+    ) {
         updateAIInsightsAvailability()
+        insightInputTask?.cancel()
+        insightInputTask = nil
         guard let imageFile = currentImageFile else {
             currentImageRevision = nil
+            preparedInsightURL = nil
             imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
             return
         }
 
-        let input = insightInputProvider(imageFile)
+        // Keep injected providers synchronous for deterministic lifecycle tests.
+        // Production metadata and file-provider reads must not block navigation.
+        if usesDefaultInsightInputProvider {
+            if preparedInsightURL != imageFile.url {
+                imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
+            }
+            let provider = insightInputProvider
+            let root = currentFolderURL
+            insightInputTask = Task { [weak self] in
+                let worker = Task.detached(priority: .utility) {
+                    let access = root?.startAccessingSecurityScopedResource() ?? false
+                    defer { if access { root?.stopAccessingSecurityScopedResource() } }
+                    return provider(imageFile)
+                }
+                let input = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
+                guard !Task.isCancelled, let self, self.currentImageFile?.url == imageFile.url else { return }
+                self.acceptInsightInput(input, for: imageFile, reloadIfChanged: reloadIfChanged)
+                if generateAfterPreparing && self.canGenerateImageInsight { self.imageInsightViewModel.generate() }
+                if extractAfterPreparing { self.imageInsightViewModel.extractText() }
+            }
+        } else {
+            acceptInsightInput(insightInputProvider(imageFile), for: imageFile, reloadIfChanged: reloadIfChanged)
+            if generateAfterPreparing && canGenerateImageInsight { imageInsightViewModel.generate() }
+            if extractAfterPreparing { imageInsightViewModel.extractText() }
+        }
+    }
+
+    private func acceptInsightInput(_ input: ImageInsightInput, for imageFile: ImageFile, reloadIfChanged: Bool) {
         let revision = ImageRevision(url: imageFile.url, byteCount: input.fileByteCount,
                                      modificationDate: input.fileModificationDate)
         if reloadIfChanged, let previousRevision = currentImageRevision,
@@ -529,6 +805,7 @@ class ImageViewerViewModel: ObservableObject {
             return
         }
         currentImageRevision = revision
+        preparedInsightURL = imageFile.url
         imageInsightViewModel.prepareForImage(input, availability: imageInsightAvailability)
     }
 
@@ -714,6 +991,18 @@ class ImageViewerViewModel: ObservableObject {
         expectedImageSize = nil
         allImageFiles = []
         folderContent = nil
+        collectionProjectionTask?.cancel()
+        projectionGeneration = UUID()
+        isProjectingCollection = false
+        discoveredImageFiles = []
+        discoveredFolders = []
+        discoveredImageCount = 0
+        folderImageCounts = [:]
+        scanIssues = []
+        includeSubfolders = false
+        filteredFolderURL = nil
+        browserSearchText = ""
+        pendingRestoredImagePath = nil
         currentIndex = 0
         totalImages = 0
         isLoading = false
@@ -821,16 +1110,9 @@ class ImageViewerViewModel: ObservableObject {
     /// Re-sort the image list, keeping the currently displayed file selected.
     /// - Parameter order: The sort order chosen in the grid toolbar
     func applySortOrder(_ order: ImageSortOrder) {
+        pendingRestoredImagePath = nil
         sortOrder = order
-        guard !allImageFiles.isEmpty else { return }
-
-        let currentURL = currentImageFile?.url
-        allImageFiles.sort { order.areInIncreasingOrder($0, $1) }
-
-        if let currentURL,
-           let newIndex = allImageFiles.firstIndex(where: { $0.url == currentURL }) {
-            currentIndex = newIndex
-        }
+        rebuildVisibleCollection()
     }
 
     /// Jump to specific image from thumbnail selection.
@@ -838,6 +1120,7 @@ class ImageViewerViewModel: ObservableObject {
     /// opening the image in Single is an explicit action (double-click/Return).
     /// - Parameter index: The index of the image to jump to
     func jumpToImage(at index: Int) {
+        pendingRestoredImagePath = nil
         guard index >= 0 && index < totalImages else { return }
 
         currentIndex = index
@@ -877,6 +1160,7 @@ class ImageViewerViewModel: ObservableObject {
             prepareImageInsightForCurrentImage()
         } else {
             cancelImageInsightGeneration()
+            imageInsightViewModel.cancelTextExtraction()
         }
     }
     
@@ -968,13 +1252,25 @@ class ImageViewerViewModel: ObservableObject {
     /// Reconcile the recycled identity only in its folder, preserving any newer selection.
     private func handleImageDeletion(at fileURL: URL, in folderURL: URL) {
         guard currentFolderURL == folderURL,
-              let deletedIndex = allImageFiles.firstIndex(where: { $0.url == fileURL }) else { return }
+              discoveredImageFiles.contains(where: { $0.url == fileURL }) else { return }
 
+        // A pending projection captured the pre-Trash snapshot and must never publish it again.
+        collectionProjectionTask?.cancel()
+        projectionGeneration = UUID()
+        isProjectingCollection = false
+
+        let deletedIndex = allImageFiles.firstIndex(where: { $0.url == fileURL })
         let selectedURL = currentImageFile?.url
-        allImageFiles.remove(at: deletedIndex)
+        allImageFiles.removeAll { $0.url == fileURL }
+        discoveredImageFiles.removeAll { $0.url == fileURL }
+        discoveredImageCount = discoveredImageFiles.count
+        folderCountsNeedUpdate = true
+        if !asynchronousBrowsing { updateFolderCounts() }
         thumbnailCache.removeObject(forKey: fileURL as NSURL)
         failedImageURLs.remove(fileURL)
         totalImages = allImageFiles.count
+
+        if asynchronousBrowsing { rebuildVisibleCollection() }
 
         guard totalImages > 0 else {
             currentIndex = 0
@@ -982,7 +1278,8 @@ class ImageViewerViewModel: ObservableObject {
             errorMessage = nil
             loadCurrentImage()
             folderContent = FolderContent(folderURL: folderURL, imageFiles: [])
-            shouldNavigateToFolderSelection = true
+            // Recursive/filter sessions remain usable even when this branch becomes empty.
+            shouldNavigateToFolderSelection = !includeSubfolders && discoveredImageFiles.isEmpty
             return
         }
 
@@ -991,10 +1288,12 @@ class ImageViewerViewModel: ObservableObject {
             // Index shifts do not invalidate a still-current decode or its displayed image.
             currentIndex = selectedIndex
         } else {
-            currentIndex = min(deletedIndex, totalImages - 1)
+            currentIndex = min(deletedIndex ?? currentIndex, totalImages - 1)
             loadCurrentImage()
         }
-        folderContent = FolderContent(folderURL: folderURL, imageFiles: allImageFiles, currentIndex: currentIndex)
+        folderContent = FolderContent(folderURL: folderURL, imageFiles: discoveredImageFiles, currentIndex: currentIndex,
+                                      includeSubfolders: includeSubfolders, discoveredFolders: discoveredFolders,
+                                      scanIssues: scanIssues, isComplete: isCollectionComplete)
     }
     
     /// Check if deletion is available for the current image
@@ -1077,22 +1376,31 @@ private class SharingDelegate: NSObject, NSSharingServiceDelegate {
     }
 }
 
+/// Shared only between the projection queue and its cancellation handler.
+private final class ProjectionCancellation: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+    var isCancelled: Bool { lock.withLock { cancelled } }
+    func cancel() { lock.withLock { cancelled = true } }
+}
+
 // MARK: - Sort Comparators
 
 extension ImageSortOrder {
-    /// Comparator over ImageFile. "Date Captured" uses the file creation date —
-    /// scanning EXIF for a whole folder just to sort would be too costly.
+    /// Deterministic ordering across batches and duplicate leaf filenames.
     func areInIncreasingOrder(_ lhs: ImageFile, _ rhs: ImageFile) -> Bool {
         switch self {
         case .name:
-            return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+            let comparison = lhs.displayName.localizedStandardCompare(rhs.displayName)
+            if comparison != .orderedSame { return comparison == .orderedAscending }
         case .dateCaptured:
-            return lhs.creationDate < rhs.creationDate
+            if lhs.creationDate != rhs.creationDate { return lhs.creationDate < rhs.creationDate }
         case .dateModified:
-            return lhs.modificationDate < rhs.modificationDate
+            if lhs.modificationDate != rhs.modificationDate { return lhs.modificationDate < rhs.modificationDate }
         case .size:
-            return lhs.size > rhs.size
+            if lhs.size != rhs.size { return lhs.size > rhs.size }
         }
+        return lhs.url.standardizedFileURL.path.localizedStandardCompare(rhs.url.standardizedFileURL.path) == .orderedAscending
     }
 }
 

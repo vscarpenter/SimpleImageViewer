@@ -19,13 +19,35 @@ class SecurityScopedBookmarkManager: ObservableObject {
     static let shared = SecurityScopedBookmarkManager()
     
     // MARK: - Private Properties
-    private let preferencesService: PreferencesService
+    private var preferencesService: PreferencesService
     private var activeBookmarks: [URL: Data] = [:]
     private var accessedURLs: Set<URL> = []
+    private let resolveLaunchBookmark: (Data) throws -> URL
+    private let launchStartAccess: (URL) -> Bool
+    private let launchStopAccess: (URL) -> Void
+    private let launchFolderExists: (URL) -> Bool
     
     // MARK: - Initialization
-    private init(preferencesService: PreferencesService = DefaultPreferencesService.shared) {
+    init(
+        preferencesService: PreferencesService = DefaultPreferencesService.shared,
+        resolveLaunchBookmark: @escaping (Data) throws -> URL = { data in
+            var isStale = false
+            return try URL(
+                resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI],
+                relativeTo: nil, bookmarkDataIsStale: &isStale)
+        },
+        launchStartAccess: @escaping (URL) -> Bool = { $0.startAccessingSecurityScopedResource() },
+        launchStopAccess: @escaping (URL) -> Void = { $0.stopAccessingSecurityScopedResource() },
+        launchFolderExists: @escaping (URL) -> Bool = { url in
+            var isDirectory: ObjCBool = false
+            return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+        }
+    ) {
         self.preferencesService = preferencesService
+        self.resolveLaunchBookmark = resolveLaunchBookmark
+        self.launchStartAccess = launchStartAccess
+        self.launchStopAccess = launchStopAccess
+        self.launchFolderExists = launchFolderExists
         // Don't automatically restore bookmarks on initialization to prevent startup crashes
         // Bookmarks will be restored explicitly when the app is ready
     }
@@ -103,6 +125,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
                 // Always populate activeBookmarks for the resolved URL so future lookups work
                 if let original = originalURL, original != resolvedURL {
                     activeBookmarks.removeValue(forKey: original)
+                    reassociateBookmark(from: original, to: resolvedURL, bookmarkData: bookmarkData)
                 }
                 activeBookmarks[resolvedURL] = bookmarkData
                 
@@ -168,6 +191,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
                     if folderURL != resolvedURL {
                         activeBookmarks.removeValue(forKey: folderURL)
                         activeBookmarks[resolvedURL] = bookmarkData
+                        reassociateBookmark(from: folderURL, to: resolvedURL, bookmarkData: bookmarkData)
                     }
                     
                     if isStale {
@@ -229,7 +253,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
             accessedURLs.remove(folderURL)
         }
         
-        saveBookmarksToPreferences()
+        saveBookmarksToPreferences(removing: [folderURL])
         Logger.info("Removed bookmark for \(folderURL.path)", context: "security")
     }
     
@@ -242,7 +266,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
         
         activeBookmarks.removeAll()
         accessedURLs.removeAll()
-        saveBookmarksToPreferences()
+        saveBookmarksToPreferences(removing: Set(preferencesService.recentFolderRecords.map(\.url)))
         
         Logger.info("Cleared all bookmarks", context: "security")
     }
@@ -250,19 +274,29 @@ class SecurityScopedBookmarkManager: ObservableObject {
     // MARK: - Private Methods
     
     /// Save current bookmarks to preferences
-    private func saveBookmarksToPreferences() {
-        let bookmarkDataArray = Array(activeBookmarks.values)
-        
-        // Cast to DefaultPreferencesService to access mutable properties
-        guard let defaultPrefs = preferencesService as? DefaultPreferencesService else {
-            Logger.fail("Cannot save bookmarks - preferences service is not DefaultPreferencesService", context: "security")
-            return
+    private func saveBookmarksToPreferences(removing removedURLs: Set<URL> = []) {
+        var records = preferencesService.recentFolderRecords.map { record in
+            RecentFolderRecord(
+                url: record.url,
+                bookmarkData: removedURLs.contains(record.url) ? nil : activeBookmarks[record.url] ?? record.bookmarkData
+            )
         }
-        
-        defaultPrefs.folderBookmarks = bookmarkDataArray
-        defaultPrefs.savePreferences()
-        
-        Logger.success("Saved \(bookmarkDataArray.count) bookmarks to preferences", context: "security")
+        let knownURLs = Set(records.map(\.url))
+        let newRecords = activeBookmarks.keys.filter { !knownURLs.contains($0) && !removedURLs.contains($0) }
+            .sorted { $0.path < $1.path }
+            .map { RecentFolderRecord(url: $0, bookmarkData: activeBookmarks[$0]) }
+        records.insert(contentsOf: newRecords, at: 0)
+        preferencesService.recentFolderRecords = records
+        preferencesService.savePreferences()
+        Logger.success("Saved ordered folder/bookmark records", context: "security")
+    }
+
+    private func reassociateBookmark(from originalURL: URL, to resolvedURL: URL, bookmarkData: Data) {
+        preferencesService.recentFolderRecords = preferencesService.recentFolderRecords.map { record in
+            guard record.url == originalURL else { return record }
+            return RecentFolderRecord(url: resolvedURL, bookmarkData: bookmarkData)
+        }
+        preferencesService.savePreferences()
     }
     
     // MARK: - Cleanup
@@ -295,6 +329,14 @@ class SecurityScopedBookmarkManager: ObservableObject {
         return systemPaths.contains { systemPath in
             path.hasPrefix(systemPath)
         }
+    }
+
+    /// Existence is a sandboxed file operation. A temporary grant covers validation, then
+    /// is released before a usable root receives its separately owned background access.
+    private func isFolderAvailableForLaunch(_ url: URL) -> Bool {
+        guard !isSystemDirectory(url), launchStartAccess(url) else { return false }
+        defer { launchStopAccess(url) }
+        return launchFolderExists(url)
     }
 }
 
@@ -329,12 +371,11 @@ extension SecurityScopedBookmarkManager {
     
     /// Restore bookmarks on app launch (explicit call)
     func restoreBookmarksOnLaunch() {
-        Logger.start("Restoring \(preferencesService.folderBookmarks.count) bookmarks on launch", context: "security")
-        
-        let bookmarkDataArray = preferencesService.folderBookmarks
+        let records = preferencesService.recentFolderRecords.filter { $0.bookmarkData != nil }
+        Logger.start("Restoring \(records.count) bookmarks on launch", context: "security")
         
         // Check if we have any bookmarks to restore
-        guard !bookmarkDataArray.isEmpty else {
+        guard !records.isEmpty else {
             Logger.info("No bookmarks to restore", context: "security")
             return
         }
@@ -342,51 +383,41 @@ extension SecurityScopedBookmarkManager {
         var successCount = 0
         var failureCount = 0
         
-        for (index, bookmarkData) in bookmarkDataArray.enumerated() {
-            Logger.start("Attempting to restore bookmark \(index + 1)/\(bookmarkDataArray.count)", context: "security")
+        for (index, record) in records.enumerated() {
+            guard let bookmarkData = record.bookmarkData else { continue }
+            Logger.start("Attempting to restore bookmark \(index + 1)/\(records.count)", context: "security")
             
             do {
                 // Try to resolve the bookmark data first to check if it's valid
-                var isStale = false
-                let resolvedURL = try URL(
-                    resolvingBookmarkData: bookmarkData,
-                    options: [.withSecurityScope, .withoutUI],
-                    relativeTo: nil,
-                    bookmarkDataIsStale: &isStale
-                )
+                let resolvedURL = try resolveLaunchBookmark(bookmarkData)
                 
                 Logger.debug("Resolved bookmark to: \(resolvedURL.path)", context: "security")
                 
-                // Check if the resolved URL is accessible and not a system directory
-                if FileManager.default.fileExists(atPath: resolvedURL.path) && !isSystemDirectory(resolvedURL) {
-                    if restoreAccess(from: bookmarkData) {
+                if isFolderAvailableForLaunch(resolvedURL) {
+                    if restoreAccess(from: bookmarkData, originalURL: record.url) {
                         successCount += 1
                         Logger.success("Successfully restored bookmark \(index + 1)", context: "security")
                     } else {
                         failureCount += 1
-                        Logger.fail("Failed to restore bookmark \(index + 1)", context: "security")
+                        Logger.warning("Folder access is temporarily unavailable for bookmark \(index + 1)",
+                                       context: "security")
                     }
                 } else {
                     failureCount += 1
-                    if isSystemDirectory(resolvedURL) {
-                        Logger.fail("Bookmark \(index + 1) points to system directory: \(resolvedURL.path)", context: "security")
-                    } else {
-                        Logger.fail("Bookmark \(index + 1) points to non-existent path: \(resolvedURL.path)", context: "security")
-                    }
+                    Logger.warning("Folder unavailable at launch; retaining its bookmark for retry: \(resolvedURL.path)",
+                                   context: "security")
                 }
                 
             } catch {
                 failureCount += 1
-                Logger.fail("Failed to resolve bookmark \(index + 1)", error: error, context: "security")
+                // Resolution can fail while a provider or volume is offline. Keep the bounded
+                // durable record until explicit removal; this error does not prove corruption.
+                Logger.warning("Could not resolve bookmark \(index + 1); retaining it for retry: \(error)",
+                               context: "security")
             }
         }
         
         Logger.info("Restored \(successCount) bookmarks, \(failureCount) failed", context: "security")
         
-        // Clean up failed bookmarks
-        if failureCount > 0 {
-            Logger.info("Cleaning up failed bookmarks", context: "security")
-            saveBookmarksToPreferences()
-        }
     }
 }

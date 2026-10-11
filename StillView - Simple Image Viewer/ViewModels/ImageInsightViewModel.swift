@@ -6,6 +6,9 @@ final class ImageInsightViewModel: ObservableObject {
     @Published private(set) var state: ImageInsightState = .idle
     @Published private(set) var result: ImageInsightResult?
     @Published private(set) var generationError: String?
+    @Published private(set) var textState: ImageTextExtractionState = .idle
+    @Published private(set) var textResult: ImagePerceptionResult?
+    @Published private(set) var textExtractionError: String?
 
     private let service: any ImageInsightGenerating
     private let resultCacheLimit: Int
@@ -13,6 +16,9 @@ final class ImageInsightViewModel: ObservableObject {
     private var currentAvailability: ImageInsightAvailability = .unavailable(.unknown)
     private var generationTask: Task<Void, Never>?
     private var activeGenerationID: UUID?
+    private var textExtractionTask: Task<Void, Never>?
+    private var activeTextExtractionID: UUID?
+    private var cachedText: [ImageInsightInput: ImagePerceptionResult] = [:]
     private var cachedResults: [ImageInsightInput: ImageInsightResult] = [:]
     private var cacheOrder: [ImageInsightInput] = []
 
@@ -23,6 +29,11 @@ final class ImageInsightViewModel: ObservableObject {
 
     deinit {
         generationTask?.cancel()
+        textExtractionTask?.cancel()
+    }
+
+    var canExtractText: Bool {
+        currentInput != nil && activeGenerationID == nil && activeTextExtractionID == nil
     }
 
     func prepareForImage(_ input: ImageInsightInput?, availability: ImageInsightAvailability) {
@@ -31,15 +42,20 @@ final class ImageInsightViewModel: ObservableObject {
 
         if imageChanged {
             cancelGeneration(resetToIdle: false)
+            cancelTextExtraction()
             currentInput = input
             generationError = nil
+            textExtractionError = nil
             if let input {
                 discardOlderVersions(of: input)
                 result = cachedResults[input]
-                if result != nil { touchCacheEntry(input) }
+                textResult = cachedText[input]
+                if result != nil || textResult != nil { touchCacheEntry(input) }
             } else {
                 result = nil
+                textResult = nil
             }
+            restoreTextState()
         }
         currentAvailability = availability
         guard availability.isAvailable else {
@@ -70,13 +86,18 @@ final class ImageInsightViewModel: ObservableObject {
         }
 
         cancelGeneration(resetToIdle: false)
+        cancelTextExtraction()
         let generationID = UUID()
         activeGenerationID = generationID
         generationError = nil
+        textExtractionError = nil
+        textState = .extracting
         state = .generating
         generationTask = Task { [weak self, service, input] in
             do {
-                let result = try await service.generateInsight(for: input)
+                let result = try await service.generateInsight(for: input) { [weak self] perception in
+                    await self?.acceptText(perception, generationID: generationID, input: input)
+                }
                 try Task.checkCancellation()
                 guard let self, self.isCurrentGeneration(generationID, input: input) else { return }
                 self.finishGeneration()
@@ -90,6 +111,9 @@ final class ImageInsightViewModel: ObservableObject {
             } catch {
                 guard let self, self.isCurrentGeneration(generationID, input: input) else { return }
                 self.finishGeneration()
+                if error as? ImageInsightError == .inputChanged {
+                    self.invalidateCurrentResults(for: input)
+                }
                 self.generationError = error.localizedDescription
                 if let result = self.result {
                     self.state = .result(result)
@@ -105,9 +129,88 @@ final class ImageInsightViewModel: ObservableObject {
         activeGenerationID = nil
         generationTask?.cancel()
         generationTask = nil
+        if activeTextExtractionID == nil { restoreTextState() }
         if resetToIdle, case .generating = state {
             restoreResultOrIdle()
         }
+    }
+
+    func extractText() {
+        guard canExtractText, let input = currentInput else { return }
+        cancelTextExtraction()
+        let extractionID = UUID()
+        activeTextExtractionID = extractionID
+        textExtractionError = nil
+        textState = .extracting
+        textExtractionTask = Task { [weak self, service, input] in
+            do {
+                let perception = try await service.extractText(for: input)
+                try Task.checkCancellation()
+                guard let self, self.isCurrentExtraction(extractionID, input: input) else { return }
+                self.finishTextExtraction()
+                self.acceptText(perception, for: input)
+            } catch is CancellationError {
+                guard let self, self.isCurrentExtraction(extractionID, input: input) else { return }
+                self.finishTextExtraction()
+                self.restoreTextState()
+            } catch {
+                guard let self, self.isCurrentExtraction(extractionID, input: input) else { return }
+                self.finishTextExtraction()
+                if error as? ImageInsightError == .inputChanged {
+                    self.invalidateCurrentResults(for: input)
+                    self.restoreResultOrIdle()
+                }
+                self.textExtractionError = error.localizedDescription
+                if let textResult = self.textResult {
+                    self.textState = .result(textResult)
+                } else {
+                    self.textState = .failed(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    func cancelTextExtraction() {
+        activeTextExtractionID = nil
+        textExtractionTask?.cancel()
+        textExtractionTask = nil
+        restoreTextState()
+    }
+
+    private func isCurrentExtraction(_ extractionID: UUID, input: ImageInsightInput) -> Bool {
+        activeTextExtractionID == extractionID && currentInput == input
+    }
+
+    private func finishTextExtraction() {
+        activeTextExtractionID = nil
+        textExtractionTask = nil
+    }
+
+    private func acceptText(_ perception: ImagePerceptionResult, generationID: UUID, input: ImageInsightInput) {
+        guard isCurrentGeneration(generationID, input: input) else { return }
+        acceptText(perception, for: input)
+    }
+
+    private func acceptText(_ perception: ImagePerceptionResult, for input: ImageInsightInput) {
+        cachedText[input] = perception
+        touchCacheEntry(input)
+        trimCache()
+        textResult = perception
+        textExtractionError = nil
+        textState = .result(perception)
+    }
+
+    private func restoreTextState() {
+        textState = textResult.map(ImageTextExtractionState.result) ?? .idle
+    }
+
+    private func invalidateCurrentResults(for input: ImageInsightInput) {
+        result = nil
+        textResult = nil
+        cachedResults.removeValue(forKey: input)
+        cachedText.removeValue(forKey: input)
+        cacheOrder.removeAll { $0 == input }
+        restoreTextState()
     }
 
     private func isCurrentGeneration(_ generationID: UUID, input: ImageInsightInput) -> Bool {
@@ -117,6 +220,7 @@ final class ImageInsightViewModel: ObservableObject {
     private func finishGeneration() {
         activeGenerationID = nil
         generationTask = nil
+        restoreTextState()
     }
 
     private func restoreResultOrIdle() {
@@ -136,6 +240,7 @@ final class ImageInsightViewModel: ObservableObject {
         let obsoleteInputs = cacheOrder.filter { $0.imageURL == url && $0 != input }
         for obsoleteInput in obsoleteInputs {
             cachedResults.removeValue(forKey: obsoleteInput)
+            cachedText.removeValue(forKey: obsoleteInput)
         }
         cacheOrder.removeAll { obsoleteInputs.contains($0) }
     }
@@ -143,8 +248,14 @@ final class ImageInsightViewModel: ObservableObject {
     private func cache(_ result: ImageInsightResult, for input: ImageInsightInput) {
         cachedResults[input] = result
         touchCacheEntry(input)
+        trimCache()
+    }
+
+    private func trimCache() {
         while cacheOrder.count > resultCacheLimit {
-            cachedResults.removeValue(forKey: cacheOrder.removeFirst())
+            let oldest = cacheOrder.removeFirst()
+            cachedResults.removeValue(forKey: oldest)
+            cachedText.removeValue(forKey: oldest)
         }
     }
 

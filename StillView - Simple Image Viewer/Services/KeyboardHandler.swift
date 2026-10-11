@@ -27,12 +27,8 @@ class KeyboardHandler: ObservableObject {
     func handleKeyPress(_ event: NSEvent) -> Bool {
         guard let viewModel = imageViewerViewModel else { return false }
 
-        // Command shortcuts: only ⌘I is ours; everything else belongs to menus
+        // Menu commands own modified shortcuts, preserving native text editing.
         if event.modifierFlags.contains(.command) {
-            if event.charactersIgnoringModifiers?.lowercased() == "i" {
-                viewModel.showInspector(tab: .insights)
-                return true
-            }
             return false
         }
 
@@ -47,6 +43,25 @@ class KeyboardHandler: ObservableObject {
         return handleCharacterKeys(event: event, viewModel: viewModel)
     }
 
+    /// Native grid buttons own focus, so their containing grid forwards viewer keys here.
+    /// Modified shortcuts continue through the responder chain to menus and editing controls.
+    func handleGridKeyPress(_ press: KeyPress) -> KeyPress.Result {
+        guard let viewModel = imageViewerViewModel, viewModel.viewMode == .grid,
+              press.modifiers.isDisjoint(with: [.command, .control, .option]) else { return .ignored }
+        let keyCodes: [KeyEquivalent: UInt16] = [
+            .leftArrow: 123, .rightArrow: 124, .upArrow: 126, .downArrow: 125,
+            .home: 115, .end: 119, .pageUp: 116, .pageDown: 121,
+            .escape: 53, .return: 36, .space: 49, .delete: 51, .deleteForward: 117
+        ]
+        if let keyCode = keyCodes[press.key], handleSpecialKeys(keyCode: keyCode, viewModel: viewModel) {
+            return .handled
+        }
+        for character in press.characters.lowercased() {
+            if handleSingleCharacter(character, viewModel: viewModel) { return .handled }
+        }
+        return .ignored
+    }
+
     private func handleSpecialKeys(keyCode: UInt16, viewModel: ImageViewerViewModel) -> Bool {
         switch keyCode {
         case 123: // Left arrow
@@ -55,6 +70,11 @@ class KeyboardHandler: ObservableObject {
 
         case 124: // Right arrow
             viewModel.nextImage()
+            return true
+
+        case 125, 126: // Down / Up arrow
+            guard viewModel.viewMode == .grid else { return false }
+            viewModel.moveGridSelection(byRows: keyCode == 126 ? -1 : 1)
             return true
 
         case 115: // Home
@@ -188,6 +208,7 @@ class KeyboardHandler: ObservableObject {
     static func getKeyboardShortcuts() -> [String: String] {
         return [
             "← / →": "Navigate between images",
+            "↑ / ↓": "Move between rows in Grid",
             "Spacebar": "Next image / Stop slideshow",
             "Page Up/Down": "Navigate between images",
             "Home": "Go to first image",
@@ -239,5 +260,53 @@ extension View {
     /// - Returns: A view with keyboard handling enabled
     func keyboardHandling(_ keyboardHandler: KeyboardHandler, isEnabled: Bool = true) -> some View {
         self.modifier(KeyboardHandling(keyboardHandler: keyboardHandler, isEnabled: isEnabled))
+    }
+}
+
+// Commands follow the active browsing window rather than notifying every open scene.
+private struct ViewerModelKey: FocusedValueKey {
+    typealias Value = ImageViewerViewModel
+}
+
+private struct OpenFolderActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+private struct BackToFoldersActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+private struct ToggleSubfoldersActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+private struct RefreshFolderActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+extension FocusedValues {
+    var viewerModel: ImageViewerViewModel? {
+        get { self[ViewerModelKey.self] }
+        set { self[ViewerModelKey.self] = newValue }
+    }
+
+    var openFolderAction: (() -> Void)? {
+        get { self[OpenFolderActionKey.self] }
+        set { self[OpenFolderActionKey.self] = newValue }
+    }
+
+    var backToFoldersAction: (() -> Void)? {
+        get { self[BackToFoldersActionKey.self] }
+        set { self[BackToFoldersActionKey.self] = newValue }
+    }
+
+    var toggleSubfoldersAction: (() -> Void)? {
+        get { self[ToggleSubfoldersActionKey.self] }
+        set { self[ToggleSubfoldersActionKey.self] = newValue }
+    }
+
+    var refreshFolderAction: (() -> Void)? {
+        get { self[RefreshFolderActionKey.self] }
+        set { self[RefreshFolderActionKey.self] = newValue }
     }
 }

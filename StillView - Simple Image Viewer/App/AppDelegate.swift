@@ -19,6 +19,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     /// Reference to the main application window
     var mainWindow: NSWindow?
+
+    /// NSWindow keeps its delegate weak, so ownership must last as long as the window.
+    private var mainWindowDelegate: WindowDelegate?
     
     /// Tracks whether the main window is currently visible
     internal var isMainWindowVisible: Bool = true
@@ -60,6 +63,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         // Don't terminate when last window is closed - keep app running
         return false
+    }
+
+    @MainActor
+    func applicationWillTerminate(_ notification: Notification) {
+        // AppKit can exit as soon as this callback returns; persist before yielding the main thread.
+        windowStateManager.saveWindowState()
+        PerformanceOptimizationService.shared.stopMonitoring()
     }
     
     // MARK: - Window Management
@@ -205,8 +215,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func setupWindowDelegate(for window: NSWindow) {
-        // Set up window delegate to handle close behavior
         let windowDelegate = WindowDelegate(appDelegate: self)
+        mainWindowDelegate = windowDelegate
         window.delegate = windowDelegate
     }
     

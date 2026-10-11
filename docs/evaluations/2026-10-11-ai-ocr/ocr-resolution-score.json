@@ -1,0 +1,50 @@
+[
+  {
+    "dimension": 4096,
+    "decodedWidth": 1117,
+    "decodedHeight": 4096,
+    "acceptedLines": 83,
+    "exactLines": 40,
+    "exactTokenOccurrences": 508,
+    "expectedTokenOccurrences": 724,
+    "unexpectedTokenOccurrences": 188,
+    "elapsedSeconds": 0.40122016666282434,
+    "decodedPixelBytesUpperBound": 18300928
+  },
+  {
+    "dimension": 2048,
+    "decodedWidth": 559,
+    "decodedHeight": 2048,
+    "acceptedLines": 84,
+    "exactLines": 29,
+    "exactTokenOccurrences": 483,
+    "expectedTokenOccurrences": 724,
+    "unexpectedTokenOccurrences": 219,
+    "elapsedSeconds": 0.3198783749976428,
+    "decodedPixelBytesUpperBound": 4579328
+  },
+  {
+    "dimension": 4096,
+    "decodedWidth": 1117,
+    "decodedHeight": 4096,
+    "acceptedLines": 83,
+    "exactLines": 40,
+    "exactTokenOccurrences": 508,
+    "expectedTokenOccurrences": 724,
+    "unexpectedTokenOccurrences": 188,
+    "elapsedSeconds": 0.26209866667340975,
+    "decodedPixelBytesUpperBound": 18300928
+  },
+  {
+    "dimension": 2048,
+    "decodedWidth": 559,
+    "decodedHeight": 2048,
+    "acceptedLines": 84,
+    "exactLines": 29,
+    "exactTokenOccurrences": 483,
+    "expectedTokenOccurrences": 724,
+    "unexpectedTokenOccurrences": 219,
+    "elapsedSeconds": 0.2681554583396064,
+    "decodedPixelBytesUpperBound": 4579328
+  }
+]

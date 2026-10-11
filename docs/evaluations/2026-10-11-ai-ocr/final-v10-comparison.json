@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "recommendation": "Retain final v10. No additional model/code change requested by this fixed-corpus review.",
+  "candidate": "Final v10: bounded document kind/arrangement output with neutral rendering for mixed/scene enum choices; unchanged concise photo route.",
+  "method": "Frozen source-independent OCR criteria and manual actual-image/source grounding, 30 identical fixtures; no model inference or repo/app/test edits by this reviewer.",
+  "inputs": {
+    "baseline.jsonl": {
+      "path": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/baseline.jsonl",
+      "sha256": "6e3cb64144df5d8a6be7970f7cd77cb24559aa4c7c88fa96d4301df5f0d6ef2f"
+    },
+    "final-v9.jsonl": {
+      "path": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v9.jsonl",
+      "sha256": "b894134e7d937d8925f1f898bbbae09cbf166b76854984302f1c46af439d9aa6"
+    },
+    "final-v10.jsonl": {
+      "path": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10.jsonl",
+      "sha256": "b883ef836b77f5ebfd87ad2b15cc98fbad6a8a05188e23b9a6fece0c282130ba"
+    },
+    "ocr-ground-truth.json": {
+      "path": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/ocr-ground-truth.json",
+      "sha256": "7349e618b22e1bae967003e45b094ca1004899724588366475c645ad9ab24386"
+    },
+    "final-v10-source-sha256.txt": {
+      "path": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-source-sha256.txt",
+      "sha256": "91347862eaf2682150fb8acbe70c3fdeaac99dce52352dd86a2c6a1aa9b98082"
+    },
+    "final-v10-source-verification.json": {
+      "path": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-source-verification.json",
+      "sha256": "3072e13b1524fbe4b95de55703ade06919a59814a0c18c40f0021b5e58dd682e"
+    }
+  },
+  "fixtures": {
+    "same_file_inventory_across_runs": true,
+    "count": 30,
+    "source_photos": 14,
+    "synthetic_fixtures": 16
+  },
+  "completion": {
+    "baseline_generated_results": 28,
+    "v9_generated_results": 30,
+    "v10_generated_results": 30,
+    "count": 30,
+    "interpretation": "Completion only, not image/OCR accuracy."
+  },
+  "ocr_delivery": {
+    "baseline_exact_occurrences": 62,
+    "v9_exact_occurrences": 150,
+    "v10_exact_occurrences": 150,
+    "expected_occurrences": 154,
+    "baseline_complete_content_cases": 5,
+    "v9_complete_content_cases": 7,
+    "v10_complete_content_cases": 7,
+    "readable_cases": 10,
+    "v10_extra_occurrences": 0,
+    "newly_delivered_baseline_error_cases": [
+      "receipt-long.png",
+      "prompt-injection.png"
+    ],
+    "delivery_gain_occurrences": 88,
+    "interpretation": "Gain is retained receipt/prompt OCR delivery after historical errors; historical underlying extraction is unknown."
+  },
+  "ocr_extraction": {
+    "historical_observable_cases": 8,
+    "baseline_exact_occurrences": 62,
+    "v10_exact_occurrences_same_cases": 62,
+    "same_case_expected_occurrences": 66,
+    "v9_v10_exact_occurrences_all_readable_cases": 150,
+    "all_readable_expected_occurrences": 154,
+    "v9_v10_agree_on_all10_readable_cases": true,
+    "interpretation": "Recognition on eight historical observable cases is unchanged. No original-corpus underlying OCR accuracy improvement inferred from delivery gains."
+  },
+  "photo_comparison": {
+    "v9_v10_title_summary_and_optional_fields_identical": 14,
+    "photo_cases": 14,
+    "baseline_and_final_broad_subject_coverage": 14,
+    "baseline_visible_description_words": 585,
+    "final_visible_description_words": 393,
+    "baseline_median_words": 41.5,
+    "final_median_words": 27,
+    "scope": "Conciseness and broad subject usefulness. No broad description-accuracy improvement demonstrated.",
+    "manual_per_fixture_notes": {
+      "brick-alley.jpg": "Correct brick alley, plants, bins and distant buildings. Added cloudy sky is not established by the mostly overexposed sky opening. Old graffiti detail was visibly supported and useful.",
+      "canyon-sunset.jpg": "Correct red rock landscape, vegetation and cloudy sky. Removes exact sunset inference but omits distinctive warm light; rock positions are broadly consistent.",
+      "city-from-above.jpg": "Correct city, park, surrounding buildings and water within park. Does not mention high viewpoint or haze; old output also lacked these details.",
+      "fjord-overlook.jpg": "Correct rocky mountains, vegetation and water corridor. River-flow classification is unverified from pixels; old lake classification was also unverified. Loses old deep-blue detail and omits foreground visitors.",
+      "forest-waterfall.jpg": "Correct waterfall, cliff, green forest, pool and visible stream. Stream is the waterfall outflow toward the right; alongside wording is imprecise but broadly useful.",
+      "highland-road.jpg": "Correct winding road through green rocky slopes under cloud. Sharp curve/rock relationship adds useful specificity. No irrelevant road-length warning.",
+      "hilltop-castle.jpg": "Correct castle, wooded hill and distant landscape/clouds. No irrelevant elevation repetition field; second sentence still partly repeats forest context. White walls/spires omitted as in baseline.",
+      "lakeside-dock.jpg": "Correct wooden foreground pier/dock, calm lake, mountains, trees, grooves and adjacent wooden post. Weathered appearance is visibly supported; previous causal exposure-duration inference is removed.",
+      "northern-lights.jpg": "Correct green aurora-like light, night sky, silhouetted tree/hills and stars. Stars explicitly recognized instead of unnecessary exact-count uncertainty.",
+      "raspberries.jpg": "Correct red raspberries, white cup/saucer and wood. Overlapping fruit is visible. Previous unverifiable freshness claim and exact-count caveat are removed.",
+      "sea-foam.jpg": "Correct ocean, waves and white foam. Improvement over old generic light/dark water description; green water and overhead viewpoint still omitted.",
+      "storm-coast.jpg": "Correct dark coastal water/clouds and visible small waves. Previous claim of cloud motion is removed. Bright cloud opening still omitted.",
+      "valley-river.jpg": "Correct water/river, trees, rock mountains and reflections. Removes redundant forest-density field; flow remains plausible interpretation rather than directly measured motion.",
+      "winter-camp.jpg": "Correct yellow tent, snow, stone wall and mountain backdrop. Cold/open setting inference is consistent with snow. Snow on tent itself was a useful old detail now omitted."
+    }
+  },
+  "document_captions": {
+    "document-paragraph.png": {
+      "title": "Text document",
+      "summary": "A document contains blocks of text.",
+      "grounding": "Source-supported broad document/text or table/grid statement; no exact source values, numeric counts, alignment, wider scene or separate visual-object interpretation."
+    },
+    "receipt-long.png": {
+      "title": "Receipt",
+      "summary": "A receipt contains blocks of text.",
+      "grounding": "Source-supported broad document/text or table/grid statement; no exact source values, numeric counts, alignment, wider scene or separate visual-object interpretation."
+    },
+    "table-repeated-values.png": {
+      "title": "Table",
+      "summary": "A table contains text arranged in a grid.",
+      "grounding": "Source-supported broad document/text or table/grid statement; no exact source values, numeric counts, alignment, wider scene or separate visual-object interpretation."
+    },
+    "screenshot-error.png": {
+      "title": "Text document",
+      "summary": "Text is visible in the image.",
+      "grounding": "Source-supported broad document/text or table/grid statement; no exact source values, numeric counts, alignment, wider scene or separate visual-object interpretation."
+    },
+    "prompt-injection.png": {
+      "title": "Text document",
+      "summary": "A document contains text.",
+      "grounding": "Source-supported broad document/text or table/grid statement; no exact source values, numeric counts, alignment, wider scene or separate visual-object interpretation."
+    }
+  },
+  "bounded_document_checks": {
+    "known_v8_centering_count_claims_absent": true,
+    "v9_unsupported_wider_scene_caption_absent": true,
+    "v9_unsupported_visual_elements_caption_absent": true,
+    "wrong_source_merchant_date_price_item_quantity_claims": [],
+    "exact_alignment_or_numeric_layout_assertions": [],
+    "prompt_giraffe_specimen_interpretation_absent": true,
+    "specificity_tradeoff": "Broad descriptions intentionally provide less document semantic detail; exact content remains in OCR. No general prompt-injection resistance claim."
+  },
+  "table_ocr": {
+    "exact_cells": 15,
+    "expected_cells": 15,
+    "quantity_1_occurrences": 3,
+    "price_2_dollar_occurrences": 3,
+    "total_quantity": "3",
+    "total_price": "$6.00",
+    "limitation": "Transcript stays column-major; token correctness does not establish row association."
+  },
+  "source_provenance": {
+    "independent_reviewer": "verify_final_v10_sources",
+    "evidence": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-source-verification.json",
+    "application_sources_verified": 5,
+    "all_application_source_snapshots_match_current_repo_byte_for_byte": true,
+    "all_manifest_hashes_match_including_runner": true,
+    "runner_hash": "1609aae0e159ee335b61ae88151fc2edf114518d6f19117a0aa335e33deb39b6",
+    "verification_time_utc": "2026-10-11T18:40:54.477638+00:00",
+    "scope": "Five compiled AI pipeline source files plus runner hash. CLI ImageFile/logging/security-scope adapters differ and are documented; no compiled-binary provenance or full app integration claim."
+  },
+  "retained_limits": [
+    "Circle-to-oval errors remain in both geometric fixtures.",
+    "STOP/東京駅/7 false centering/area claims persist on the image route.",
+    "Chart white background is described as black.",
+    "OCR digit 7, character 水 and chart A/B remain missing.",
+    "Fjord/river classification, flow interpretation, abstract rainbow terminology and some photo specificity remain imperfect.",
+    "No generated tags/details; this is product simplification, not improved tag quality.",
+    "Partial-extraction warning for 水 is retained.",
+    "One fixed local corpus; no people-focused, RAW, HEIC or wide-gamut coverage.",
+    "Separate tall dense OCR resolution probe is bounded and retains substantial errors."
+  ],
+  "evidence_files": [
+    "final-v10-versus-baseline-ocr.json",
+    "final-v10-versus-v9-ocr.json",
+    "final-v10-source-verification.json",
+    "ocr-resolution-independent-score.json"
+  ]
+}

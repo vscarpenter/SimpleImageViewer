@@ -3,11 +3,14 @@ import SwiftUI
 
 struct ContentView: View {
     // MARK: - State Properties
+    let windowStateManager: WindowStateManager
     @StateObject private var imageViewerViewModel = ImageViewerViewModel()
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
     @StateObject private var folderPicker = FolderSelectionViewModel()
     @State private var showImageViewer = false
     @State private var restoredImageIndex: Int?
+    @State private var restoringState: WindowState?
+    @State private var restorationApplied = false
     @FocusState private var isStageFocused: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -18,6 +21,17 @@ struct ContentView: View {
 
     // MARK: - Body
     var body: some View {
+        observedContent
+            .focusedSceneObject(imageViewerViewModel)
+            .focusedSceneValue(\.openFolderAction, { openFolder() })
+            .focusedSceneValue(\.backToFoldersAction, { returnToFolderSelection() })
+            .focusedSceneValue(\.toggleSubfoldersAction, {
+                folderPicker.setIncludeSubfolders(!folderPicker.includeSubfolders)
+            })
+            .focusedSceneValue(\.refreshFolderAction, { folderPicker.refreshCurrentFolder() })
+    }
+
+    private var observedContent: some View {
         mainContent
             .background(Color(NSColor.windowBackgroundColor))
             .overlay(alignment: .topTrailing) {
@@ -39,14 +53,17 @@ struct ContentView: View {
                 returnToFolderSelection()
             }
             .onReceive(NotificationCenter.default.publisher(for: .openFolderPanel)) { _ in
-                restoredImageIndex = nil
-                folderPicker.selectFolder()
+                openFolder()
             }
             .onChange(of: imageViewerViewModel.shouldNavigateToFolderSelection) { _, requested in
                 if requested { returnToFolderSelection() }
             }
             .onChange(of: folderPicker.isScanning) { _, scanning in
-                if scanning { imageViewerViewModel.stopSlideshow() }
+                if scanning { imageViewerViewModel.stopSlideshow() } else if !imageViewerViewModel.isCollectionComplete {
+                    restoringState = nil
+                    restoredImageIndex = nil
+                    imageViewerViewModel.restoreSelectedImage(path: nil)
+                }
             }
             .onChange(of: folderPicker.currentError) { _, error in
                 if error != nil { restoredImageIndex = nil }
@@ -54,6 +71,20 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .restoreWindowState)) { notification in
                 handleWindowStateRestoration(notification)
             }
+            .modifier(FolderErrorAlert(folderPicker: folderPicker))
+            .background(InvisibleKeyCapture(
+                keyHandler: KeyboardHandler(imageViewerViewModel: imageViewerViewModel),
+                isEnabled: showImageViewer && imageViewerViewModel.totalImages > 0
+                    && !folderPicker.isShowingFolderPicker
+                    && folderPicker.currentError == nil && errorHandlingService.modalError == nil
+                    && !errorHandlingService.showPermissionDialog
+            ))
+    }
+
+    private struct FolderErrorAlert: ViewModifier {
+        @ObservedObject var folderPicker: FolderSelectionViewModel
+        func body(content: Content) -> some View {
+            content
             .alert("Unable to Open Folder", isPresented: Binding(
                 get: { folderPicker.currentError != nil },
                 set: { if !$0 { folderPicker.clearError() } }
@@ -62,13 +93,7 @@ struct ContentView: View {
             } message: { error in
                 Text([error.localizedDescription, error.recoverySuggestion].compactMap { $0 }.joined(separator: "\n\n"))
             }
-            .background(InvisibleKeyCapture(
-                keyHandler: KeyboardHandler(imageViewerViewModel: imageViewerViewModel),
-                isEnabled: showImageViewer && imageViewerViewModel.totalImages > 0
-                    && !folderPicker.isShowingFolderPicker && !folderPicker.isScanning
-                    && folderPicker.currentError == nil && errorHandlingService.modalError == nil
-                    && !errorHandlingService.showPermissionDialog
-            ))
+        }
     }
     
     // MARK: - View Components
@@ -77,7 +102,7 @@ struct ContentView: View {
     private var mainContent: some View {
         GeometryReader { geometry in
             ZStack {
-                if showImageViewer && imageViewerViewModel.totalImages > 0 {
+                if showImageViewer {
                     imageViewerInterface(geometry: geometry)
                         // Toolbar owns the (hidden) title-bar region
                         .ignoresSafeArea(edges: .top)
@@ -98,56 +123,50 @@ struct ContentView: View {
         VStack(spacing: 0) {
             StudioToolbar(viewModel: imageViewerViewModel, folderPicker: folderPicker)
 
-            if folderPicker.isScanning {
+            if folderPicker.isScanning || imageViewerViewModel.isProjectingCollection {
                 HStack(spacing: 10) {
                     ProgressView().controlSize(.small)
-                    Text("Opening folder…")
+                    Text(folderPicker.isScanning
+                         ? "\(folderPicker.imageCount) images found · scanning…" : "Updating collection…")
                     Spacer()
-                    Button("Cancel") { folderPicker.cancelScanning() }
+                    if folderPicker.isScanning { Button("Cancel") { folderPicker.cancelScanning() } }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
             }
 
-            HStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    if imageViewerViewModel.viewMode == .grid {
-                        GridPane(viewModel: imageViewerViewModel)
-                    } else {
-                        ZStack {
-                            EnhancedImageDisplayView(viewModel: imageViewerViewModel)
-                                .onContinuousHover { phase in
-                                    switch phase {
-                                    case .active:
-                                        stageArrowsVisible = true
-                                        scheduleStageArrowsHide()
-                                    case .ended:
-                                        stageArrowsVisible = false
-                                        stageArrowsHideTask?.cancel()
-                                    }
-                                }
-                            StageHoverArrows(
-                                viewModel: imageViewerViewModel,
-                                isVisible: stageArrowsVisible
-                            )
-                        }
-
-                        if imageViewerViewModel.viewMode.showsFilmstrip {
-                            FilmstripView(viewModel: imageViewerViewModel)
-                        }
-                    }
+            if !imageViewerViewModel.isCollectionComplete && !folderPicker.isScanning {
+                HStack {
+                    Text("Scan stopped. Showing discovered images.")
+                    Spacer()
+                    Button("Refresh Folder") { folderPicker.refreshCurrentFolder() }
                 }
-                .frame(maxWidth: .infinity)
-                .focusable()
-                .focusEffectDisabled()
-                .focused($isStageFocused)
-                .focusedValue(\.viewerKeyboardFocus, .viewer)
-                .simultaneousGesture(TapGesture().onEnded { isStageFocused = true })
-
-                if imageViewerViewModel.inspectorVisible {
-                    InspectorView(viewModel: imageViewerViewModel)
-                        .transition(.move(edge: .trailing))
+                .font(.callout)
+                .padding(10)
+            }
+            if !imageViewerViewModel.scanIssues.isEmpty {
+                DisclosureGroup("Some folders could not be read (\(imageViewerViewModel.scanIssues.count))") {
+                    ScrollView {
+                        VStack(alignment: .leading) {
+                            ForEach(Array(imageViewerViewModel.scanIssues.enumerated()), id: \.offset) { _, issue in
+                                Text("\(imageViewerViewModel.relativePath(for: issue.folderURL)): \(issue.message)")
+                                    .textSelection(.enabled)
+                            }
+                        }
+                    }.frame(maxHeight: 100)
+                    Button("Retry") { folderPicker.refreshCurrentFolder() }
                 }
+                .font(.callout)
+                .padding(10)
+                .focusedValue(\.viewerKeyboardFocus, .control)
+            }
+
+            HSplitView {
+                if imageViewerViewModel.includeSubfolders && imageViewerViewModel.folderSidebarVisible {
+                    FolderBrowserSidebar(viewModel: imageViewerViewModel)
+                        .frame(minWidth: 180, idealWidth: 220, maxWidth: 300)
+                }
+                viewerWorkspace
             }
             .animation(
                 reduceMotion ? nil : .easeInOut(duration: 0.3),
@@ -156,6 +175,51 @@ struct ContentView: View {
         }
     }
     
+    private var viewerWorkspace: some View {
+        HStack(spacing: 0) {
+        VStack(spacing: 0) {
+            if imageViewerViewModel.totalImages == 0 {
+                browsingEmptyState
+            } else if imageViewerViewModel.viewMode == .grid {
+                GridPane(viewModel: imageViewerViewModel)
+            } else {
+                ZStack {
+                    EnhancedImageDisplayView(viewModel: imageViewerViewModel)
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active:
+                                stageArrowsVisible = true
+                                scheduleStageArrowsHide()
+                            case .ended:
+                                stageArrowsVisible = false
+                                stageArrowsHideTask?.cancel()
+                            }
+                        }
+                    StageHoverArrows(
+                        viewModel: imageViewerViewModel,
+                        isVisible: stageArrowsVisible
+                    )
+                }
+
+                if imageViewerViewModel.viewMode.showsFilmstrip {
+                    FilmstripView(viewModel: imageViewerViewModel)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .focusable()
+        .focusEffectDisabled()
+        .focused($isStageFocused)
+        .focusedValue(\.viewerKeyboardFocus, .viewer)
+        .simultaneousGesture(TapGesture().onEnded { isStageFocused = true })
+
+        if imageViewerViewModel.inspectorVisible {
+            InspectorView(viewModel: imageViewerViewModel)
+                .transition(.move(edge: .trailing))
+        }
+        }
+    }
+
     @ViewBuilder
     private var folderSelectionInterface: some View {
         FolderSelectionView(viewModel: folderPicker)
@@ -288,6 +352,7 @@ struct ContentView: View {
     }
 
     private func setupApplication() {
+        imageViewerViewModel.enableAsynchronousBrowsing()
         restoreApplicationState()
         setupWindowStateManager()
     }
@@ -313,39 +378,53 @@ struct ContentView: View {
     }
     
     private func setupWindowStateManager() {
-        // Get the app delegate and set up the window state manager with the view model
-        if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-            Task { @MainActor in
-                appDelegate.windowStateManager.setImageViewerViewModel(imageViewerViewModel)
-            }
-        }
+        // SwiftUI installs its own NSApplication delegate bridge; use the adaptor-owned manager directly.
+        windowStateManager.setImageViewerViewModel(imageViewerViewModel)
     }
     
     private func returnToFolderSelection() {
         folderPicker.cancelScanning()
+        imageViewerViewModel.cancelImageInsightGeneration()
+        imageViewerViewModel.cancelImageTextExtraction()
         restoredImageIndex = nil
+        restoringState = nil
         imageViewerViewModel.stopSlideshow()
         imageViewerViewModel.shouldNavigateToFolderSelection = false
         showImageViewer = false
     }
 
-    private func handleFolderSelection(_ content: FolderContent) {
-        let folderContent = FolderContent(
-            folderURL: content.folderURL,
-            imageFiles: content.imageFiles,
-            currentIndex: restoredImageIndex ?? content.currentIndex
-        )
+    private func openFolder() {
+        restoringState = nil
         restoredImageIndex = nil
-        imageViewerViewModel.shouldNavigateToFolderSelection = false
-        imageViewerViewModel.loadFolderContent(folderContent)
-        showImageViewer = folderContent.hasImages
+        restorationApplied = false
+        imageViewerViewModel.restoreSelectedImage(path: nil)
+        folderPicker.selectFolder()
+    }
 
-        if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-            appDelegate.windowStateManager.updateFolderState(
-                folderURL: folderContent.folderURL,
-                imageIndex: folderContent.currentIndex
-            )
+    private func handleFolderSelection(_ content: FolderContent) {
+        if let state = restoringState,
+           state.lastFolderPath.map({ URL(fileURLWithPath: $0).standardizedFileURL.path })
+                != content.folderURL.standardizedFileURL.path {
+            restoringState = nil
+            restoredImageIndex = nil
         }
+        imageViewerViewModel.shouldNavigateToFolderSelection = false
+        imageViewerViewModel.loadFolderContent(content.withCurrentIndex(restoredImageIndex ?? content.currentIndex))
+        if let state = restoringState, !restorationApplied {
+            state.applyUIState(to: imageViewerViewModel)
+            imageViewerViewModel.restoreSelectedImage(path: state.restoredSelectedImageURL?.path)
+            restorationApplied = true
+        }
+        if content.isComplete {
+            restoredImageIndex = nil
+            restoringState = nil
+        }
+        showImageViewer = true
+
+        windowStateManager.updateFolderState(
+            folderURL: content.folderURL,
+            imageIndex: imageViewerViewModel.currentIndex
+        )
     }
 
     private func handleWindowStateRestoration(_ notification: Notification) {
@@ -355,9 +434,106 @@ struct ContentView: View {
             return
         }
         restoredImageIndex = imageIndex
-        folderPicker.restoreLastFolder(folderURL)
+        restorationApplied = false
+        restoringState = windowStateManager.currentWindowState
+        folderPicker.restoreLastFolder(folderURL, includeSubfolders: restoringState?.includeSubfolders ?? false)
     }
 
+    private var browsingEmptyState: some View {
+        ContentUnavailableView {
+            Label(emptyBrowsingTitle, systemImage: "photo.on.rectangle")
+        } description: {
+            Text(folderPicker.isScanning ? "Images will appear as they are found." : "Choose another folder or adjust the browsing scope.")
+        } actions: {
+            if imageViewerViewModel.filteredFolderURL != nil || !imageViewerViewModel.browserSearchText.isEmpty {
+                Button("Clear Filter") { imageViewerViewModel.clearBrowsingFilter() }
+            } else if !imageViewerViewModel.includeSubfolders {
+                Button("Include Subfolders") { folderPicker.setIncludeSubfolders(true) }
+            }
+            Button("Choose Folder…") { folderPicker.selectFolder() }
+        }
+        .focusedValue(\.viewerKeyboardFocus, .control)
+    }
+
+    private var emptyBrowsingTitle: String {
+        if folderPicker.isScanning { return "Finding images…" }
+        if imageViewerViewModel.filteredFolderURL != nil || !imageViewerViewModel.browserSearchText.isEmpty {
+            return "No matching images"
+        }
+        return imageViewerViewModel.includeSubfolders ? "No images in this folder tree" : "No images in this folder"
+    }
+
+}
+
+private struct FolderBrowserNode: Identifiable {
+    let url: URL
+    let children: [FolderBrowserNode]?
+    var id: URL { url }
+}
+
+private struct FolderBrowserSidebar: View {
+    @ObservedObject var viewModel: ImageViewerViewModel
+    @FocusState private var focusedControl: SidebarFocus?
+
+    private enum SidebarFocus: Hashable {
+        case search
+        case folders
+    }
+
+    private var tree: [FolderBrowserNode] {
+        guard let root = viewModel.currentFolderURL else { return [] }
+        let folders = Set(viewModel.discoveredFolders).filter { $0 != root }
+        let grouped = Dictionary(grouping: folders) { $0.deletingLastPathComponent() }
+        func children(of parent: URL) -> [FolderBrowserNode] {
+            (grouped[parent] ?? []).sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
+                .map { url in
+                    let descendants = children(of: url)
+                    return FolderBrowserNode(url: url, children: descendants.isEmpty ? nil : descendants)
+                }
+        }
+        return children(of: root)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TextField("Filter images…", text: $viewModel.browserSearchText)
+                .textFieldStyle(.roundedBorder)
+                .focused($focusedControl, equals: .search)
+                .focusedValue(\.viewerKeyboardFocus, .textInput)
+                .accessibilityLabel("Filter by filename or relative folder path")
+                .padding(10)
+            List(selection: Binding(
+                get: { viewModel.filteredFolderURL ?? viewModel.currentFolderURL },
+                set: { folderURL in
+                    // Establish list focus before projection can replace the selected grid tile.
+                    focusedControl = .folders
+                    viewModel.filteredFolderURL = folderURL == viewModel.currentFolderURL ? nil : folderURL
+                }
+            )) {
+                if let root = viewModel.currentFolderURL {
+                    Label("All images (\(viewModel.discoveredImageCount))", systemImage: "photo.on.rectangle")
+                        .tag(root)
+                }
+                OutlineGroup(tree, children: \.children) { node in
+                    HStack {
+                        Label(node.url.lastPathComponent, systemImage: "folder")
+                        Spacer()
+                        Text("\(viewModel.folderImageCounts[node.url, default: 0])")
+                            .foregroundStyle(.secondary).monospacedDigit()
+                    }
+                    .tag(node.url)
+                    .help("\(viewModel.relativePath(for: node.url)) and its subfolders")
+                    .accessibilityLabel("\(viewModel.relativePath(for: node.url)), \(viewModel.folderImageCounts[node.url, default: 0]) images including subfolders")
+                }
+            }
+            .listStyle(.sidebar)
+            .focused($focusedControl, equals: .folders)
+            .focusedValue(\.viewerKeyboardFocus, .control)
+            .simultaneousGesture(TapGesture().onEnded { focusedControl = .folders })
+            .accessibilityLabel("Folders")
+        }
+        .focusedValue(\.viewerKeyboardFocus, .control)
+    }
 }
 
 // MARK: - Notification Names
@@ -372,6 +548,7 @@ extension Notification.Name {
 /// so this overlay never intercepts stage gestures. The far-side arrow — the
 /// direction you can't navigate — idles at 35 % opacity.
 private struct StageHoverArrows: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var viewModel: ImageViewerViewModel
     let isVisible: Bool
 
@@ -387,7 +564,7 @@ private struct StageHoverArrows: View {
         }
         .padding(.horizontal, 16)
         .opacity(isVisible ? 1.0 : 0.0)
-        .animation(.easeInOut(duration: 0.25), value: isVisible)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: isVisible)
         .allowsHitTesting(isVisible)
     }
 
@@ -418,6 +595,6 @@ private struct StageHoverArrows: View {
 
 // MARK: - Preview
 #Preview {
-    ContentView()
+    ContentView(windowStateManager: WindowStateManager())
         .frame(width: 1000, height: 700)
 }

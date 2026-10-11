@@ -135,7 +135,9 @@ private struct InspectorInfoTab: View {
             metadataSnapshot = nil
             guard let url = requestID.url else { return }
             let service = ImageMetadataService()
-            let extracted = await Task.detached(priority: .userInitiated) {
+            let resourceLease = SecurityScopedAccessManager.shared.acquireWorkerAccess(for: url)
+            let extracted = await Task.detached(priority: .userInitiated) { [resourceLease] in
+                defer { withExtendedLifetime(resourceLease) {} }
                 var freshURL = url
                 freshURL.removeAllCachedResourceValues()
                 return (metadata: service.extractMetadata(from: freshURL), file: try? ImageFile(url: freshURL))
@@ -387,6 +389,11 @@ private struct InspectorInsightsTab: View {
                 VStack(alignment: .leading, spacing: 18) {
                     attributionRow
                     stateContent
+                    independentTextContent
+                    if let result = displayedResult {
+                        tagSection(result.tags)
+                        aboutSection
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
@@ -397,6 +404,7 @@ private struct InspectorInsightsTab: View {
         .onChange(of: viewModel.currentImageFile?.url) { _, _ in resetPresentation() }
         .onChange(of: viewModel.currentImageRequestID) { _, _ in resetPresentation() }
         .onChange(of: insightViewModel.result) { _, _ in copyConfirmation = nil }
+        .onChange(of: insightViewModel.textResult) { _, _ in copyConfirmation = nil }
         .task(id: copyConfirmation) {
             guard copyConfirmation != nil else { return }
             do {
@@ -415,6 +423,7 @@ private struct InspectorInsightsTab: View {
             privacyNote
         case .unavailable(let message):
             unavailableSection(message)
+            if let result = insightViewModel.result { resultSection(result) }
         case .generating:
             if let result = insightViewModel.result {
                 resultSection(result)
@@ -435,7 +444,7 @@ private struct InspectorInsightsTab: View {
         switch insightViewModel.state {
         case .result(let result): return result
         case .generating: return insightViewModel.result
-        default: return nil
+        default: return insightViewModel.result
         }
     }
 
@@ -528,13 +537,10 @@ private struct InspectorInsightsTab: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
                     .accessibilityIdentifier("insights.description")
-                specificLimitations(result.limitations)
+                specificLimitations(result.limitations.filter { $0 != ImagePerceptionResult.incompleteTextMessage })
             }
 
             notableDetailsSection(result.usefulDetails)
-            recognizedTextSection(result.recognizedText)
-            tagSection(result.tags)
-            aboutSection
         }
     }
 
@@ -557,6 +563,42 @@ private struct InspectorInsightsTab: View {
                             .textSelection(.enabled)
                     }
                     .font(.system(size: 12))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var independentTextContent: some View {
+        if let message = insightViewModel.textExtractionError {
+            VStack(alignment: .leading, spacing: 6) {
+                Label(insightViewModel.textResult == nil ? "Couldn’t extract text" : "Couldn’t refresh text",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.system(size: 12, weight: .medium))
+                    .accessibilityAddTraits(.isHeader)
+                Text(insightViewModel.textResult == nil ? message : "Your previous text is still shown. \(message)")
+                    .font(.system(size: 12))
+                    .foregroundColor(.appSecondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityIdentifier("insights.textError")
+        }
+        if let perception = insightViewModel.textResult {
+            VStack(alignment: .leading, spacing: 8) {
+                if perception.textWasTruncated {
+                    Text(ImagePerceptionResult.incompleteTextMessage)
+                        .font(.system(size: 11))
+                        .foregroundColor(.appSecondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("insights.partialText")
+                }
+                if perception.recognizedText.isEmpty {
+                    Text(perception.textWasTruncated ? "No confident text found." : "No readable text found.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.appSecondaryText)
+                        .accessibilityIdentifier("insights.noText")
+                } else {
+                    recognizedTextSection(perception.recognizedText)
                 }
             }
         }
@@ -588,7 +630,7 @@ private struct InspectorInsightsTab: View {
                     .accessibilityLabel("Copy text")
                     .accessibilityValue(copyConfirmation?.target == .recognizedText ? "Copied" : "")
                     .accessibilityIdentifier("insights.copyText")
-                    .help("Copy all recognized text in its original reading order")
+                    .help("Copy all recognized text as shown")
                 }
                 .padding(.top, 8)
             } label: {
@@ -661,6 +703,20 @@ private struct InspectorInsightsTab: View {
                 generationProgress
             }
 
+            if isExtractingText {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Reading text…")
+                        .font(.system(size: 12))
+                        .foregroundColor(.appSecondaryText)
+                    Spacer(minLength: 0)
+                    Button("Cancel") { viewModel.cancelImageTextExtraction() }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel("Cancel text extraction")
+                        .accessibilityIdentifier("insights.cancelText")
+                }
+            }
+
             if let result = displayedResult {
                 HStack(spacing: 8) {
                     copyDescriptionButton(result.summary)
@@ -673,6 +729,18 @@ private struct InspectorInsightsTab: View {
                 analyzeButton
                     .frame(maxWidth: .infinity)
             }
+
+            Button {
+                viewModel.extractImageText()
+            } label: {
+                Label(insightViewModel.textResult == nil ? "Extract text" : "Refresh text",
+                      systemImage: "text.viewfinder")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(!insightViewModel.canExtractText)
+            .accessibilityIdentifier("insights.extractText")
+            .help("Recognize text on this Mac, even when AI Insights is unavailable")
         }
         .padding(12)
         .frame(maxWidth: .infinity)
@@ -738,6 +806,11 @@ private struct InspectorInsightsTab: View {
 
     private var isGenerating: Bool {
         if case .generating = insightViewModel.state { return true }
+        return false
+    }
+
+    private var isExtractingText: Bool {
+        if case .extracting = insightViewModel.textState { return !isGenerating }
         return false
     }
 

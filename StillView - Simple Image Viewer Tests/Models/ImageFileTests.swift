@@ -142,6 +142,31 @@ final class ImageFileTests: XCTestCase {
         XCTAssertEqual(set.count, 1)
     }
 
+    func test_identity_survivesRescanAndStandardizedPathSpelling() throws {
+        let original = try ImageFile(url: testImageURL)
+        let rescanned = try ImageFile(url: testImageURL)
+        let equivalentURL = tempDirectory.appendingPathComponent("unused/../test.jpg")
+        let equivalent = ImageFile(
+            url: equivalentURL, name: "test.jpg", type: .jpeg, size: original.size,
+            creationDate: original.creationDate, modificationDate: original.modificationDate
+        )
+
+        XCTAssertEqual(original.id, rescanned.id)
+        XCTAssertEqual(original.id, equivalent.id)
+        XCTAssertEqual(original, equivalent)
+        XCTAssertEqual(Set([original, rescanned, equivalent]).count, 1)
+    }
+
+    func test_identity_keepsDuplicateNamesInDifferentFoldersDistinct() {
+        let first = ImageFile(url: tempDirectory.appendingPathComponent("one/same.jpg"), name: "same.jpg",
+                              type: .jpeg, size: 1, creationDate: .distantPast, modificationDate: .distantPast)
+        let second = ImageFile(url: tempDirectory.appendingPathComponent("two/same.jpg"), name: "same.jpg",
+                               type: .jpeg, size: 1, creationDate: .distantPast, modificationDate: .distantPast)
+
+        XCTAssertNotEqual(first.id, second.id)
+        XCTAssertEqual(Set([first, second]).count, 2)
+    }
+
     func testUnsupportedImageType() throws {
         // Given a non-image file
         let textURL = tempDirectory.appendingPathComponent("test.txt")

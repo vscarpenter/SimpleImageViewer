@@ -1,0 +1,116 @@
+{
+  "verifiedAtUTC": "2026-10-11T18:40:54.477638+00:00",
+  "scope": "Independent read-only byte-for-byte verification of all five final-v10 production AI application source snapshots against current repository sources; CLI adapters documented separately.",
+  "repositoryRoot": "/Users/vinnycarpenter/Projects/SimpleImageViewer",
+  "sourceDirectory": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources",
+  "manifestPath": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-source-sha256.txt",
+  "manifestSHA256": "91347862eaf2682150fb8acbe70c3fdeaac99dce52352dd86a2c6a1aa9b98082",
+  "applicationSourceCount": 5,
+  "allFrozenApplicationSourcesExactlyEqualCurrentRepository": true,
+  "allManifestEntriesMatchCurrentFrozenFiles": true,
+  "manifestInventoryEqualsSnapshotAndRunnerInventory": true,
+  "missingManifestPaths": [],
+  "unexpectedManifestPaths": [],
+  "applicationSources": [
+    {
+      "snapshotPath": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources/AppleIntelligenceInsightsService.swift",
+      "repositoryPath": "/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer/Services/AppleIntelligenceInsightsService.swift",
+      "manifestSHA256": "c72695518f0d98527d566d1415a6f4ac60136fe9c82a8e03fda0e96e985842f0",
+      "snapshotSHA256": "c72695518f0d98527d566d1415a6f4ac60136fe9c82a8e03fda0e96e985842f0",
+      "repositorySHA256": "c72695518f0d98527d566d1415a6f4ac60136fe9c82a8e03fda0e96e985842f0",
+      "snapshotBytes": 16735,
+      "repositoryBytes": 16735,
+      "manifestMatchesSnapshot": true,
+      "byteForByteEqual": true,
+      "repositoryStatStableDuringRead": true
+    },
+    {
+      "snapshotPath": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources/ImageInsightCore.swift",
+      "repositoryPath": "/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer/Models/ImageInsightCore.swift",
+      "manifestSHA256": "d6d276bfa4211a3121983512aef61442740aa20ace6a5d833365c023b14077db",
+      "snapshotSHA256": "d6d276bfa4211a3121983512aef61442740aa20ace6a5d833365c023b14077db",
+      "repositorySHA256": "d6d276bfa4211a3121983512aef61442740aa20ace6a5d833365c023b14077db",
+      "snapshotBytes": 10905,
+      "repositoryBytes": 10905,
+      "manifestMatchesSnapshot": true,
+      "byteForByteEqual": true,
+      "repositoryStatStableDuringRead": true
+    },
+    {
+      "snapshotPath": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources/ImageMetadataService.swift",
+      "repositoryPath": "/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer/Services/ImageMetadataService.swift",
+      "manifestSHA256": "4ea8478c45556323b8138a56a6a88163829770996f0c4c67cbf6ab82c83310fd",
+      "snapshotSHA256": "4ea8478c45556323b8138a56a6a88163829770996f0c4c67cbf6ab82c83310fd",
+      "repositorySHA256": "4ea8478c45556323b8138a56a6a88163829770996f0c4c67cbf6ab82c83310fd",
+      "snapshotBytes": 15275,
+      "repositoryBytes": 15275,
+      "manifestMatchesSnapshot": true,
+      "byteForByteEqual": true,
+      "repositoryStatStableDuringRead": true
+    },
+    {
+      "snapshotPath": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources/ImagePerceptionService.swift",
+      "repositoryPath": "/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer/Services/ImagePerceptionService.swift",
+      "manifestSHA256": "b29834b9048d37d29af771d4c77cef7d5408378d57574e1eef8b877bf89a13af",
+      "snapshotSHA256": "b29834b9048d37d29af771d4c77cef7d5408378d57574e1eef8b877bf89a13af",
+      "repositorySHA256": "b29834b9048d37d29af771d4c77cef7d5408378d57574e1eef8b877bf89a13af",
+      "snapshotBytes": 11493,
+      "repositoryBytes": 11493,
+      "manifestMatchesSnapshot": true,
+      "byteForByteEqual": true,
+      "repositoryStatStableDuringRead": true
+    },
+    {
+      "snapshotPath": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources/InsightOutputValidator.swift",
+      "repositoryPath": "/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer/Services/InsightOutputValidator.swift",
+      "manifestSHA256": "c079e06a7aeae06a4ec0ff5317e5ff3851472c94024aff0684d53643934b4e1e",
+      "snapshotSHA256": "c079e06a7aeae06a4ec0ff5317e5ff3851472c94024aff0684d53643934b4e1e",
+      "repositorySHA256": "c079e06a7aeae06a4ec0ff5317e5ff3851472c94024aff0684d53643934b4e1e",
+      "snapshotBytes": 2890,
+      "repositoryBytes": 2890,
+      "manifestMatchesSnapshot": true,
+      "byteForByteEqual": true,
+      "repositoryStatStableDuringRead": true
+    }
+  ],
+  "runner": {
+    "path": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/Runner.swift",
+    "manifestSHA256": "1609aae0e159ee335b61ae88151fc2edf114518d6f19117a0aa335e33deb39b6",
+    "currentSHA256": "1609aae0e159ee335b61ae88151fc2edf114518d6f19117a0aa335e33deb39b6",
+    "manifestMatchesRunner": true,
+    "bytes": 5819,
+    "classification": "CLI-only adapter and evaluation entry point; no corresponding production Runner.swift snapshot is claimed."
+  },
+  "cliOnlyAdapters": [
+    {
+      "symbols": "ImageFile",
+      "repositoryPath": "/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer/Models/ImageFile.swift",
+      "repositorySHA256": "e034cdff99ee0f0abd7cbf5d7773ee2dde2139b37bb8e7c88a58e6944a3c043e",
+      "snapshotPath": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/Runner.swift",
+      "equalToProductionImplementation": false,
+      "difference": "CLI-only minimal URL/type/size adapter. Unlike app ImageFile, it permits content-type fallback, omits supported-type validation and other metadata/identity, and uses ByteCountFormatter.string defaults instead of app allowedUnits [.useKB, .useMB, .useGB]."
+    },
+    {
+      "symbols": "SecurityScopedAccessManager/SecurityScopedResourceLease",
+      "repositoryPath": "/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer/Services/SecurityScopedAccessManager.swift",
+      "repositorySHA256": "cfd060c7191215b30ade67884fc9ecf5345545f543bb607b680dce36610cedb3",
+      "snapshotPath": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/Runner.swift",
+      "equalToProductionImplementation": false,
+      "difference": "CLI lease is empty and acquireWorkerAccess returns nil. Production manager tracks registered roots and independent leases with start/stop security-scoped access."
+    },
+    {
+      "symbols": "Logger",
+      "repositoryPath": "/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer/Extensions/Logger.swift",
+      "repositorySHA256": "425da992258655d093d461b472071f8f8fe82d692e1a8a62ba06af2436974795",
+      "snapshotPath": "/private/tmp/stillview-ai-implementation-eval-2026-10-11/Runner.swift",
+      "equalToProductionImplementation": false,
+      "difference": "CLI warning/info/debug/error functions are no-ops. Production Logger uses os_log with debug/release privacy rules."
+    }
+  ],
+  "limitations": [
+    "Equality covers the five frozen production AI sources only, not the entire application or its UI, cache, metadata model, sandbox, logging or security-scope behavior.",
+    "CLI adapters intentionally differ from their production counterparts and are not silently normalized into an equality claim.",
+    "Compiled runner provenance, compiler invocation, binary contents and inference outputs are outside this verification scope.",
+    "Verification is a point-in-time check of current repository bytes; later edits require a fresh comparison."
+  ]
+}

@@ -33,6 +33,7 @@ class WindowStateManager: ObservableObject {
     private weak var imageViewerViewModel: ImageViewerViewModel?
     private var currentFolderURL: URL?
     private var currentImageIndex: Int = 0
+    private var hasReceivedFolderState = false
     
     // Debounce saving to avoid excessive writes
     private let saveDebounceInterval: TimeInterval = 2.0
@@ -80,6 +81,7 @@ class WindowStateManager: ObservableObject {
     ///   - folderURL: The currently selected folder URL
     ///   - imageIndex: The current image index
     func updateFolderState(folderURL: URL?, imageIndex: Int) {
+        hasReceivedFolderState = true
         currentFolderURL = folderURL
         currentImageIndex = imageIndex
         
@@ -105,30 +107,36 @@ class WindowStateManager: ObservableObject {
     
     /// Save the current window state immediately
     func saveWindowState() {
+        saveTimer?.invalidate()
+        saveTimer = nil
         updateCurrentState()
         preferencesService.saveWindowState(currentWindowState)
     }
     
     /// Restore the previous session state
-    /// - Returns: The restored folder URL and image index, or nil if no valid state
+    /// - Returns: The restored folder URL and image index, or nil if no valid state.
+    ///   The scanner owns access for the returned URL; validation here balances its temporary lease.
     func restorePreviousSession() -> (folderURL: URL, imageIndex: Int)? {
         guard currentWindowState.hasValidFolderState,
-              currentWindowState.isRecentEnough(),
-              let folderURL = currentWindowState.getRestoredFolderURL() else {
+              currentWindowState.isRecentEnough() else {
             return nil
         }
+        let previousBookmark = currentWindowState.lastFolderBookmark
+        let previousPath = currentWindowState.lastFolderPath
+        guard let folderURL = currentWindowState.refreshRestoredFolderBookmark() else { return nil }
+        if currentWindowState.lastFolderBookmark != previousBookmark || currentWindowState.lastFolderPath != previousPath {
+            preferencesService.saveWindowState(currentWindowState)
+        }
         
-        // Start accessing the security-scoped resource
-        guard folderURL.startAccessingSecurityScopedResource() else {
-            Logger.error("Failed to start accessing security-scoped resource for folder: \(folderURL)")
-            return nil
+        let startedAccess = folderURL.startAccessingSecurityScopedResource()
+        defer {
+            if startedAccess { folderURL.stopAccessingSecurityScopedResource() }
         }
         
         // Verify the folder still exists and is accessible
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: folderURL.path, isDirectory: &isDirectory),
               isDirectory.boolValue else {
-            folderURL.stopAccessingSecurityScopedResource()
             return nil
         }
         
@@ -137,6 +145,9 @@ class WindowStateManager: ObservableObject {
     
     /// Clear the saved window state
     func clearWindowState() {
+        hasReceivedFolderState = true
+        currentFolderURL = nil
+        currentImageIndex = 0
         currentWindowState = WindowState()
         preferencesService.windowState = nil
         preferencesService.savePreferences()
@@ -165,15 +176,6 @@ class WindowStateManager: ObservableObject {
     }
     
     private func setupAutoSave() {
-        // Save state when app will terminate
-        NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)
-            .sink { [weak self] _ in
-                Task { @MainActor in
-                    self?.saveWindowState()
-                }
-            }
-            .store(in: &cancellables)
-        
         // Save state when app becomes inactive (user switches away)
         NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)
             .sink { [weak self] _ in
@@ -301,6 +303,34 @@ class WindowStateManager: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        Publishers.CombineLatest4(
+            viewModel.$includeSubfolders,
+            viewModel.$sortOrder,
+            viewModel.$filteredFolderURL,
+            viewModel.$browserSearchText
+        )
+        .dropFirst()
+        .sink { [weak self] _, _, _, _ in
+            Task { @MainActor in self?.scheduleSave() }
+        }
+        .store(in: &cancellables)
+
+        viewModel.$folderSidebarVisible
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.scheduleSave() }
+            }
+            .store(in: &cancellables)
+
+        // Incremental discovery or refresh can change the selected file without changing its numeric index.
+        viewModel.$allImageFiles
+            .dropFirst()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.scheduleSave() }
+            }
+            .store(in: &cancellables)
     }
     
     private func handleWindowFrameChange(_ window: NSWindow) {
@@ -332,20 +362,32 @@ class WindowStateManager: ObservableObject {
             currentWindowState.updateFullscreen(window.styleMask.contains(.fullScreen))
         }
         
-        // Update UI state from view model
-        if let viewModel = imageViewerViewModel {
+        // Capture live selection synchronously instead of waiting for Combine's queued index observer.
+        // An explicit nil folder update remains a request to clear the session.
+        if let viewModel = imageViewerViewModel, let folderURL = viewModel.currentFolderURL,
+           !hasReceivedFolderState || currentFolderURL != nil {
+            hasReceivedFolderState = true
+            currentFolderURL = folderURL
+            currentImageIndex = viewModel.currentIndex
+        }
+
+        if hasReceivedFolderState {
+            if let viewModel = imageViewerViewModel {
+                currentWindowState.updateUIState(from: viewModel)
+            }
+            currentWindowState.updateFolderState(folderURL: currentFolderURL, imageIndex: currentImageIndex)
+        } else if currentWindowState.lastFolderPath == nil, let viewModel = imageViewerViewModel {
             currentWindowState.updateUIState(from: viewModel)
         }
-        
-        // Update folder state
-        currentWindowState.updateFolderState(folderURL: currentFolderURL, imageIndex: currentImageIndex)
+        // Before the first folder handoff, retain the loaded folder and browsing identity verbatim.
+        // Window events can autosave while the restoration scan is still waiting to publish its first batch.
     }
     
     /// Apply UI state with preference checking for AI Insights
     /// - Parameter viewModel: The view model to apply state to
     private func applyUIStateWithPreferenceCheck(to viewModel: ImageViewerViewModel) {
         // Apply basic UI state
-        currentWindowState.applyUIState(to: viewModel)
+        currentWindowState.applyUIState(to: viewModel, preferencesService: preferencesService)
         
         // Additional check for AI Insights panel state restoration
         if preferencesService.rememberAIInsightsPanelState {

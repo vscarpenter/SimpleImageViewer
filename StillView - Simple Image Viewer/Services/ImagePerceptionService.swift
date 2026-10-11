@@ -21,11 +21,21 @@ struct ImagePerceptionResult: Equatable, Sendable {
     let textWasTruncated: Bool
     var recognizedText: [String] { textObservations.map(\.text) }
 
+    /// A routing hint based on text geometry, never on its wording or inferred meaning.
+    var hasProminentText: Bool {
+        let area = textObservations.reduce(0.0) { total, observation in
+            total + Double(max(0, observation.boundingBox.width) * max(0, observation.boundingBox.height))
+        }
+        return (textObservations.count >= 3 && area >= 0.12)
+            || (textObservations.count >= 12 && area >= 0.03)
+    }
+
     init(textObservations: [TextObservation], textWasTruncated: Bool = false) {
         self.textObservations = textObservations
         self.textWasTruncated = textWasTruncated
     }
 
+    static let incompleteTextMessage = "Text extraction is partial. Some lines could not be confidently read or included."
     static let empty = ImagePerceptionResult(textObservations: [])
 }
 
@@ -59,8 +69,12 @@ enum OCRCleaner {
         var output: [Candidate] = []
         var characterCount = 0
         var wasTruncated = false
-        for candidate in candidates where candidate.confidence >= minimumConfidence {
+        for candidate in candidates {
             guard !candidate.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            guard candidate.confidence >= minimumConfidence else {
+                wasTruncated = true
+                continue
+            }
             guard output.count < maximumLines, characterCount + candidate.text.count <= maximumCharacters else {
                 wasTruncated = true
                 continue
@@ -72,10 +86,11 @@ enum OCRCleaner {
     }
 }
 
-/// Decodes one bounded, oriented first frame for both the model attachment and exact OCR evidence.
+/// Decodes oriented first-frame pixels with separate bounds for scene analysis and dense text.
 struct ImagePerceptionService: Sendable {
     static let shared = ImagePerceptionService()
     static let maximumImageDimension = 2_048
+    static let maximumTextImageDimension = 4_096
     private let performRequests: @Sendable (VNImageRequestHandler, [VNRequest]) throws -> Void
 
     init(
@@ -86,15 +101,20 @@ struct ImagePerceptionService: Sendable {
         self.performRequests = performRequests
     }
 
-    static func loadImage(at url: URL) async throws -> CGImage {
+    static func loadImage(
+        at url: URL, maximumDimension: Int = maximumImageDimension,
+        resourceLease: SecurityScopedResourceLease? = nil
+    ) async throws -> CGImage {
         try Task.checkCancellation()
-        let worker = Task.detached(priority: .userInitiated) {
+        let lease = resourceLease ?? SecurityScopedAccessManager.shared.acquireWorkerAccess(for: url)
+        let worker = Task.detached(priority: .userInitiated) { [lease] in
+            defer { withExtendedLifetime(lease) {} }
             try Task.checkCancellation()
             let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
             let thumbnailOptions = [
                 kCGImageSourceCreateThumbnailFromImageAlways: true,
                 kCGImageSourceCreateThumbnailWithTransform: true,
-                kCGImageSourceThumbnailMaxPixelSize: maximumImageDimension,
+                kCGImageSourceThumbnailMaxPixelSize: min(maximumTextImageDimension, max(1, maximumDimension)),
                 kCGImageSourceShouldCacheImmediately: true
             ] as CFDictionary
             guard let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions),
@@ -118,14 +138,56 @@ struct ImagePerceptionService: Sendable {
         }
     }
 
-    func analyze(url: URL) async throws -> ImagePerceptionResult {
-        try await analyze(image: Self.loadImage(at: url))
+    func analyze(
+        url: URL, resourceLease: SecurityScopedResourceLease? = nil
+    ) async throws -> ImagePerceptionResult {
+        let lease = resourceLease ?? SecurityScopedAccessManager.shared.acquireWorkerAccess(for: url)
+        defer { withExtendedLifetime(lease) {} }
+        let image = try await Self.loadImage(at: url, resourceLease: lease)
+        return try await analyze(url: url, baseImage: image, resourceLease: lease)
     }
 
-    func analyze(image: CGImage) async throws -> ImagePerceptionResult {
+    /// Native tall/dense documents need more pixels per glyph than the scene attachment.
+    /// Keep the model image small, refine only eligible sources, and never tile or reorder raw lines.
+    func analyze(
+        url: URL, baseImage: CGImage, resourceLease: SecurityScopedResourceLease? = nil
+    ) async throws -> ImagePerceptionResult {
+        let lease = resourceLease ?? SecurityScopedAccessManager.shared.acquireWorkerAccess(for: url)
+        defer { withExtendedLifetime(lease) {} }
+        let baseline = try await analyze(image: baseImage, resourceLease: lease)
+        guard Self.shouldRefineText(
+            width: baseImage.width, height: baseImage.height, observationCount: baseline.textObservations.count
+        ) else { return baseline }
+        do {
+            let largerImage = try await Self.loadImage(
+                at: url, maximumDimension: Self.maximumTextImageDimension, resourceLease: lease
+            )
+            guard max(largerImage.width, largerImage.height) > max(baseImage.width, baseImage.height) else {
+                return baseline
+            }
+            return try await analyze(image: largerImage, resourceLease: lease)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            // Preserve a completed low-resolution transcription when optional refinement fails.
+            return ImagePerceptionResult(textObservations: baseline.textObservations, textWasTruncated: true)
+        }
+    }
+
+    static func shouldRefineText(width: Int, height: Int, observationCount: Int) -> Bool {
+        guard min(width, height) > 0, max(width, height) >= maximumImageDimension else { return false }
+        let aspectRatio = Double(max(width, height)) / Double(min(width, height))
+        return aspectRatio >= 2 || observationCount >= 16
+    }
+
+    func analyze(
+        image: CGImage, resourceLease: SecurityScopedResourceLease? = nil
+    ) async throws -> ImagePerceptionResult {
         try Task.checkCancellation()
         let cancellation = PerceptionCancellation()
-        let worker = Task.detached(priority: .userInitiated) {
+        let worker = Task.detached(priority: .userInitiated) { [resourceLease] in
+            defer { withExtendedLifetime(resourceLease) {} }
             try cancellation.checkCancellation()
             let result = try runRequests(on: image, cancellation: cancellation)
             try cancellation.checkCancellation()

@@ -1,0 +1,212 @@
+[
+  {
+    "file": "brick-alley.jpg",
+    "sha256": "ed582545f4660cf080ecf72969b1567ec8d58572dee97fb6cec4e73a1f89b12f",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "canyon-sunset.jpg",
+    "sha256": "282b30830de9d8583570a0c9e19b7237e4b505cc0bc8236b6827fae40c098657",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "city-from-above.jpg",
+    "sha256": "29abaaa86eb8c437b7bee8d8153f58408237aadb82d97d178ce5894aa0444fe5",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "fjord-overlook.jpg",
+    "sha256": "0ae23cc10b7dd8ab4088497e95e2a2013811f87cf0b4bbb6f944f8ef36230cc4",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "forest-waterfall.jpg",
+    "sha256": "7e82c61428967baca8f2c75ce8e47e1c307c8ed581d12a57826eaf96cdd3e798",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "highland-road.jpg",
+    "sha256": "ba8525776eb5fe6cbe22babf981134c2c745016b68da700a7e16f9f8ceb6259b",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "hilltop-castle.jpg",
+    "sha256": "ed06130dad2d778916ca83422477a835a4a07c706dc3b75d0e63afa0fb3da99c",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "lakeside-dock.jpg",
+    "sha256": "4f26b0479725b98dcd18aafc4e44f25143baa204f8e1849cf9b2ac621cb031bb",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "northern-lights.jpg",
+    "sha256": "03ebe9cf5c39d8e94e98ed96da04b94d94d3eb003fddebaf836c1704bf2b03be",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "raspberries.jpg",
+    "sha256": "0b899df56a029498202a57bc3ff545f4cf7e1b0b42983018f5c2d4bcb675e428",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "sea-foam.jpg",
+    "sha256": "1e93f8014d854316b3dba51a032dbae872eaec99be8655d21e58586fc5a4481b",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "storm-coast.jpg",
+    "sha256": "22bda77d95312b21c689b819376dd48912bef8c101d58fa97c5224f686ca7997",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "valley-river.jpg",
+    "sha256": "6154d90fcbe32811a385ba6c33a295b10ff23302dd288fad43f2022b36db6c99",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "winter-camp.jpg",
+    "sha256": "ad6b6b7e1c0d23839f9c1e72d64bcf06485909d2fb30e9a5bd370968f751901e",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "sign-stop.png",
+    "sha256": "b5c6a153d3e7d05debd5b672289eaad5ac03ebc9ddb42691f5d34db330bb201e",
+    "matchesArchived": false,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "sign-cjk.png",
+    "sha256": "4921f2511a1ade7327796b8ce53182adbc77e304021bc9e3c54d5080e9f2ba67",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "sign-single-cjk.png",
+    "sha256": "4a0d7685b4003dd31a9e5bdf5eee27198029bb29901a45b65605ddbfbddaed71",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "sign-short-number.png",
+    "sha256": "8a790d43d13e3a2835766fa70fba5de85b5f0c36531a9cc69d372ea73b72d373",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "receipt-long.png",
+    "sha256": "3dfb3c860e02544a48d4778aff5e072b75f7be4a151e89a7c3755b906a4ee047",
+    "matchesArchived": false,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "table-repeated-values.png",
+    "sha256": "d6104dbf513e77ca95bf04ee171b72e86b60a5ecbc8f43d8f0c58294595fb913",
+    "matchesArchived": false,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "document-paragraph.png",
+    "sha256": "07211dce8c8d164840e30f51d544ad2b6d49adb245c501c0324ed04452b40f1f",
+    "matchesArchived": false,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "screenshot-error.png",
+    "sha256": "3875101e5f28257f14cd1b38f41b18dcbff63ba0fc0b11df961d8e17c35c19d3",
+    "matchesArchived": false,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "prompt-injection.png",
+    "sha256": "cd6709c7b082b4790d38abfc57de5ded1fd634a5ccad4169c3e61ff7bd82cc1b",
+    "matchesArchived": false,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "abstract-shapes.png",
+    "sha256": "d27289af73b46417b22e5988b6461fa4bd32825db493bffc3c2fbd9234338973",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "unreadable-abstract.png",
+    "sha256": "d9af7c1fed73f2b4d8f10435425ea7a68140262ae6871b18011c91918bcaeaed",
+    "matchesArchived": false,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "blurred-text.png",
+    "sha256": "0dd6cc6f9f1d9e90e650434661b3461275d5cb9ec5b4a7ee53ffaa968c3e8ae9",
+    "matchesArchived": false,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "orientation-right.jpg",
+    "sha256": "17f75479a2198eea7de3429294c81a90108dac1ac788c3a54848d182757b64f3",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "animation-first-frame.gif",
+    "sha256": "c832827dc66306f4f33e646d71a948a6cb53c5cbd7eda54af82536214c50ae0f",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "chart-three-bars.png",
+    "sha256": "f1bcdd9ff882f4d96fcca62bf3e06d35195819b50d47371cf11cc3f2bc5d5ab8",
+    "matchesArchived": false,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  },
+  {
+    "file": "blank-dark.png",
+    "sha256": "34063fcb5cd74bee257d63f46f1ac6094c2de09d2993afdc5e45a750f03bd61b",
+    "matchesArchived": true,
+    "dimensionsMatch": true,
+    "framesMatch": true
+  }
+]

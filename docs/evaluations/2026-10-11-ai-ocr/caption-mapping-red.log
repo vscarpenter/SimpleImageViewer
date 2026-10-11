@@ -1,0 +1,1 @@
+RED: production mapping produced ["A document combines text and visual elements.", "Writing is visible within a wider scene."]; expected ["A document contains text.", "Text is visible in the image."]

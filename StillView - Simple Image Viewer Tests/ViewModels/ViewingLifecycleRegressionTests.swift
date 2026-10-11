@@ -418,7 +418,7 @@ final class TrashLifecycleRegressionTests: XCTestCase {
         XCTAssertFalse(model.isSlideshow)
         XCTAssertTrue(model.shouldNavigateToFolderSelection)
         XCTAssertFalse(model.canDeleteCurrentImage)
-        XCTAssertEqual(loader.cancelledURLs, [fixture.files[0].url, fixture.files[0].url])
+        XCTAssertEqual(loader.cancelledURLs, [fixture.files[0].url])
     }
 
     func test_trash_currentLastFileSelectsPreviousRemainingImage() async throws {
@@ -539,6 +539,240 @@ final class TrashLifecycleRegressionTests: XCTestCase {
 }
 
 @MainActor
+final class RecursiveBrowsingProjectionTests: XCTestCase {
+    func test_snapshot_preservesSelectionAndSortAcrossBatches() throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let loader = LifecycleImageLoader()
+        let model = fixture.makeViewModel(loader: loader)
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: [fixture.files[2]],
+                                             includeSubfolders: true, isComplete: false))
+        model.applySortOrder(.dateModified)
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: fixture.files.reversed(),
+                                             includeSubfolders: true, isComplete: true))
+        XCTAssertEqual(model.allImageFiles.map(\.url), fixture.files.map(\.url))
+        XCTAssertEqual(model.currentImageFile?.url, fixture.files[2].url)
+        XCTAssertEqual(loader.requestedURLs, [fixture.files[2].url])
+        XCTAssertTrue(model.isCollectionComplete)
+    }
+
+    func test_folderFilter_includesDescendantsAndSearchMatchesRelativePathWithoutRescan() throws {
+        let fixture = try LifecycleFixture(count: 0)
+        defer { fixture.cleanUp() }
+        let loader = LifecycleImageLoader()
+        let model = fixture.makeViewModel(loader: loader)
+        let branch = fixture.directory.appendingPathComponent("Travel", isDirectory: true)
+        let deep = branch.appendingPathComponent("Italy", isDirectory: true)
+        let other = fixture.directory.appendingPathComponent("Family", isDirectory: true)
+        let paths = ["root.jpg", "Travel/duplicate.jpg", "Travel/Italy/duplicate.jpg", "Family/duplicate.jpg"]
+        let files = paths.map { path in
+            ImageFile(url: fixture.directory.appendingPathComponent(path), name: "duplicate.jpg", type: .jpeg,
+                      size: 10, creationDate: .distantPast, modificationDate: .distantPast)
+        }
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: files,
+                                             includeSubfolders: true, discoveredFolders: [branch, deep, other]))
+        model.filteredFolderURL = branch
+        XCTAssertEqual(Set(model.allImageFiles.map(\.url)), Set(files[1...2].map(\.url)))
+        XCTAssertEqual(model.folderImageCounts[branch], 2)
+        model.browserSearchText = "Italy/duplicate"
+        XCTAssertEqual(model.allImageFiles.map(\.url), [files[2].url])
+        XCTAssertEqual(model.relativeFolderPath(for: files[2]), "Travel/Italy")
+        model.browserSearchText = "absent"
+        XCTAssertNil(model.currentImageFile)
+        XCTAssertEqual(model.totalImages, 0)
+        XCTAssertNil(model.currentImage)
+        model.clearBrowsingFilter()
+        XCTAssertEqual(model.totalImages, 4)
+        XCTAssertEqual(model.discoveredImageCount, 4)
+    }
+
+    func test_restore_waitsForSelectedPathInLaterBatch() throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader())
+        model.restoreSelectedImage(path: fixture.files[2].url.path)
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: [fixture.files[0]],
+                                             includeSubfolders: true, isComplete: false))
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: fixture.files,
+                                             includeSubfolders: true, isComplete: true))
+        XCTAssertEqual(model.currentImageFile?.url, fixture.files[2].url)
+    }
+
+    func test_grid_navigationMovesByActualColumnCountAndClampsFinalRow() throws {
+        let fixture = try LifecycleFixture(count: 8)
+        defer { fixture.cleanUp() }
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader())
+        model.loadFolderContent(fixture.folder)
+        model.setViewMode(.grid)
+        model.gridColumnCount = 3
+        model.navigateToIndex(2)
+        model.moveGridSelection(byRows: 1)
+        XCTAssertEqual(model.currentIndex, 5)
+        model.moveGridSelection(byRows: 1)
+        XCTAssertEqual(model.currentIndex, 7)
+        model.moveGridSelection(byRows: 1)
+        XCTAssertEqual(model.currentIndex, 7)
+        model.moveGridSelection(byRows: -3)
+        XCTAssertEqual(model.currentIndex, 1)
+        model.moveGridSelection(byRows: -1)
+        XCTAssertEqual(model.currentIndex, 1)
+    }
+
+    func test_disablingSubfolders_clearsDescendantFilterAndShowsRootImages() throws {
+        let fixture = try LifecycleFixture(count: 1)
+        defer { fixture.cleanUp() }
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader())
+        let child = fixture.directory.appendingPathComponent("child", isDirectory: true)
+        let nested = ImageFile(url: child.appendingPathComponent("nested.jpg"), name: "nested.jpg", type: .jpeg,
+                               size: 10, creationDate: .distantPast, modificationDate: .distantPast)
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory,
+                                             imageFiles: fixture.files + [nested], includeSubfolders: true))
+        model.filteredFolderURL = child
+        model.loadFolderContent(fixture.folder)
+        XCTAssertNil(model.filteredFolderURL)
+        XCTAssertEqual(model.allImageFiles.map(\.url), fixture.files.map(\.url))
+    }
+
+    func test_explicitSelection_overridesPendingRestoreWhenLaterBatchArrives() throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader())
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: Array(fixture.files.prefix(2)),
+                                             includeSubfolders: true, isComplete: false))
+        model.restoreSelectedImage(path: fixture.files[2].url.path)
+        model.navigateToIndex(1)
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: fixture.files,
+                                             includeSubfolders: true, isComplete: true))
+        XCTAssertEqual(model.currentImageFile?.url, fixture.files[1].url)
+    }
+
+    func test_trash_removesDiscoveredFileEvenIfFilterHidesItDuringRecycling() async throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.loadFolderContent(fixture.folder)
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+        model.browserSearchText = "image-1"
+        trash.finishRecycling(.success(()))
+        await deletion.value
+        model.clearBrowsingFilter()
+        XCTAssertEqual(model.allImageFiles.map(\.url), Array(fixture.files.dropFirst()).map(\.url))
+        XCTAssertEqual(model.discoveredImageCount, 2)
+    }
+
+    func test_asyncProjection_discardsSupersededRootsAndQueries() async throws {
+        let first = try LifecycleFixture(count: 3)
+        let second = try LifecycleFixture(count: 2)
+        defer { first.cleanUp(); second.cleanUp() }
+        let model = first.makeViewModel(loader: LifecycleImageLoader())
+        model.enableAsynchronousBrowsing()
+        model.loadFolderContent(first.folder)
+        model.loadFolderContent(FolderContent(folderURL: second.directory, imageFiles: second.files.reversed()))
+        await model.waitForBrowsingProjection()
+        XCTAssertEqual(model.currentFolderURL, second.directory)
+        XCTAssertEqual(model.allImageFiles.map(\.url), second.files.map(\.url))
+        XCTAssertEqual(model.currentImageFile?.url, second.files[0].url)
+        model.browserSearchText = "image-0"
+        model.browserSearchText = "image-1"
+        await model.waitForBrowsingProjection()
+        XCTAssertEqual(model.allImageFiles.map(\.url), [second.files[1].url])
+        XCTAssertFalse(model.isProjectingCollection)
+        model.clearContent()
+        await model.waitForBrowsingProjection()
+        XCTAssertTrue(model.allImageFiles.isEmpty)
+    }
+
+    func test_asyncProjection_preservesNavigationDuringAnIncomingBatch() async throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader())
+        model.enableAsynchronousBrowsing()
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory,
+                                             imageFiles: Array(fixture.files.prefix(2)), isComplete: false))
+        await model.waitForBrowsingProjection()
+        model.loadFolderContent(fixture.folder)
+        model.navigateToIndex(1)
+        await model.waitForBrowsingProjection()
+        XCTAssertEqual(model.currentImageFile?.url, fixture.files[1].url)
+    }
+
+    func test_asyncProjection_reportsLargeCollectionAndAllowsMainQueueHeartbeat() async throws {
+        let fixture = try LifecycleFixture(count: 0)
+        defer { fixture.cleanUp() }
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader())
+        model.enableAsynchronousBrowsing()
+        for count in [1_000, 10_000, 100_000] {
+            let files = (0..<count).reversed().map { index in
+                let path = "branch-\(index / 1000)/image-\(index).jpg"
+                return ImageFile(url: fixture.directory.appendingPathComponent(path), name: path,
+                                 type: .jpeg, size: 4, creationDate: .distantPast, modificationDate: .distantPast)
+            }
+            var lastHeartbeat = Date()
+            var maximumHeartbeatGap = 0.0
+            let timer = Timer.scheduledTimer(withTimeInterval: 0.005, repeats: true) { _ in
+                let now = Date()
+                maximumHeartbeatGap = max(maximumHeartbeatGap, now.timeIntervalSince(lastHeartbeat))
+                lastHeartbeat = now
+            }
+            let start = Date()
+            model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: files,
+                                                 includeSubfolders: true))
+            await model.waitForBrowsingProjection()
+            maximumHeartbeatGap = max(maximumHeartbeatGap, Date().timeIntervalSince(lastHeartbeat))
+            timer.invalidate()
+            print("BROWSING_PROJECTION count=\(count) elapsed_ms=\(Date().timeIntervalSince(start) * 1000) heartbeat_gap_ms=\(maximumHeartbeatGap * 1000)")
+            XCTAssertEqual(model.totalImages, count)
+            XCTAssertEqual(model.folderImageCounts[fixture.directory], count)
+            if count >= 10_000 { XCTAssertGreaterThan(maximumHeartbeatGap, 0, "Main queue remains schedulable during projection") }
+        }
+    }
+
+    func test_asyncProjection_doesNotRestoreAnImageAfterSuccessfulTrash() async throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let trash = LifecycleTrashService()
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), trashService: trash)
+        model.enableAsynchronousBrowsing()
+        let extras = (0..<10_000).map { index in
+            ImageFile(url: fixture.directory.appendingPathComponent("extra-\(index).jpg"),
+                      name: "extra-\(index).jpg", type: .jpeg, size: 4,
+                      creationDate: .distantPast, modificationDate: .distantPast)
+        }
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: fixture.files + extras))
+        await model.waitForBrowsingProjection()
+        model.restoreSelectedImage(path: fixture.files[0].url.path)
+        await model.waitForBrowsingProjection()
+        model.browserSearchText = "image"
+        XCTAssertTrue(model.isProjectingCollection)
+        let deletion = Task { await model.moveCurrentImageToTrash() }
+        await fulfillment(of: [trash.recycleStarted], timeout: 1)
+        trash.finishRecycling(.success(()))
+        await deletion.value
+        await model.waitForBrowsingProjection()
+        XCTAssertFalse(model.allImageFiles.contains { $0.url == fixture.files[0].url })
+        XCTAssertEqual(model.discoveredImageCount, 10_002)
+        XCTAssertEqual(model.folderImageCounts[fixture.directory], 10_002)
+    }
+
+    func test_refresh_reloadsSamePathWhenRevisionChanges() throws {
+        let fixture = try LifecycleFixture(count: 1)
+        defer { fixture.cleanUp() }
+        let loader = LifecycleImageLoader()
+        let model = fixture.makeViewModel(loader: loader)
+        model.loadFolderContent(fixture.folder)
+        let original = fixture.files[0]
+        let edited = ImageFile(url: original.url, name: original.name, type: .jpeg,
+                               size: 100, creationDate: original.creationDate,
+                               modificationDate: Date(timeIntervalSince1970: 200))
+        model.loadFolderContent(FolderContent(folderURL: fixture.directory, imageFiles: [edited]))
+        XCTAssertEqual(loader.requestedURLs, [original.url, original.url])
+        XCTAssertEqual(model.currentImageFile?.size, 100)
+    }
+}
+
+@MainActor
 final class PreferencesWindowLifecycleRegressionTests: XCTestCase {
     private let lastSelectedTabKey = "PreferencesLastSelectedTab"
     private var originalLastSelectedTab: Any?
@@ -615,6 +849,103 @@ final class PreferencesWindowLifecycleRegressionTests: XCTestCase {
         coordinator.windowWillClose()
 
         XCTAssertEqual(UserDefaults.standard.string(forKey: lastSelectedTabKey), "general")
+    }
+}
+
+@MainActor
+final class ApplicationPersistenceRegressionTests: XCTestCase {
+    func test_appHostedDelegate_reportsSwiftUIAdaptorRuntimeType() throws {
+        let delegate = try XCTUnwrap(NSApplication.shared.delegate)
+        print("APPLICATION_DELEGATE_RUNTIME_TYPE=\(String(reflecting: type(of: delegate)))")
+        print("APPLICATION_DELEGATE_DIRECT_CAST=\(delegate is AppDelegate)")
+    }
+
+    func test_termination_persistsFolderSynchronouslyBeforeCallbackReturns() throws {
+        let fixture = try LifecycleFixture(count: 1)
+        defer { fixture.cleanUp() }
+        let manager = WindowStateManager(preferencesService: fixture.preferences)
+        let delegate = AppDelegate()
+        delegate.windowStateManager = manager
+        manager.updateFolderState(folderURL: fixture.directory, imageIndex: 4)
+
+        let lifecycle: any NSApplicationDelegate = delegate
+        lifecycle.applicationWillTerminate?(Notification(name: NSApplication.willTerminateNotification))
+
+        let saved = try XCTUnwrap(fixture.preferences.loadWindowState())
+        XCTAssertEqual(saved.lastFolderPath, fixture.directory.path)
+        XCTAssertEqual(saved.lastImageIndex, 4)
+        XCTAssertNotNil(saved.lastFolderBookmark)
+    }
+
+    func test_save_capturesLiveCollectionWithoutSeparateFolderTracking() throws {
+        let fixture = try LifecycleFixture(count: 2)
+        defer { fixture.cleanUp() }
+        let manager = WindowStateManager(preferencesService: fixture.preferences)
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), expectedImageSizeLoader: { _ in nil })
+        manager.setImageViewerViewModel(model)
+        model.loadFolderContent(FolderContent(
+            folderURL: fixture.directory, imageFiles: fixture.files, includeSubfolders: true
+        ))
+        model.setViewMode(.grid)
+        model.applySortOrder(.size)
+        model.filteredFolderURL = fixture.directory
+        model.browserSearchText = "image-"
+        model.navigateToIndex(1)
+
+        manager.saveWindowState()
+
+        let saved = try XCTUnwrap(fixture.preferences.loadWindowState())
+        XCTAssertEqual(saved.lastFolderPath, fixture.directory.path)
+        XCTAssertEqual(saved.lastImageIndex, 1)
+        XCTAssertEqual(saved.selectedImagePath, fixture.files[1].url.path)
+        XCTAssertTrue(saved.includeSubfolders)
+        XCTAssertEqual(saved.viewMode, ViewMode.grid.rawValue)
+        XCTAssertEqual(saved.sortOrder, ImageSortOrder.size.rawValue)
+        XCTAssertEqual(saved.filteredFolderPath, fixture.directory.path)
+        XCTAssertEqual(saved.browserSearchText, "image-")
+        model.clearContent()
+    }
+
+    func test_earlySave_preservesLoadedSessionUntilExplicitFolderUpdate() throws {
+        let fixture = try LifecycleFixture(count: 2)
+        defer { fixture.cleanUp() }
+        var previous = WindowState()
+        previous.updateFolderState(folderURL: fixture.directory, imageIndex: 1)
+        previous.includeSubfolders = true
+        previous.viewMode = ViewMode.grid.rawValue
+        previous.sortOrder = ImageSortOrder.size.rawValue
+        previous.selectedImagePath = fixture.files[1].url.path
+        previous.filteredFolderPath = fixture.directory.path
+        previous.browserSearchText = "image-"
+        fixture.preferences.saveWindowState(previous)
+        let manager = WindowStateManager(preferencesService: fixture.preferences)
+
+        manager.saveWindowState()
+        let beforeAttachment = try XCTUnwrap(fixture.preferences.loadWindowState())
+        XCTAssertEqual(beforeAttachment.lastFolderBookmark, previous.lastFolderBookmark)
+        XCTAssertEqual(beforeAttachment.lastFolderPath, previous.lastFolderPath)
+        XCTAssertEqual(beforeAttachment.lastImageIndex, 1)
+
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader(), expectedImageSizeLoader: { _ in nil })
+        manager.setImageViewerViewModel(model)
+        manager.saveWindowState()
+        let beforeCollection = try XCTUnwrap(fixture.preferences.loadWindowState())
+        XCTAssertEqual(beforeCollection.lastFolderBookmark, previous.lastFolderBookmark)
+        XCTAssertEqual(beforeCollection.lastFolderPath, previous.lastFolderPath)
+        XCTAssertEqual(beforeCollection.lastImageIndex, 1)
+        XCTAssertEqual(beforeCollection.selectedImagePath, previous.selectedImagePath)
+        XCTAssertTrue(beforeCollection.includeSubfolders)
+        XCTAssertEqual(beforeCollection.viewMode, previous.viewMode)
+        XCTAssertEqual(beforeCollection.sortOrder, previous.sortOrder)
+        XCTAssertEqual(beforeCollection.filteredFolderPath, previous.filteredFolderPath)
+        XCTAssertEqual(beforeCollection.browserSearchText, previous.browserSearchText)
+
+        manager.updateFolderState(folderURL: nil, imageIndex: 0)
+        manager.saveWindowState()
+        let cleared = try XCTUnwrap(fixture.preferences.loadWindowState())
+        XCTAssertNil(cleared.lastFolderPath)
+        XCTAssertNil(cleared.lastFolderBookmark)
+        XCTAssertEqual(cleared.lastImageIndex, 0)
     }
 }
 
@@ -780,5 +1111,104 @@ private final class LifecycleSizeGate {
     func finish(_ size: CGSize?) {
         continuation?.resume(returning: size)
         continuation = nil
+    }
+}
+
+final class BookmarkStartupRegressionTests: XCTestCase {
+    private var preferenceSuites: [String] = []
+
+    override func tearDown() {
+        for suite in preferenceSuites {
+            UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        }
+        preferenceSuites.removeAll()
+        super.tearDown()
+    }
+
+    func test_unavailableLaunchFolder_checksUnderBalancedScopeAndRetainsItsGrant() throws {
+        let service = try makePreferences()
+        let root = URL(fileURLWithPath: "/Users/fixture/unavailable", isDirectory: true)
+        let record = RecentFolderRecord(url: root, bookmarkData: Data([0x42]))
+        service.recentFolderRecords = [record]
+        var scopeActive = false
+        var starts = 0
+        var stops = 0
+        var existenceChecks = 0
+        let manager = SecurityScopedBookmarkManager(
+            preferencesService: service,
+            resolveLaunchBookmark: { _ in root },
+            launchStartAccess: { url in
+                XCTAssertEqual(url, root)
+                starts += 1
+                scopeActive = true
+                return true
+            },
+            launchStopAccess: { url in
+                XCTAssertEqual(url, root)
+                stops += 1
+                scopeActive = false
+            },
+            launchFolderExists: { _ in
+                XCTAssertTrue(scopeActive, "Sandbox existence checks require the resolved grant to be active")
+                existenceChecks += 1
+                return false
+            }
+        )
+
+        manager.restoreBookmarksOnLaunch()
+
+        XCTAssertEqual(starts, 1)
+        XCTAssertEqual(stops, 1)
+        XCTAssertEqual(existenceChecks, 1)
+        XCTAssertFalse(scopeActive)
+        XCTAssertEqual(service.recentFolderRecords, [record], "Offline folders retain their durable grant for retry")
+        XCTAssertFalse(manager.hasBookmark(for: root), "An unavailable root must not gain an active background grant")
+    }
+
+    func test_launchScopeUnavailable_preservesGrantWithoutInspectingOrClaimingAccess() throws {
+        let service = try makePreferences()
+        let root = URL(fileURLWithPath: "/Users/fixture/access-unavailable", isDirectory: true)
+        let record = RecentFolderRecord(url: root, bookmarkData: Data([0x42]))
+        service.recentFolderRecords = [record]
+        var starts = 0
+        let manager = SecurityScopedBookmarkManager(
+            preferencesService: service,
+            resolveLaunchBookmark: { _ in root },
+            launchStartAccess: { _ in starts += 1; return false },
+            launchStopAccess: { _ in XCTFail("An unstarted scope must not be stopped") },
+            launchFolderExists: { _ in XCTFail("Do not inspect a folder without its grant"); return false }
+        )
+
+        manager.restoreBookmarksOnLaunch()
+
+        XCTAssertEqual(starts, 1)
+        XCTAssertEqual(service.recentFolderRecords, [record])
+        XCTAssertFalse(manager.hasBookmark(for: root))
+    }
+
+    func test_launchResolutionError_preservesOfflineProviderGrantWithoutStartingAccess() throws {
+        let service = try makePreferences()
+        let root = URL(fileURLWithPath: "/Users/fixture/offline-provider", isDirectory: true)
+        let record = RecentFolderRecord(url: root, bookmarkData: Data([0x42]))
+        service.recentFolderRecords = [record]
+        let manager = SecurityScopedBookmarkManager(
+            preferencesService: service,
+            resolveLaunchBookmark: { _ in throw CocoaError(.fileReadNoSuchFile) },
+            launchStartAccess: { _ in XCTFail("Unresolved grants must not start access"); return false },
+            launchStopAccess: { _ in XCTFail("Unresolved grants must not stop access") },
+            launchFolderExists: { _ in XCTFail("Unresolved grants must not inspect a folder"); return false }
+        )
+
+        manager.restoreBookmarksOnLaunch()
+
+        XCTAssertEqual(service.recentFolderRecords, [record])
+        XCTAssertFalse(manager.hasBookmark(for: root))
+    }
+
+    private func makePreferences() throws -> DefaultPreferencesService {
+        let suite = "BookmarkStartupRegressionTests." + UUID().uuidString
+        preferenceSuites.append(suite)
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        return DefaultPreferencesService(userDefaults: defaults)
     }
 }

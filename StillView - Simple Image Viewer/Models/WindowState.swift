@@ -57,6 +57,14 @@ struct WindowState: Codable {
     
     /// Whether AI Insights panel was visible (session-based persistence)
     var showAIInsights: Bool
+
+    /// Folder browsing state is session-specific rather than an application-wide preference.
+    var includeSubfolders: Bool
+    var sortOrder: String
+    var selectedImagePath: String?
+    var filteredFolderPath: String?
+    var browserSearchText: String
+    var folderSidebarVisible: Bool
     
     // MARK: - Metadata
     
@@ -83,8 +91,49 @@ struct WindowState: Codable {
         self.wasInSlideshow = false
         self.slideshowInterval = 3.0
         self.showAIInsights = false
+        self.includeSubfolders = false
+        self.sortOrder = ImageSortOrder.name.rawValue
+        self.selectedImagePath = nil
+        self.filteredFolderPath = nil
+        self.browserSearchText = ""
+        self.folderSidebarVisible = true
         self.lastSaved = Date()
         self.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case windowFrame, isVisible, isFullscreen, zoomLevel
+        case lastFolderBookmark, lastFolderPath, lastImageIndex
+        case showFileName, showImageInfo, viewMode, wasInSlideshow, slideshowInterval, showAIInsights
+        case includeSubfolders, sortOrder, selectedImagePath, filteredFolderPath, browserSearchText, folderSidebarVisible
+        case lastSaved, appVersion
+    }
+
+    /// New session fields default safely when decoding state saved by an older release.
+    init(from decoder: Decoder) throws {
+        self.init()
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        windowFrame = try values.decode(CGRect.self, forKey: .windowFrame)
+        isVisible = try values.decode(Bool.self, forKey: .isVisible)
+        isFullscreen = try values.decode(Bool.self, forKey: .isFullscreen)
+        zoomLevel = try values.decode(Double.self, forKey: .zoomLevel)
+        lastFolderBookmark = try values.decodeIfPresent(Data.self, forKey: .lastFolderBookmark)
+        lastFolderPath = try values.decodeIfPresent(String.self, forKey: .lastFolderPath)
+        lastImageIndex = try values.decode(Int.self, forKey: .lastImageIndex)
+        showFileName = try values.decode(Bool.self, forKey: .showFileName)
+        showImageInfo = try values.decode(Bool.self, forKey: .showImageInfo)
+        viewMode = try values.decode(String.self, forKey: .viewMode)
+        wasInSlideshow = try values.decode(Bool.self, forKey: .wasInSlideshow)
+        slideshowInterval = try values.decode(Double.self, forKey: .slideshowInterval)
+        showAIInsights = try values.decodeIfPresent(Bool.self, forKey: .showAIInsights) ?? false
+        includeSubfolders = try values.decodeIfPresent(Bool.self, forKey: .includeSubfolders) ?? false
+        sortOrder = try values.decodeIfPresent(String.self, forKey: .sortOrder) ?? ImageSortOrder.name.rawValue
+        selectedImagePath = try values.decodeIfPresent(String.self, forKey: .selectedImagePath)
+        filteredFolderPath = try values.decodeIfPresent(String.self, forKey: .filteredFolderPath)
+        browserSearchText = try values.decodeIfPresent(String.self, forKey: .browserSearchText) ?? ""
+        folderSidebarVisible = try values.decodeIfPresent(Bool.self, forKey: .folderSidebarVisible) ?? true
+        lastSaved = try values.decode(Date.self, forKey: .lastSaved)
+        appVersion = try values.decode(String.self, forKey: .appVersion)
     }
     
     /// Initialize with current application state
@@ -133,6 +182,7 @@ struct WindowState: Codable {
             self.wasInSlideshow = viewModel.isSlideshow
             self.slideshowInterval = viewModel.slideshowInterval
             self.showAIInsights = viewModel.inspectorVisible && viewModel.inspectorTab == .insights
+            captureBrowsingState(from: viewModel)
         }
 
         self.lastSaved = Date()
@@ -167,6 +217,7 @@ struct WindowState: Codable {
     ///   - imageIndex: The current image index
     mutating func updateFolderState(folderURL: URL?, imageIndex: Int) {
         if let folderURL = folderURL {
+            let folderChanged = self.lastFolderPath != folderURL.path
             self.lastFolderPath = folderURL.path
             // Update security-scoped bookmark
             do {
@@ -177,6 +228,7 @@ struct WindowState: Codable {
                 )
             } catch {
                 Logger.error("Failed to update bookmark for folder: \(error)")
+                if folderChanged { self.lastFolderBookmark = nil }
             }
         } else {
             self.lastFolderPath = nil
@@ -205,7 +257,18 @@ struct WindowState: Codable {
         self.wasInSlideshow = viewModel.isSlideshow
         self.slideshowInterval = viewModel.slideshowInterval
         self.showAIInsights = viewModel.inspectorVisible && viewModel.inspectorTab == .insights
+        captureBrowsingState(from: viewModel)
         self.lastSaved = Date()
+    }
+
+    @MainActor
+    private mutating func captureBrowsingState(from viewModel: ImageViewerViewModel) {
+        includeSubfolders = viewModel.includeSubfolders
+        sortOrder = viewModel.sortOrder.rawValue
+        selectedImagePath = viewModel.selectedImagePathForRestoration
+        filteredFolderPath = viewModel.filteredFolderURL?.standardizedFileURL.path
+        browserSearchText = viewModel.browserSearchText
+        folderSidebarVisible = viewModel.folderSidebarVisible
     }
     
     // MARK: - Restoration Methods
@@ -256,7 +319,6 @@ struct WindowState: Codable {
             
             if isStale {
                 Logger.warning("Bookmark is stale for folder: \(lastFolderPath ?? "unknown")")
-                return nil
             }
             
             return url
@@ -264,6 +326,74 @@ struct WindowState: Codable {
             Logger.error("Failed to resolve bookmark for folder: \(error)")
             return nil
         }
+    }
+
+    /// Refresh a resolvable stale bookmark without leaving a security-scope lease with the caller.
+    mutating func refreshRestoredFolderBookmark() -> URL? {
+        guard let data = lastFolderBookmark else { return nil }
+        do {
+            var isStale = false
+            let url = try URL(
+                resolvingBookmarkData: data,
+                options: [.withSecurityScope, .withoutUI],
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            )
+            if isStale {
+                let startedAccess = url.startAccessingSecurityScopedResource()
+                defer {
+                    if startedAccess { url.stopAccessingSecurityScopedResource() }
+                }
+                do {
+                    lastFolderBookmark = try url.bookmarkData(
+                        options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                        includingResourceValuesForKeys: nil,
+                        relativeTo: nil
+                    )
+                } catch {
+                    // A resolved URL can still be read even if renewing its bookmark fails temporarily.
+                    Logger.warning("Could not refresh the restored folder bookmark: \(error)")
+                }
+            }
+            relocateSavedPaths(to: url.standardizedFileURL.path)
+            return url
+        } catch {
+            Logger.error("Failed to resolve restored folder bookmark: \(error)")
+            return nil
+        }
+    }
+
+    /// Containment is component-based so a sibling named Root-other cannot become a saved filter.
+    var restoredFilteredFolderURL: URL? {
+        validatedDescendantURL(for: filteredFolderPath, allowRoot: true)
+    }
+
+    var restoredSelectedImageURL: URL? {
+        validatedDescendantURL(for: selectedImagePath, allowRoot: false)
+    }
+
+    private func validatedDescendantURL(for path: String?, allowRoot: Bool) -> URL? {
+        guard let path, path.hasPrefix("/"), let rootPath = lastFolderPath else { return nil }
+        let root = URL(fileURLWithPath: rootPath).standardizedFileURL.pathComponents
+        let url = URL(fileURLWithPath: path).standardizedFileURL
+        let components = url.pathComponents
+        guard components.starts(with: root), components.count > root.count || allowRoot else { return nil }
+        return url
+    }
+
+    private mutating func relocateSavedPaths(to rootPath: String) {
+        guard let oldRoot = lastFolderPath, oldRoot != rootPath else { return }
+        let oldComponents = URL(fileURLWithPath: oldRoot).standardizedFileURL.pathComponents
+        func relocated(_ path: String?) -> String? {
+            guard let path else { return nil }
+            let components = URL(fileURLWithPath: path).standardizedFileURL.pathComponents
+            guard components.starts(with: oldComponents) else { return nil }
+            return components.dropFirst(oldComponents.count)
+                .reduce(URL(fileURLWithPath: rootPath)) { $0.appendingPathComponent($1) }.path
+        }
+        selectedImagePath = relocated(selectedImagePath)
+        filteredFolderPath = relocated(filteredFolderPath)
+        lastFolderPath = rootPath
     }
     
     /// Apply UI state to the given view model
@@ -277,6 +407,10 @@ struct WindowState: Codable {
     ) {
         viewModel.zoomLevel = zoomLevel
         viewModel.showFileName = showFileName
+        viewModel.applySortOrder(ImageSortOrder(rawValue: sortOrder) ?? .name)
+        viewModel.filteredFolderURL = restoredFilteredFolderURL
+        viewModel.browserSearchText = browserSearchText
+        viewModel.folderSidebarVisible = folderSidebarVisible
 
         // Restore view mode
         if let mode = ViewMode(rawValue: viewMode) {

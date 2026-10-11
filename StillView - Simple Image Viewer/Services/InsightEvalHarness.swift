@@ -77,10 +77,13 @@ enum InsightEvalHarness {
 
     private static func evaluate(imageURL: URL) async -> Record {
         let started = ProcessInfo.processInfo.systemUptime
+        let recognizedText = InsightEvaluationTextCapture()
         do {
             let service = AppleIntelligenceInsightsService.shared
             let input = service.makeInput(for: try ImageFile(url: imageURL))
-            let analysis = try await service.generateAnalysis(for: input)
+            let analysis = try await service.generateAnalysis(for: input) { perception in
+                await recognizedText.accept(perception)
+            }
             return Record(fileName: imageURL.lastPathComponent,
                           durationSeconds: ProcessInfo.processInfo.systemUptime - started,
                           result: analysis.result,
@@ -90,7 +93,8 @@ enum InsightEvalHarness {
         } catch {
             return Record(fileName: imageURL.lastPathComponent,
                           durationSeconds: ProcessInfo.processInfo.systemUptime - started,
-                          result: nil, perception: nil, modelTextLineIndices: [], error: error.localizedDescription)
+                          result: nil, perception: await recognizedText.current(),
+                          modelTextLineIndices: [], error: error.localizedDescription)
         }
     }
 
@@ -134,6 +138,11 @@ enum InsightEvalHarness {
         if let error = record.error {
             lines.append("- Outcome: failed")
             lines.append("- Error: \(error)")
+            if let perception = record.perception {
+                lines.append("- Independent OCR remained available after description failure")
+                lines.append("- OCR evidence partial: \(perception.textWasTruncated)")
+                append(perception.recognizedText, heading: "Recognized text (unchanged OCR)", to: &lines)
+            }
             return lines.joined(separator: "\n")
         }
         guard let result = record.result else {
@@ -149,7 +158,7 @@ enum InsightEvalHarness {
         if let perception = record.perception {
             lines.append("- OCR observations retained: \(perception.textObservations.count)")
             lines.append("- OCR evidence truncated: \(perception.textWasTruncated)")
-            lines.append("- Original OCR indices supplied to model: \(record.modelTextLineIndices)")
+            lines.append("- Description uses image pixels; recognized text is displayed separately")
         }
         lines.append("- Title: \(result.title)")
         lines.append("- Description: \(result.summary)")
@@ -187,5 +196,11 @@ enum InsightEvalHarness {
         alert.addButton(withTitle: "OK")
         alert.runModal()
     }
+}
+
+private actor InsightEvaluationTextCapture {
+    private var perception: ImagePerceptionResult?
+    func accept(_ result: ImagePerceptionResult) { perception = result }
+    func current() -> ImagePerceptionResult? { perception }
 }
 #endif

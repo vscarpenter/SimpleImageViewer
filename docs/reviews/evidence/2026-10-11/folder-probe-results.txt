@@ -1,0 +1,5 @@
+shallow=visible.png
+recursive=internal.png,nested.png,visible.png
+repeat_equal=true repeat_id_equal=false
+precanceled_recursive_flag=true result_count=3
+precanceled_shallow_flag=true result_count=1

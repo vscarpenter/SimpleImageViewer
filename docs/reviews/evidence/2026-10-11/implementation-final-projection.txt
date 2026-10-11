@@ -1,0 +1,7 @@
+Source checkpoint: 21a981b functional code, before settings copy-only clarification
+App-hosted Release suite: 307 tests passed
+Source log: /tmp/stillview-final-complete-release-tests-2026-10-11.log
+
+BROWSING_PROJECTION count=1000 elapsed_ms=48.90704154968262 heartbeat_gap_ms=5.653023719787598
+BROWSING_PROJECTION count=10000 elapsed_ms=441.56599044799805 heartbeat_gap_ms=5.620002746582031
+BROWSING_PROJECTION count=100000 elapsed_ms=4408.0129861831665 heartbeat_gap_ms=5.592942237854004

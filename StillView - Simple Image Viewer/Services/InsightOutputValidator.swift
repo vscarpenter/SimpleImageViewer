@@ -4,16 +4,6 @@ import Foundation
 /// original observations. Generated prose is not a transcription channel: neither quotes nor
 /// digit-bearing values belong there, even when matching text appears elsewhere in the image.
 enum InsightOutputValidator {
-    static func validatedTextLineIndices(_ indices: [Int], lineCount: Int) -> [Int]? {
-        guard lineCount > 0,
-              (1...3).contains(indices.count),
-              Set(indices).count == indices.count,
-              indices.allSatisfy({ (0..<lineCount).contains($0) }) else {
-            return nil
-        }
-        return indices.sorted()
-    }
-
     static func result(
         from generated: GeneratedImageInsight,
         perception: ImagePerceptionResult,
@@ -32,19 +22,11 @@ enum InsightOutputValidator {
               hasNoTranscriptions(narrative) else {
             throw ImageInsightError.invalidGeneratedContent
         }
-        let allowedIndices = Set(modelTextLineIndices ?? Array(perception.textObservations.indices))
-        let indices = validatedTextLineIndices(
-            generated.selectedTextLineIndices, lineCount: perception.recognizedText.count
-        ).flatMap { selected in selected.allSatisfy(allowedIndices.contains) ? selected : nil }
-        // An invalid optional selection cannot rewrite or replace OCR; fall back to original reading order.
-        let selected = indices?.map { perception.recognizedText[$0] }
-            ?? Array(perception.recognizedText.prefix(3))
+        // Keep the historical result shape, but never ask a language model to select source text.
+        let selected = Array(perception.recognizedText.prefix(3))
         var limitations = uncertainties
         if perception.textWasTruncated {
-            limitations.append("Text extraction was limited for this image. Some lines are not included.")
-        }
-        if allowedIndices.count < perception.textObservations.count {
-            limitations.append("The description used limited text evidence. All extracted text is available below.")
+            limitations.append(ImagePerceptionResult.incompleteTextMessage)
         }
         return ImageInsightResult(
             title: title,
@@ -54,7 +36,7 @@ enum InsightOutputValidator {
             limitations: limitations,
             recognizedText: perception.recognizedText,
             selectedTextLines: selected,
-            textSelectionSource: indices == nil ? .vision : .appleIntelligence,
+            textSelectionSource: .vision,
             provenance: provenance
         )
     }

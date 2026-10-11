@@ -4,12 +4,21 @@ import SwiftUI
 import Combine
 import UniformTypeIdentifiers
 
+/// A recent folder and its own optional access grant, persisted as one ordered value.
+struct RecentFolderRecord: Codable, Equatable {
+    let url: URL
+    var bookmarkData: Data?
+}
+
 // MARK: - PreferencesService Protocol
 
 /// Protocol defining preferences management for StillView - Simple Image Viewer
 protocol PreferencesService {
     /// List of recently accessed folders (maximum 10 entries)
     var recentFolders: [URL] { get set }
+
+    /// Ordered folder/access associations. A folder without a grant remains available for reauthorization.
+    var recentFolderRecords: [RecentFolderRecord] { get set }
     
     /// Last window frame (size and position)
     var windowFrame: CGRect { get set }
@@ -73,6 +82,23 @@ protocol PreferencesService {
     func loadWindowState() -> WindowState?
 }
 
+extension PreferencesService {
+    // Preserve compatibility with existing injected preferences implementations.
+    var recentFolderRecords: [RecentFolderRecord] {
+        get {
+            let bookmarks = folderBookmarks
+            return recentFolders.enumerated().map { index, url in
+                let data = index < bookmarks.count ? bookmarks[index] : nil
+                return RecentFolderRecord(url: url, bookmarkData: data?.isEmpty == false ? data : nil)
+            }
+        }
+        set {
+            recentFolders = newValue.map(\.url)
+            folderBookmarks = newValue.map { $0.bookmarkData ?? Data() }
+        }
+    }
+}
+
 /// Default implementation using UserDefaults
 class DefaultPreferencesService: PreferencesService {
     static let shared = DefaultPreferencesService()
@@ -88,6 +114,7 @@ class DefaultPreferencesService: PreferencesService {
     // MARK: - Keys for UserDefaults
     private enum Keys {
         static let recentFolders = "recentFolders"
+        static let recentFolderRecords = "recentFolderRecords"
         static let windowFrame = "windowFrame"
         static let showFileName = "showFileName"
         static let showImageInfo = "showImageInfo"
@@ -105,18 +132,62 @@ class DefaultPreferencesService: PreferencesService {
     // MARK: - Properties
     var recentFolders: [URL] {
         get {
-            guard let data = userDefaults.data(forKey: Keys.recentFolders),
-                  let urls = try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSArray.self, NSURL.self], from: data) as? [URL] else {
-                return []
-            }
-            return urls
+            recentFolderRecords.map(\.url)
         }
         set {
-            let limitedFolders = Array(newValue.prefix(10)) // Limit to 10 entries
-            if let data = try? NSKeyedArchiver.archivedData(withRootObject: limitedFolders, requiringSecureCoding: true) {
-                userDefaults.set(data, forKey: Keys.recentFolders)
+            let existing = recentFolderRecords
+            recentFolderRecords = newValue.map { url in
+                let bookmark = existing.first { $0.url.standardizedFileURL == url.standardizedFileURL }?.bookmarkData
+                return RecentFolderRecord(url: url, bookmarkData: bookmark)
             }
         }
+    }
+
+    var recentFolderRecords: [RecentFolderRecord] {
+        get {
+            if let data = userDefaults.data(forKey: Keys.recentFolderRecords),
+               let records = try? JSONDecoder().decode([RecentFolderRecord].self, from: data) {
+                return Self.normalizedRecords(records)
+            }
+            let migrated = migrateLegacyRecentFolders()
+            self.recentFolderRecords = migrated
+            return migrated
+        }
+        set {
+            let records = Self.normalizedRecords(newValue)
+            guard let data = try? JSONEncoder().encode(records) else { return }
+            userDefaults.set(data, forKey: Keys.recentFolderRecords)
+            userDefaults.removeObject(forKey: Keys.recentFolders)
+            userDefaults.removeObject(forKey: Keys.folderBookmarks)
+        }
+    }
+
+    /// Legacy bookmark arrays were sometimes saved from dictionary iteration. Resolve every grant
+    /// and match its actual folder, so a malformed length or order never gives another folder access.
+    private func migrateLegacyRecentFolders() -> [RecentFolderRecord] {
+        guard let data = userDefaults.data(forKey: Keys.recentFolders),
+              let folders = try? NSKeyedUnarchiver.unarchivedObject(
+                ofClasses: [NSArray.self, NSURL.self], from: data) as? [URL] else { return [] }
+        let bookmarks = userDefaults.array(forKey: Keys.folderBookmarks) as? [Data] ?? []
+        var grants: [URL: Data] = [:]
+        for bookmark in bookmarks where !bookmark.isEmpty {
+            var isStale = false
+            guard let resolved = try? URL(
+                resolvingBookmarkData: bookmark, options: [.withSecurityScope, .withoutUI],
+                relativeTo: nil, bookmarkDataIsStale: &isStale) else { continue }
+            let identity = resolved.standardizedFileURL
+            if folders.contains(where: { $0.standardizedFileURL == identity }) {
+                grants[identity] = bookmark
+            }
+        }
+        return Self.normalizedRecords(folders.map {
+            RecentFolderRecord(url: $0, bookmarkData: grants[$0.standardizedFileURL])
+        })
+    }
+
+    private static func normalizedRecords(_ records: [RecentFolderRecord]) -> [RecentFolderRecord] {
+        var seen: Set<URL> = []
+        return Array(records.filter { $0.url.isFileURL && seen.insert($0.url.standardizedFileURL).inserted }.prefix(10))
     }
     
     var windowFrame: CGRect {
@@ -190,10 +261,13 @@ class DefaultPreferencesService: PreferencesService {
     
     var folderBookmarks: [Data] {
         get {
-            return userDefaults.array(forKey: Keys.folderBookmarks) as? [Data] ?? []
+            recentFolderRecords.map { $0.bookmarkData ?? Data() }
         }
         set {
-            userDefaults.set(newValue, forKey: Keys.folderBookmarks)
+            recentFolderRecords = recentFolderRecords.enumerated().map { index, record in
+                let data = index < newValue.count ? newValue[index] : nil
+                return RecentFolderRecord(url: record.url, bookmarkData: data?.isEmpty == false ? data : nil)
+            }
         }
     }
     

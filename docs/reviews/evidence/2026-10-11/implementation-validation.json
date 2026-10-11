@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-11",
+  "platform": {
+    "macOS": "27.0.1",
+    "osBuild": "26A434",
+    "xcode": "27.0",
+    "xcodeBuild": "27A266a",
+    "sdk": "27.0",
+    "architecture": "arm64"
+  },
+  "testConfiguration": "Release, ENABLE_TESTABILITY=YES, CODE_SIGNING_ALLOWED=NO",
+  "appHostedTests": {
+    "passed": 307,
+    "failed": 0,
+    "skipped": 0,
+    "activeTestSources": 15,
+    "inactiveSourcesOnDisk": 56,
+    "resultBundle": "/tmp/stillview-final-complete-release-tests-2026-10-11.xcresult"
+  },
+  "releaseBuild": "passed",
+  "lint": {
+    "errors": 0,
+    "existingWarnings": 1,
+    "existingWarning": "PreferencesViewModel.swift:671 cyclomatic complexity 16",
+    "configurationWarning": "line_length is disabled but configured"
+  },
+  "projectionMeasurements": [
+    {
+      "records": 1000,
+      "elapsedMilliseconds": 48.90704154968262,
+      "maximumMainHeartbeatGapMilliseconds": 5.653023719787598
+    },
+    {
+      "records": 10000,
+      "elapsedMilliseconds": 441.56599044799805,
+      "maximumMainHeartbeatGapMilliseconds": 5.620002746582031
+    },
+    {
+      "records": 100000,
+      "elapsedMilliseconds": 4408.0129861831665,
+      "maximumMainHeartbeatGapMilliseconds": 5.592942237854004
+    }
+  ],
+  "projectionLimits": [
+    "One synthetic full snapshot per scale, injected cached/no-op image loader, main timer every 5ms",
+    "Not a full SwiftUI/provider/rendering benchmark",
+    "Sort cancellation is checked before and after synchronous sorting"
+  ],
+  "sandboxArtifact": {
+    "signature": "ad hoc",
+    "signatureVerification": "passed strict",
+    "entitlements": [
+      "app-sandbox",
+      "files.user-selected.read-write",
+      "files.bookmarks.app-scope"
+    ],
+    "nativeVerification": "passed local selected Documents root, descendants, immediate quit and normal relaunch",
+    "executableSHA256": "64d42d874abbd9d53227297aa4e119ba509e22f547b6b537bbf2eed92abc3651"
+  },
+  "nativeUnsignedCheckpoint": {
+    "combinedImages": 5,
+    "directImages": 1,
+    "duplicateLeafNames": 3,
+    "travelBranchImages": 3,
+    "italyBranchImages": 2,
+    "verified": [
+      "CmdO folder picker",
+      "Single/Strip/Grid controls",
+      "single View menu",
+      "visible Including subfolders scope",
+      "combined grid with relative paths",
+      "native tree expansion and branch filtering",
+      "filename search and CmdA editing"
+    ],
+    "followup": [
+      "Completed in signed Release follow-up; see nativeSignedVerification"
+    ]
+  },
+  "externalBoundaries": [
+    "No push or hosted CI run",
+    "No distribution signing or notarization",
+    "No real SMB/cloud/external provider validation",
+    "No live VoiceOver session or system appearance toggles"
+  ],
+  "nativeFollowupCommit": "21a981b",
+  "nativeSignedVerification": {
+    "combinedImages": 5,
+    "directImages": 1,
+    "treeFocus": "passed Right expansion and Down branch selection",
+    "searchFocus": "passed empty-to-matching transition and CmdA editing",
+    "gridColumns": 4,
+    "partialLastRowNavigation": "passed Down, Up, Right, clamped Down and Return activation",
+    "independentOCRLines": 47,
+    "descriptionsOffOCRLines": 47,
+    "copiedTextLines": 47,
+    "immediateQuitRestore": "passed Grid, Size, Include Subfolders, Italy, Travel/Italy query and receipt identity",
+    "normalRelaunch": "passed final binary scope, query, selected receipt, inspector and Size sort",
+    "restoredDescendantOCRLines": 47,
+    "AISettingAfterTest": "original enabled setting restored",
+    "evidence": "implementation-native-verification.md"
+  },
+  "verificationSequenceNote": "307 hosted tests cover final functional changes; subsequent settings copy-only edit verified by final Release build, lint and native inspection.",
+  "baseImplementationCommit": "16641c4",
+  "validatedSourceCommit": "21a981b",
+  "projectionMeasurementEvidence": "implementation-final-projection.txt"
+}

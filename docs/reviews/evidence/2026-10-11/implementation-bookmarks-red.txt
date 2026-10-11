@@ -1,0 +1,38 @@
+Test Suite 'PreferencesServiceTests' started at 2026-10-11 14:31:22.255.
+Test Case '-[tests.PreferencesServiceTests test_invalidLaunchBookmarkCleanup_preservesURLsAndRecordPositions]' started.
+Test Case '-[tests.PreferencesServiceTests test_invalidLaunchBookmarkCleanup_preservesURLsAndRecordPositions]' passed (0.004 seconds).
+Test Case '-[tests.PreferencesServiceTests test_launchScopeUnavailable_preservesGrantWithoutInspectingOrClaimingAccess]' started.
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/PreferencesServiceTests.swift:239: error: -[tests.PreferencesServiceTests test_launchScopeUnavailable_preservesGrantWithoutInspectingOrClaimingAccess] : failed - Do not inspect a folder without its grant
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/PreferencesServiceTests.swift:244: error: -[tests.PreferencesServiceTests test_launchScopeUnavailable_preservesGrantWithoutInspectingOrClaimingAccess] : XCTAssertEqual failed: ("0") is not equal to ("1")
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/PreferencesServiceTests.swift:245: error: -[tests.PreferencesServiceTests test_launchScopeUnavailable_preservesGrantWithoutInspectingOrClaimingAccess] : XCTAssertEqual failed: ("[StillView___Simple_Image_Viewer.RecentFolderRecord(url: file:///Users/fixture/access-unavailable/, bookmarkData: nil)]") is not equal to ("[StillView___Simple_Image_Viewer.RecentFolderRecord(url: file:///Users/fixture/access-unavailable/, bookmarkData: Optional(1 bytes))]")
+Test Case '-[tests.PreferencesServiceTests test_launchScopeUnavailable_preservesGrantWithoutInspectingOrClaimingAccess]' failed (0.003 seconds).
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_damagedBookmarkAtEveryPosition_keepsOtherGrants]' started.
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_damagedBookmarkAtEveryPosition_keepsOtherGrants]' passed (0.008 seconds).
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_matchesBookmarkURLsRatherThanDictionaryOrder]' started.
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_matchesBookmarkURLsRatherThanDictionaryOrder]' passed (0.004 seconds).
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_withMissingOrInvalidBookmarks_preservesUnpairedFolders]' started.
+Test Case '-[tests.PreferencesServiceTests test_legacyMigration_withMissingOrInvalidBookmarks_preservesUnpairedFolders]' passed (0.004 seconds).
+Test Case '-[tests.PreferencesServiceTests test_newRecentFolderWithoutBookmark_doesNotBorrowThePreviousFolderGrant]' started.
+Test Case '-[tests.PreferencesServiceTests test_newRecentFolderWithoutBookmark_doesNotBorrowThePreviousFolderGrant]' passed (0.001 seconds).
+Test Case '-[tests.PreferencesServiceTests test_orderedFolderRecords_deduplicatesAndLimitsWholeRecordsTogether]' started.
+Test Case '-[tests.PreferencesServiceTests test_orderedFolderRecords_deduplicatesAndLimitsWholeRecordsTogether]' passed (0.000 seconds).
+Test Case '-[tests.PreferencesServiceTests test_orderedFolderRecords_roundTripWithBookmarklessEntryInTheMiddle]' started.
+Test Case '-[tests.PreferencesServiceTests test_orderedFolderRecords_roundTripWithBookmarklessEntryInTheMiddle]' passed (0.000 seconds).
+Test Case '-[tests.PreferencesServiceTests test_recentFolderReordering_keepsEachBookmarkWithItsURL]' started.
+Test Case '-[tests.PreferencesServiceTests test_recentFolderReordering_keepsEachBookmarkWithItsURL]' passed (0.001 seconds).
+Test Case '-[tests.PreferencesServiceTests test_removeBookmark_preservesOtherOrderedRecordsAndFolderForReauthorization]' started.
+Test Case '-[tests.PreferencesServiceTests test_removeBookmark_preservesOtherOrderedRecordsAndFolderForReauthorization]' passed (0.000 seconds).
+Test Case '-[tests.PreferencesServiceTests test_removeRecentFolder_removesMatchingBookmarkAtEveryPosition]' started.
+Test Case '-[tests.PreferencesServiceTests test_removeRecentFolder_removesMatchingBookmarkAtEveryPosition]' passed (0.002 seconds).
+Test Case '-[tests.PreferencesServiceTests test_unavailableLaunchFolder_checksUnderBalancedScopeAndRetainsItsGrant]' started.
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/PreferencesServiceTests.swift:212: error: -[tests.PreferencesServiceTests test_unavailableLaunchFolder_checksUnderBalancedScopeAndRetainsItsGrant] : XCTAssertTrue failed - Sandbox existence checks require the resolved grant to be active
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/PreferencesServiceTests.swift:220: error: -[tests.PreferencesServiceTests test_unavailableLaunchFolder_checksUnderBalancedScopeAndRetainsItsGrant] : XCTAssertEqual failed: ("0") is not equal to ("1")
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/PreferencesServiceTests.swift:221: error: -[tests.PreferencesServiceTests test_unavailableLaunchFolder_checksUnderBalancedScopeAndRetainsItsGrant] : XCTAssertEqual failed: ("0") is not equal to ("1")
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/PreferencesServiceTests.swift:224: error: -[tests.PreferencesServiceTests test_unavailableLaunchFolder_checksUnderBalancedScopeAndRetainsItsGrant] : XCTAssertEqual failed: ("[StillView___Simple_Image_Viewer.RecentFolderRecord(url: file:///Users/fixture/unavailable/, bookmarkData: nil)]") is not equal to ("[StillView___Simple_Image_Viewer.RecentFolderRecord(url: file:///Users/fixture/unavailable/, bookmarkData: Optional(1 bytes))]") - Offline folders retain their durable grant for retry
+Test Case '-[tests.PreferencesServiceTests test_unavailableLaunchFolder_checksUnderBalancedScopeAndRetainsItsGrant]' failed (0.001 seconds).
+Test Case '-[tests.PreferencesServiceTests testEnableAIAnalysisDefaultsToFalseAndPersists]' started.
+Test Case '-[tests.PreferencesServiceTests testEnableAIAnalysisDefaultsToFalseAndPersists]' passed (0.000 seconds).
+Test Case '-[tests.PreferencesServiceTests testEnableImageEnhancementsDefaultsToFalse]' started.
+Test Case '-[tests.PreferencesServiceTests testEnableImageEnhancementsDefaultsToFalse]' passed (0.000 seconds).
+Test Suite 'PreferencesServiceTests' failed at 2026-10-11 14:31:22.286.
+	 Executed 14 tests, with 7 failures (0 unexpected) in 0.029 (0.031) seconds

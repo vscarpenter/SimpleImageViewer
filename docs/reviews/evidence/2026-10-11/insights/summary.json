@@ -1,0 +1,13 @@
+{
+  "total": 30,
+  "succeeded": 28,
+  "failed": 2,
+  "median_seconds": 2.77736097574234,
+  "min_seconds": 0.4439030885696411,
+  "max_seconds": 17.702443957328796,
+  "total_seconds": 111.60695230960846,
+  "all_success_additional_detail": 28,
+  "all_success_uncertainty": 16,
+  "all_success_OCR_nonempty": 6,
+  "note": "Uncontrolled current regression smoke. No historical quality rescoring. Fixture hashes differ for 9 images."
+}

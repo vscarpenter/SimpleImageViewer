@@ -91,6 +91,11 @@ extension HelpSection {
                 type: .information
             ),
             HelpContentItem(
+                title: "Include Subfolders",
+                description: "New browsing sessions start with the selected folder only. Choose View → Include Subfolders, or use the toolbar’s folder menu, to combine images from the folder and its descendants. The folder tree lets you filter a branch without reopening it. Your saved session restores its chosen scope.",
+                type: .information
+            ),
+            HelpContentItem(
                 title: "Quick Start Tip",
                 description: "For the best experience, organize your images in folders and use StillView's keyboard shortcuts for fast, distraction-free browsing. Try the thumbnail views ('T' and 'G') for quick navigation through large collections. All controls are now consolidated in the top toolbar for easy access.",
                 type: .tip
@@ -118,6 +123,18 @@ extension HelpSection {
                 title: "Previous Image",
                 description: "Navigate to the previous image in the folder",
                 shortcut: "←",
+                type: .shortcut
+            ),
+            HelpContentItem(
+                title: "Grid Row Navigation",
+                description: "Move the selected Grid image up or down by the number of columns currently visible. Selection stops at the collection edges.",
+                shortcut: "↑ or ↓",
+                type: .shortcut
+            ),
+            HelpContentItem(
+                title: "Refresh Folder",
+                description: "Rescan the open folder using the current Include Subfolders setting",
+                shortcut: "⌘R",
                 type: .shortcut
             ),
             HelpContentItem(
@@ -235,7 +252,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Image Actions",
-                description: "The toolbar provides slideshow, sharing, Trash, and inspector controls. Single and Strip include zoom controls; Grid includes thumbnail density and sorting.",
+                description: "The toolbar provides slideshow, sharing, Trash, and inspector controls. Single and Strip include zoom controls; Grid includes thumbnail density and sorting. The View and Image menus expose these actions in every viewing mode. Right-click an image for its context menu.",
                 type: .information
             ),
             HelpContentItem(
@@ -267,7 +284,17 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Refresh a Folder",
-                description: "Choose the folder again to refresh images added or removed outside StillView. Folder contents do not refresh automatically.",
+                description: "Choose View → Refresh Folder or press ⌘R to find images added or removed outside StillView. Refresh uses the current Include Subfolders setting. The selected file remains selected when it is still visible. Folder contents do not refresh automatically.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Folder Tree and Search",
+                description: "With Include Subfolders enabled, select a folder row to see its images and images in all its descendants. All images clears that folder filter. Filter images… matches filenames and relative folder paths within the selected scope. Clear the search to see the whole scope; use the sidebar button to hide or show folders.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Scanning and Partial Results",
+                description: "Images appear as they are discovered. Cancel stops scanning and keeps the images already found; Refresh Folder restarts a scan of the whole scope. Hidden entries, packages, aliases, and symbolic links are excluded. Unreadable subfolders are listed as issues while other branches remain available.",
                 type: .information
             ),
             HelpContentItem(
@@ -299,7 +326,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Grid Controls",
-                description: "Use the toolbar’s density slider to resize thumbnails. In a narrow window, sorting is available in the More actions menu.",
+                description: "Use the toolbar’s density slider to resize thumbnails. In a narrow window, sorting is available in the More actions menu. Date Created sorts by the file’s creation date, rather than camera capture time. Sorting preserves the selected file.",
                 type: .information
             ),
             HelpContentItem(
@@ -353,12 +380,17 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Image Descriptions",
-                description: "Apple Intelligence receives the selected image on this Mac and writes a short description with notable visible details. Copy description copies the summary. Refresh runs a new analysis; Cancel stops an in-flight request.",
+                description: "Apple Intelligence receives the selected image on this Mac and writes a concise title and summary focused on visible content. Copy description copies the summary. Refresh runs a new description; Cancel stops an in-flight request. Browsing folders does not automatically analyze every image.",
                 type: .information
             ),
             HelpContentItem(
                 title: "Text in Image",
-                description: "Expand Text in image to read or copy the original words recognized by Vision. Repeated lines are preserved within the analysis limit. Recognized text is separate from the generated description and may contain OCR errors.",
+                description: "Choose Extract text in the Insights inspector to recognize text with Vision, even if StillView’s AI Insights setting is off or Apple Intelligence is unavailable. Expand Text in image to read or copy the recognized words. Repeated lines are preserved within extraction limits. Recognition can contain errors, and partial extraction is marked when some lines could not be confidently read or included.",
+                type: .information
+            ),
+            HelpContentItem(
+                title: "Independent Text and Description",
+                description: "Recognized text remains available if a description fails. Refresh text and the description independently. If a refresh fails, its previous result stays visible. Changing the selected image cancels stale work and shows results for that image.",
                 type: .information
             ),
             HelpContentItem(
@@ -368,7 +400,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Enable or Disable Insights",
-                description: "Use Settings → Intelligence → AI Insights, or enable them from the Insights panel. Disabling them cancels generation; the panel can still explain how to enable the feature.",
+                description: "Use Settings → Intelligence → AI Insights, or enable them from the Insights panel. Disabling them cancels description generation. Extract text remains available independently.",
                 type: .information
             ),
             HelpContentItem(
@@ -378,7 +410,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Limitations",
-                description: "Descriptions may miss details or misinterpret the scene. Specific uncertainties appear with the result. Recognized text may contain OCR errors. The app does not identify people or modify your files during analysis.",
+                description: "Descriptions may miss details or misinterpret the scene. Recognized text may contain OCR errors, especially in dense or high-resolution images, and extraction can be partial. The app does not identify people or modify your files during analysis.",
                 type: .warning
             )
         ]
@@ -395,7 +427,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Image Display Defaults",
-                description: "Choose whether file names and the inspector appear by default. These settings apply when you next launch StillView.",
+                description: "Choose whether filenames and the inspector appear by default. Use View → Show Filename to change the visible filename overlay while browsing.",
                 type: .information
             ),
             HelpContentItem(
@@ -457,7 +489,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "After Moving to Trash",
-                description: "StillView removes the trashed file from the open collection. If it was the selected image, another image is selected when available. An empty collection returns to folder selection.",
+                description: "StillView removes the trashed file from the open collection. If it was the selected image, another image is selected when available. Subfolder browsing keeps an empty branch visible so you can choose another folder or refresh; an empty collection in single-folder browsing returns to folder selection.",
                 type: .information
             )
         ]
@@ -521,7 +553,7 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "Performance Tips",
-                description: "For best performance with large image collections, ensure your Mac has sufficient RAM and consider organizing images into smaller folders (100-500 images per folder). Thumbnail views work best with collections under 1000 images.",
+                description: "Large folder trees scan incrementally. Use a folder filter or filename/path search to narrow the collection. Thumbnails load in the background and use a bounded cache; very large files can still take longer to appear.",
                 type: .tip
             ),
             HelpContentItem(
@@ -548,12 +580,12 @@ extension HelpSection {
             ),
             HelpContentItem(
                 title: "AI Privacy Commitment",
-                description: "AI Insights gives Apple Intelligence the selected image to describe its visible content on this Mac. Expand Text in image for original recognized text, or use Copy description. Descriptions and OCR may contain errors. Inputs and results stay local. Disable Insights in Settings → Intelligence.",
+                description: "AI Insights gives Apple Intelligence the selected image to describe its visible content on this Mac. Extract text uses Vision independently and keeps its output separate. Descriptions and OCR may contain errors. Inputs and results stay local. Disable descriptions in Settings → Intelligence; text extraction remains available.",
                 type: .information
             ),
             HelpContentItem(
-                title: "Universal Binary",
-                description: "StillView requires macOS 27 or later and Apple silicon. AI Insights requires Apple Intelligence enabled and its on-device model ready.",
+                title: "Apple Silicon and macOS 27",
+                description: "StillView requires macOS 27 or later and Apple silicon. AI descriptions require Apple Intelligence enabled and its on-device model ready; text extraction does not require Apple Intelligence.",
                 type: .information
             ),
             HelpContentItem(

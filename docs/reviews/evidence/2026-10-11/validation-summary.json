@@ -1,0 +1,24 @@
+{
+  "reviewed_head": "9da3f3fe853febdb47828654de7f348072c25e98",
+  "date": "2026-10-11",
+  "os": "macOS 27.0.1 (26A434)",
+  "xcode": "27.0 (27A266a)",
+  "sdk": "27.0",
+  "architecture": "arm64",
+  "test_count": 229,
+  "test_failures": 0,
+  "compiled_test_sources": 15,
+  "test_sources_on_disk": 71,
+  "release_build": "passed, signing disabled",
+  "swiftlint": "0 serious violations; 1 complexity warning; disabled line-length configuration warning",
+  "build_warning": "App Intents metadata extraction skipped; no AppIntents.framework dependency",
+  "developer_directory": "selected per command; global xcode-select left unchanged",
+  "commands": [
+    "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bash scripts/check-macos-toolchain.sh",
+    "python3 scripts/check-test-target.py",
+    "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test -project 'StillView - Simple Image Viewer.xcodeproj' -scheme 'StillView - Simple Image Viewer' -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/stillview-review-derived-2026-10-11 -resultBundlePath /tmp/stillview-review-tests-2026-10-11.xcresult CODE_SIGNING_ALLOWED=NO",
+    "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project 'StillView - Simple Image Viewer.xcodeproj' -scheme 'StillView - Simple Image Viewer' -configuration Release -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/stillview-review-derived-2026-10-11 build CODE_SIGNING_ALLOWED=NO",
+    "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swiftlint lint --no-cache --reporter github-actions-logging"
+  ],
+  "limits": "Unsigned local verification; limited native walkthrough; current regression corpus is not an accuracy benchmark."
+}

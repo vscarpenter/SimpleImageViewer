@@ -1,0 +1,6 @@
+c72695518f0d98527d566d1415a6f4ac60136fe9c82a8e03fda0e96e985842f0  /private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources/AppleIntelligenceInsightsService.swift
+d6d276bfa4211a3121983512aef61442740aa20ace6a5d833365c023b14077db  /private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources/ImageInsightCore.swift
+4ea8478c45556323b8138a56a6a88163829770996f0c4c67cbf6ab82c83310fd  /private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources/ImageMetadataService.swift
+b29834b9048d37d29af771d4c77cef7d5408378d57574e1eef8b877bf89a13af  /private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources/ImagePerceptionService.swift
+c079e06a7aeae06a4ec0ff5317e5ff3851472c94024aff0684d53643934b4e1e  /private/tmp/stillview-ai-implementation-eval-2026-10-11/final-v10-sources/InsightOutputValidator.swift
+1609aae0e159ee335b61ae88151fc2edf114518d6f19117a0aa335e33deb39b6  /private/tmp/stillview-ai-implementation-eval-2026-10-11/Runner.swift

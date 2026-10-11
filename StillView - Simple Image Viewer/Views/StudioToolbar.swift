@@ -62,7 +62,24 @@ struct StudioToolbar: View {
 
     private var breadcrumbGroup: some View {
         HStack(spacing: 10) {
+            if viewModel.includeSubfolders {
+                Button {
+                    viewModel.folderSidebarVisible.toggle()
+                } label: {
+                    Image(systemName: "sidebar.left")
+                }
+                .buttonStyle(.plain)
+                .help(viewModel.folderSidebarVisible ? "Hide folders" : "Show folders")
+                .accessibilityLabel(viewModel.folderSidebarVisible ? "Hide folders" : "Show folders")
+            }
+            VStack(alignment: .leading, spacing: 1) {
             Menu {
+                Toggle("Include Subfolders", isOn: Binding(
+                    get: { folderPicker.includeSubfolders },
+                    set: { folderPicker.setIncludeSubfolders($0) }
+                ))
+                Button("Refresh Folder") { folderPicker.refreshCurrentFolder() }
+                Divider()
                 ForEach(folderPicker.recentFolders, id: \.self) { url in
                     Button {
                         folderPicker.selectRecentFolder(url)
@@ -102,13 +119,19 @@ struct StudioToolbar: View {
             .menuIndicator(.hidden)
             .help("Switch folder")
             .accessibilityLabel("Folder: \(viewModel.currentFolderName)")
+                Text(viewModel.includeSubfolders ? "Including subfolders" : "This folder")
+                    .font(.system(size: 10))
+                    .foregroundColor(.appSecondaryText)
+                    .lineLimit(1)
+            }
+
 
             Text(viewModel.imageCounterText)
                 .font(.system(size: 12))
                 .monospacedDigit()
                 .foregroundColor(.appSecondaryText)
                 .fixedSize(horizontal: true, vertical: false)
-                .accessibilityLabel("Image \(viewModel.currentIndex + 1) of \(viewModel.totalImages)")
+                .accessibilityLabel(viewModel.imageCounterText)
         }
     }
 

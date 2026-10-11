@@ -156,6 +156,38 @@ final class ImageViewportTests: XCTestCase {
 
 @MainActor
 final class ImageViewportZoomCommandTests: XCTestCase {
+    func test_mainWindowDelegate_survivesAutoreleasePoolForCloseAndRestore() {
+        let appDelegate = AppDelegate()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+            styleMask: [.titled, .closable], backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+
+        autoreleasepool { appDelegate.setMainWindow(window) }
+
+        XCTAssertNotNil(window.delegate, "NSWindow delegates are weak; the app must retain its close handler")
+    }
+
+    func test_sortCreationDateLabel_describesFileSystemDateTruthfully() {
+        XCTAssertEqual(ImageSortOrder.dateCaptured.displayName, "Date Created")
+    }
+
+    func test_gridVerticalArrow_isHandledWhileSingleViewKeepsItsNativeKey() throws {
+        let viewModel = ImageViewerViewModel()
+        let keyboard = KeyboardHandler(imageViewerViewModel: viewModel)
+        let upArrow = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: 0, context: nil, characters: "\u{F700}",
+            charactersIgnoringModifiers: "\u{F700}", isARepeat: false, keyCode: 126
+        ))
+        XCTAssertFalse(keyboard.handleKeyPress(upArrow))
+
+        viewModel.setViewMode(.grid)
+
+        XCTAssertTrue(keyboard.handleKeyPress(upArrow))
+    }
+
     func test_zoomInAndOutFromFit_useActualFitPercentage() {
         let viewModel = ImageViewerViewModel()
         viewModel.updateFitZoomLevel(0.6)

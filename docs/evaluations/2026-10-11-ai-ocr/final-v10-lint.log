@@ -1,0 +1,2 @@
+warning: Found a configuration for 'line_length' rule, but it is disabled in 'disabled_rules'.
+::warning file=StillView - Simple Image Viewer/ViewModels/PreferencesViewModel.swift,line=671,col=5::Function should have complexity 15 or less; currently complexity is 16 (cyclomatic_complexity)

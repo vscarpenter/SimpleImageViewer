@@ -21,7 +21,6 @@ struct ContextMenuProvider {
                 }) {
                     Label("Copy Image", systemImage: "doc.on.doc")
                 }
-                .keyboardShortcut("c", modifiers: .command)
                 
                 Button(action: {
                     ContextMenuService.shared.copyImagePath(imageFile)
@@ -49,7 +48,6 @@ struct ContextMenuProvider {
                 }) {
                     Label("Reveal in Finder", systemImage: "folder")
                 }
-                .keyboardShortcut("r", modifiers: [.command, .shift])
                 
                 Divider()
                 
@@ -59,7 +57,6 @@ struct ContextMenuProvider {
                 }) {
                     Label("Move to Trash", systemImage: "trash")
                 }
-                .keyboardShortcut(.delete)
                 .foregroundColor(.red)
                 .disabled(!viewModel.canDeleteCurrentImage)
             } else {

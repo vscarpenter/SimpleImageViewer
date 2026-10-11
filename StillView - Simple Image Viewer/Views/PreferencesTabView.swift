@@ -65,14 +65,14 @@ struct IntelligencePreferencesView: View {
             Section {
                 Toggle(isOn: $viewModel.enableAIAnalysis) {
                     Text("AI Insights")
-                    Text("Describe images, highlight details, and recognize text on this Mac.")
+                    Text("Describe images and highlight details on this Mac.")
                 }
                 .accessibilityLabel("AI Insights")
-                .accessibilityHint("Describe images, highlight details, and recognize text on this Mac.")
+                .accessibilityHint("Describe images and highlight details on this Mac.")
             } header: {
                 Text("Image analysis")
             } footer: {
-                Text("Uses Vision and Apple Intelligence on this Mac. Requires Apple Intelligence to be enabled.")
+                Text("Descriptions require Apple Intelligence. Extract text remains available when AI Insights is off.")
             }
 
             Section {
