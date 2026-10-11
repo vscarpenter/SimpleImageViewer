@@ -1,0 +1,105 @@
+{
+  "source": "Read-only GitHub CLI gh run list/view against vscarpenter/SimpleImageViewer; full logs not retained",
+  "runs": [
+    {
+      "conclusion": "failure",
+      "createdAt": "2026-10-05T15:37:02Z",
+      "headSha": "9da3f3fe853febdb47828654de7f348072c25e98",
+      "jobs": [
+        {
+          "name": "Analyze (Swift)",
+          "conclusion": "failure",
+          "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/37334266922/job/111844913276",
+          "failedOrSkippedSteps": [
+            {
+              "name": "Build (CodeQL)",
+              "conclusion": "failure"
+            },
+            {
+              "name": "Perform CodeQL Analysis",
+              "conclusion": "skipped"
+            }
+          ]
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/37334266922",
+      "runId": "37334266922"
+    },
+    {
+      "conclusion": "failure",
+      "createdAt": "2026-09-28T15:01:31Z",
+      "headSha": "9da3f3fe853febdb47828654de7f348072c25e98",
+      "jobs": [
+        {
+          "name": "Analyze (Swift)",
+          "conclusion": "failure",
+          "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/36440422798/job/108989143787",
+          "failedOrSkippedSteps": [
+            {
+              "name": "Build (CodeQL)",
+              "conclusion": "failure"
+            },
+            {
+              "name": "Perform CodeQL Analysis",
+              "conclusion": "skipped"
+            }
+          ]
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/36440422798",
+      "runId": "36440422798"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-09-15T19:58:08Z",
+      "headSha": "9da3f3fe853febdb47828654de7f348072c25e98",
+      "jobs": [
+        {
+          "name": "Code Quality Checks",
+          "conclusion": "success",
+          "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/35016731608/job/104541937986",
+          "failedOrSkippedSteps": []
+        },
+        {
+          "name": "Security Scan",
+          "conclusion": "success",
+          "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/35016731608/job/104541938165",
+          "failedOrSkippedSteps": []
+        },
+        {
+          "name": "Build and Test",
+          "conclusion": "success",
+          "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/35016731608/job/104541939306",
+          "failedOrSkippedSteps": []
+        },
+        {
+          "name": "Release Build",
+          "conclusion": "success",
+          "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/35016731608/job/104542448171",
+          "failedOrSkippedSteps": []
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/35016731608",
+      "runId": "35016731608"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-09-15T19:58:08Z",
+      "headSha": "9da3f3fe853febdb47828654de7f348072c25e98",
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/35016731598/job/104541937427",
+          "failedOrSkippedSteps": []
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/35016731598",
+      "runId": "35016731598"
+    }
+  ]
+}

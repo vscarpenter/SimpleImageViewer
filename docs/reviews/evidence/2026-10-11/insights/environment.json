@@ -1,0 +1,10 @@
+{
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434\n",
+  "xcode": "Xcode 27.0\nBuild version 27A266a\n",
+  "swift": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n",
+  "cpuArchitecture": "arm64",
+  "hw.model": "Mac16,11",
+  "hw.memsize": "51539607552",
+  "note": "Current production compilation. All 30 regenerated fixture hashes checked against archive before inference.",
+  "fixturePython": "bundled Python 3.12.14 with task-local arm64 Pillow 10.2.0"
+}
