@@ -169,6 +169,31 @@ final class FolderContentTests: XCTestCase {
         XCTAssertEqual(originalFolderContent.withCurrentIndex(Int.min).currentImage, testImageFiles.first)
     }
 
+    func test_withCurrentIndex_preservesRecursiveDiscoveryState() {
+        let child = tempDirectory.appendingPathComponent("child", isDirectory: true)
+        let issue = FolderScanIssue(folderURL: child, message: "Unable to read folder")
+        let content = FolderContent(folderURL: tempDirectory, imageFiles: testImageFiles,
+                                    includeSubfolders: true, discoveredFolders: [tempDirectory, child],
+                                    scanIssues: [issue], isComplete: false)
+
+        let selected = content.withCurrentIndex(3)
+
+        XCTAssertTrue(selected.includeSubfolders)
+        XCTAssertEqual(selected.discoveredFolders, content.discoveredFolders)
+        XCTAssertEqual(selected.scanIssues, [issue])
+        XCTAssertFalse(selected.isComplete)
+        XCTAssertEqual(selected.currentIndex, 3)
+    }
+
+    func test_recursiveState_defaultsPreserveExistingShallowCallers() {
+        let content = FolderContent(folderURL: tempDirectory, imageFiles: testImageFiles)
+
+        XCTAssertFalse(content.includeSubfolders)
+        XCTAssertTrue(content.discoveredFolders.isEmpty)
+        XCTAssertTrue(content.scanIssues.isEmpty)
+        XCTAssertTrue(content.isComplete)
+    }
+
     func testFolderName() {
         // Given folder content
         let folderContent = FolderContent(

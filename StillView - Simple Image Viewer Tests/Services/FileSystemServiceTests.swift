@@ -1,5 +1,6 @@
 import XCTest
 import Combine
+import Darwin
 import UniformTypeIdentifiers
 @testable import StillView___Simple_Image_Viewer
 
@@ -171,6 +172,57 @@ final class FileSystemServiceTests: XCTestCase {
         } catch {
             XCTFail("Expected FileSystemError.folderNotFound, but got \(error)")
         }
+    }
+
+    func test_scanFolder_recursiveSkipsPackagesHiddenFoldersAndLinks() async throws {
+        let visible = try createTestImageFile(name: "visible", extension: "jpg")
+        let nested = try createSubdirectory(name: "album")
+        let child = nested.appendingPathComponent("child.png")
+        try Data([0x89, 0x50, 0x4E, 0x47]).write(to: child)
+        let package = try createSubdirectory(name: "Sample.app/Contents/Resources")
+        try Data([0xFF, 0xD8]).write(to: package.appendingPathComponent("excluded.jpg"))
+        let hidden = try createSubdirectory(name: ".hidden")
+        try Data([0xFF, 0xD8]).write(to: hidden.appendingPathComponent("excluded.jpg"))
+        try FileManager.default.createSymbolicLink(
+            at: tempDirectory.appendingPathComponent("linked.jpg"), withDestinationURL: visible
+        )
+        try FileManager.default.createSymbolicLink(
+            at: nested.appendingPathComponent("cycle", isDirectory: true), withDestinationURL: tempDirectory
+        )
+
+        let images = try await fileSystemService.scanFolder(tempDirectory, recursive: true)
+
+        XCTAssertEqual(Set(images.map(\.url)), Set([visible, child]))
+    }
+
+    func test_scanFolder_preCanceledTaskDoesNotCompleteDiscovery() async throws {
+        _ = try createTestImageFile(name: "visible", extension: "jpg")
+        let service = try XCTUnwrap(fileSystemService)
+        let root = try XCTUnwrap(tempDirectory)
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await service.scanFolder(root, recursive: true)
+        }
+
+        do {
+            _ = try await task.value
+            XCTFail("A pre-canceled scan must throw CancellationError")
+        } catch is CancellationError {
+            // Expected: cancellation must remain distinguishable from an empty folder.
+        }
+    }
+
+    func test_scanFolder_duplicateNamesUseDeterministicPathTieBreaker() async throws {
+        let lastFolder = try createSubdirectory(name: "z-last")
+        let firstFolder = try createSubdirectory(name: "a-first")
+        let last = lastFolder.appendingPathComponent("same.jpg")
+        let first = firstFolder.appendingPathComponent("same.jpg")
+        try Data([0xFF, 0xD8]).write(to: last)
+        try Data([0xFF, 0xD8]).write(to: first)
+
+        let images = try await fileSystemService.scanFolder(tempDirectory, recursive: true)
+
+        XCTAssertEqual(images.map(\.url), [first, last])
     }
 
     func testScanFileInsteadOfFolder() async throws {
@@ -403,11 +455,11 @@ final class FolderPresentationRegressionTests: XCTestCase {
         XCTAssertEqual(fixture.service.scanCount, 0)
     }
 
-    func test_acceptPicker_keepsPreviousAccessUntilScanSucceedsAndPublishesOnce() async throws {
+    func test_acceptPicker_keepsPreviousAccessUntilBatchAndPublishesCompletion() async throws {
         let fixture = try makeFixture()
         defer { fixture.cleanup() }
-        var publications: [URL] = []
-        let subscription = fixture.model.$selectedFolderContent.dropFirst().compactMap { $0?.folderURL }
+        var publications: [FolderContent] = []
+        let subscription = fixture.model.$selectedFolderContent.dropFirst().compactMap { $0 }
             .sink { publications.append($0) }
         defer { subscription.cancel() }
 
@@ -427,7 +479,9 @@ final class FolderPresentationRegressionTests: XCTestCase {
         completion.cancel()
 
         XCTAssertEqual(fixture.service.scanCount, 1)
-        XCTAssertEqual(publications, [fixture.candidate])
+        XCTAssertEqual(publications.map(\.folderURL), [fixture.candidate, fixture.candidate])
+        XCTAssertEqual(publications.map(\.isComplete), [false, true])
+        XCTAssertEqual(publications.map(\.totalImages), [1, 1])
         XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.candidate)
         XCTAssertEqual(fixture.model.selectedFolderURL, fixture.candidate)
         XCTAssertEqual(fixture.manager.currentURL, fixture.candidate)
@@ -442,7 +496,7 @@ final class FolderPresentationRegressionTests: XCTestCase {
         let failed = expectation(description: "Scan exposes its error")
         let subscription = fixture.model.$currentError.compactMap { $0 }.prefix(1)
             .sink { _ in failed.fulfill() }
-        fixture.service.complete(with: .failure(FileSystemError.noImagesFound))
+        fixture.service.complete(with: .failure(FileSystemError.folderAccessDenied))
         await fulfillment(of: [failed], timeout: 2)
         subscription.cancel()
 
@@ -622,6 +676,419 @@ private final class ControlledFolderScanService: FileSystemService, @unchecked S
         pending?.resume(with: result)
     }
 
+    func monitorFolder(_ url: URL) -> AnyPublisher<[ImageFile], Never> { Empty().eraseToAnyPublisher() }
+    func createSecurityScopedBookmark(for url: URL) -> Data? { nil }
+    func resolveSecurityScopedBookmark(_ bookmarkData: Data) -> URL? { nil }
+    func isSupportedImageFile(_ url: URL) -> Bool { true }
+    func getFileType(for url: URL) -> UTType? { .jpeg }
+}
+
+final class RecursiveFolderScanTests: XCTestCase {
+    private var root: URL!
+
+    override func setUpWithError() throws {
+        root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try FileManager.default.removeItem(at: root)
+    }
+
+    func test_scanEvents_emptyRootCompletesWithFolderRecord() async throws {
+        var folders: [URL] = []
+        var images: [ImageFile] = []
+        for try await event in DefaultFileSystemService().scanEvents(root, recursive: true) {
+            if case .batch(let batch, let discovered) = event {
+                images.append(contentsOf: batch)
+                folders.append(contentsOf: discovered)
+            }
+        }
+
+        XCTAssertTrue(images.isEmpty)
+        XCTAssertEqual(folders, [root])
+    }
+
+    func test_scanEvents_boundedBatchesIncludeEveryFileAndEmptyDescendantFolder() async throws {
+        let nested = root.appendingPathComponent("album/empty", isDirectory: true)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        for index in 0..<145 {
+            try Data([0xFF, 0xD8]).write(to: root.appendingPathComponent("image\(index).jpg"))
+        }
+        var images: [ImageFile] = []
+        var folders: [URL] = []
+        var batchCount = 0
+        for try await event in DefaultFileSystemService().scanEvents(root, recursive: true) {
+            if case .batch(let batch, let discovered) = event {
+                XCTAssertLessThanOrEqual(batch.count + discovered.count, 64)
+                images.append(contentsOf: batch)
+                folders.append(contentsOf: discovered)
+                batchCount += 1
+            }
+        }
+
+        XCTAssertEqual(images.count, 145)
+        XCTAssertEqual(Set(images.map(\.id)).count, 145)
+        XCTAssertGreaterThan(batchCount, 1)
+        XCTAssertEqual(Set(folders), Set([root, nested.deletingLastPathComponent(), nested]))
+    }
+
+    func test_scanEvents_preCanceledConsumerDoesNotTouchFileSystem() async throws {
+        let source = ControlledFolderScanSourceForTraversal(entries: [])
+        let service = DefaultFileSystemService(scanSource: source)
+        let root = try XCTUnwrap(root)
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            for try await _ in service.scanEvents(root, recursive: true) {}
+        }
+
+        do {
+            try await task.value
+            XCTFail("Expected cancellation")
+        } catch is CancellationError {
+            XCTAssertEqual(source.validationCount, 0)
+            XCTAssertEqual(source.cursorCount, 0)
+        }
+    }
+
+    func test_scanEvents_cancelWaitsForWorkerExitAndStopsFurtherEntries() async throws {
+        let image = root.appendingPathComponent("visible.jpg")
+        try Data([0xFF, 0xD8]).write(to: image)
+        let source = ControlledFolderScanSourceForTraversal(entries: [image, image], blocksFirstEntry: true)
+        let service = DefaultFileSystemService(scanSource: source)
+        let root = try XCTUnwrap(root)
+        let consumerFinished = XCTestExpectation(description: "Canceled consumer waits for worker exit")
+        let task = Task {
+            defer { consumerFinished.fulfill() }
+            for try await _ in service.scanEvents(root, recursive: true) {}
+        }
+        await fulfillment(of: [source.firstEntryStarted], timeout: 2)
+        task.cancel()
+        let completion = await XCTWaiter.fulfillment(of: [consumerFinished], timeout: 0.05)
+        XCTAssertEqual(completion, .timedOut, "Cancellation must wait for the blocked worker to exit")
+        source.releaseFirstEntry.signal()
+
+        do {
+            try await task.value
+            XCTFail("Expected cancellation")
+        } catch is CancellationError {
+            XCTAssertEqual(source.entryCount, 1)
+            XCTAssertEqual(source.exitCount, 1, "Iteration must end only after the enumerator releases its resources")
+        }
+    }
+
+    func test_scanEvents_subtreeFailureRemainsPartialAndOtherImagesSurvive() async throws {
+        let image = root.appendingPathComponent("visible.jpg")
+        try Data([0xFF, 0xD8]).write(to: image)
+        let child = root.appendingPathComponent("restricted", isDirectory: true)
+        let error = NSError(domain: NSCocoaErrorDomain, code: NSFileReadNoPermissionError)
+        let source = ControlledFolderScanSourceForTraversal(entries: [image], issue: (child, error))
+        let service = DefaultFileSystemService(scanSource: source)
+        var images: [ImageFile] = []
+        var issues: [FolderScanIssue] = []
+        for try await event in service.scanEvents(root, recursive: true) {
+            switch event {
+            case .batch(let batch, _): images.append(contentsOf: batch)
+            case .issue(let issue): issues.append(issue)
+            }
+        }
+
+        XCTAssertEqual(images.map(\.url), [image])
+        XCTAssertEqual(issues, [FolderScanIssue(folderURL: child, message: error.localizedDescription)])
+    }
+
+    func test_scanEvents_rootFailureIsFatalAndDoesNotCreateCursor() async throws {
+        let source = ControlledFolderScanSourceForTraversal(entries: [], rootError: FileSystemError.folderAccessDenied)
+        let service = DefaultFileSystemService(scanSource: source)
+        do {
+            for try await _ in service.scanEvents(root, recursive: true) {}
+            XCTFail("Expected inaccessible root to fail")
+        } catch FileSystemError.folderAccessDenied {
+            XCTAssertEqual(source.cursorCount, 0)
+        }
+    }
+
+    func test_scanEvents_rootEnumerationErrorIsFatalInsteadOfPartialSuccess() async throws {
+        let error = NSError(domain: NSCocoaErrorDomain, code: NSFileReadNoPermissionError)
+        let source = ControlledFolderScanSourceForTraversal(entries: [], issue: (root, error))
+        let service = DefaultFileSystemService(scanSource: source)
+        do {
+            for try await _ in service.scanEvents(root, recursive: true) {}
+            XCTFail("Expected root enumeration error to fail")
+        } catch FileSystemError.scanningFailed(let cause) {
+            XCTAssertEqual((cause as NSError).code, error.code)
+        }
+    }
+
+    func test_scanEvents_removedFileDoesNotHideSurvivingSibling() async throws {
+        let removed = root.appendingPathComponent("removed.jpg")
+        let image = root.appendingPathComponent("visible.jpg")
+        try Data([0xFF, 0xD8]).write(to: image)
+        let source = ControlledFolderScanSourceForTraversal(entries: [removed, image])
+        let service = DefaultFileSystemService(scanSource: source)
+        var images: [ImageFile] = []
+        var issues: [FolderScanIssue] = []
+        for try await event in service.scanEvents(root, recursive: true) {
+            switch event {
+            case .batch(let batch, _): images.append(contentsOf: batch)
+            case .issue(let issue): issues.append(issue)
+            }
+        }
+
+        XCTAssertEqual(images.map(\.url), [image])
+        XCTAssertTrue(issues.isEmpty)
+    }
+
+    func test_scanEvents_aliasFilesAreExcludedEvenWithImageExtension() async throws {
+        let image = root.appendingPathComponent("visible.jpg")
+        try Data([0xFF, 0xD8]).write(to: image)
+        let alias = root.appendingPathComponent("alias.jpg")
+        let bookmark = try image.bookmarkData(options: .suitableForBookmarkFile,
+                                              includingResourceValuesForKeys: nil, relativeTo: nil)
+        try URL.writeBookmarkData(bookmark, to: alias)
+        XCTAssertTrue(try alias.resourceValues(forKeys: [.isAliasFileKey]).isAliasFile == true)
+
+        let images = try await DefaultFileSystemService().scanFolder(root, recursive: true)
+
+        XCTAssertEqual(images.map(\.url), [image])
+    }
+
+    func test_scanEvents_nonregularFilesAndExternalLinksAreExcluded() async throws {
+        let image = root.appendingPathComponent("visible.jpg")
+        try Data([0xFF, 0xD8]).write(to: image)
+        let external = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString,
+                                                                                     isDirectory: true)
+        try FileManager.default.createDirectory(at: external, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: external) }
+        let externalImage = external.appendingPathComponent("outside.jpg")
+        try Data([0xFF, 0xD8]).write(to: externalImage)
+        try FileManager.default.createSymbolicLink(at: root.appendingPathComponent("linked.jpg"),
+                                                   withDestinationURL: externalImage)
+        try FileManager.default.createSymbolicLink(at: root.appendingPathComponent("linked-folder"),
+                                                   withDestinationURL: external)
+        let pipe = root.appendingPathComponent("pipe.jpg")
+        XCTAssertEqual(mkfifo(pipe.path, 0o600), 0)
+
+        let images = try await DefaultFileSystemService().scanFolder(root, recursive: true)
+
+        XCTAssertEqual(images.map(\.url), [image])
+    }
+}
+
+private final class ControlledFolderScanSourceForTraversal: FolderScanSource, @unchecked Sendable {
+    let firstEntryStarted = XCTestExpectation(description: "Enumerator entered first entry")
+    let releaseFirstEntry = DispatchSemaphore(value: 0)
+    private let lock = NSLock()
+    private let entries: [URL]
+    private let blocksFirstEntry: Bool
+    private let issue: (URL, Error)?
+    private let rootError: Error?
+    private var validations = 0
+    private var cursors = 0
+    private var entriesRequested = 0
+    private var exits = 0
+
+    init(entries: [URL], blocksFirstEntry: Bool = false, issue: (URL, Error)? = nil, rootError: Error? = nil) {
+        self.entries = entries
+        self.blocksFirstEntry = blocksFirstEntry
+        self.issue = issue
+        self.rootError = rootError
+    }
+
+    var validationCount: Int { lock.withLock { validations } }
+    var cursorCount: Int { lock.withLock { cursors } }
+    var entryCount: Int { lock.withLock { entriesRequested } }
+    var exitCount: Int { lock.withLock { exits } }
+
+    func validateRoot(_ url: URL) throws {
+        lock.withLock { validations += 1 }
+        if let rootError { throw rootError }
+    }
+
+    func makeCursor(at url: URL, recursive: Bool,
+                    errorHandler: @escaping (URL, Error) -> Bool) throws -> any FolderScanCursor {
+        lock.withLock { cursors += 1 }
+        if let (url, error) = issue { _ = errorHandler(url, error) }
+        return ControlledFolderScanCursorForTraversal(source: self)
+    }
+
+    func resourceValues(at url: URL) throws -> URLResourceValues {
+        try DefaultFolderScanSource().resourceValues(at: url)
+    }
+
+    func nextURL() -> URL? {
+        let index = lock.withLock {
+            let index = entriesRequested
+            entriesRequested += 1
+            return index
+        }
+        if index == 0, blocksFirstEntry {
+            firstEntryStarted.fulfill()
+            releaseFirstEntry.wait()
+        }
+        return index < entries.count ? entries[index] : nil
+    }
+
+    func exited() { lock.withLock { exits += 1 } }
+}
+
+private final class ControlledFolderScanCursorForTraversal: FolderScanCursor {
+    private let source: ControlledFolderScanSourceForTraversal
+    init(source: ControlledFolderScanSourceForTraversal) { self.source = source }
+    deinit { source.exited() }
+    func nextURL() -> URL? { source.nextURL() }
+    func skipDescendants() {}
+}
+
+@MainActor
+final class RecursiveFolderSessionRegressionTests: XCTestCase {
+    func test_restoreRecursiveScope_requestsDescendantsAndPublishesCombinedCollection() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let child = fixture.root.appendingPathComponent("child", isDirectory: true)
+        let nested = makeImage(in: child, name: "nested.jpg")
+        let direct = makeImage(in: fixture.root, name: "direct.jpg")
+        fixture.model.restoreLastFolder(fixture.root, includeSubfolders: true)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+        let finished = expectation(description: "Recursive session finishes")
+        let subscription = fixture.model.$isScanning.dropFirst().filter { !$0 }.prefix(1)
+            .sink { _ in finished.fulfill() }
+        defer { subscription.cancel() }
+        fixture.service.emit(.batch(images: [direct, nested], folders: [fixture.root, child]))
+        fixture.service.finish()
+        await fulfillment(of: [finished], timeout: 2)
+
+        XCTAssertEqual(fixture.service.requestedScopes, [true])
+        XCTAssertTrue(fixture.model.includeSubfolders)
+        XCTAssertTrue(fixture.model.selectedFolderContent?.includeSubfolders == true)
+        XCTAssertTrue(fixture.model.selectedFolderContent?.isComplete == true)
+        XCTAssertEqual(Set(fixture.model.selectedFolderContent?.imageFiles ?? []), Set([direct, nested]))
+        XCTAssertEqual(Set(fixture.model.selectedFolderContent?.discoveredFolders ?? []), Set([fixture.root, child]))
+    }
+
+    func test_emptyRecursiveTree_completesAsBrowsableEmptyState() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let child = fixture.root.appendingPathComponent("empty-child", isDirectory: true)
+        fixture.model.restoreLastFolder(fixture.root, includeSubfolders: true)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+        let finished = expectation(description: "Empty recursive session finishes")
+        let subscription = fixture.model.$isScanning.dropFirst().filter { !$0 }.prefix(1)
+            .sink { _ in finished.fulfill() }
+        defer { subscription.cancel() }
+        fixture.service.emit(.batch(images: [], folders: [fixture.root, child]))
+        fixture.service.finish()
+        await fulfillment(of: [finished], timeout: 2)
+
+        XCTAssertNil(fixture.model.currentError)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.root)
+        XCTAssertEqual(fixture.model.selectedFolderContent?.imageFiles.count, 0)
+        XCTAssertTrue(fixture.model.selectedFolderContent?.isComplete == true)
+        XCTAssertEqual(Set(fixture.model.selectedFolderContent?.discoveredFolders ?? []), Set([fixture.root, child]))
+    }
+
+    func test_cancelAfterBatch_retainsIncompleteImagesAndRejectsLateEvents() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let discovered = makeImage(in: fixture.root, name: "first.jpg")
+        let late = makeImage(in: fixture.root, name: "late.jpg")
+        fixture.model.restoreLastFolder(fixture.root, includeSubfolders: true)
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+        let firstPublished = expectation(description: "First batch is usable before completion")
+        let firstSubscription = fixture.model.$selectedFolderContent.compactMap { $0 }
+            .filter { !$0.isComplete && $0.imageFiles.contains(discovered) }.prefix(1)
+            .sink { _ in firstPublished.fulfill() }
+        fixture.service.emit(.batch(images: [discovered], folders: [fixture.root]))
+        await fulfillment(of: [firstPublished], timeout: 2)
+        firstSubscription.cancel()
+        fixture.model.cancelScanning()
+        let latePublished = expectation(description: "Late canceled events must not publish")
+        latePublished.isInverted = true
+        let lateSubscription = fixture.model.$selectedFolderContent.dropFirst()
+            .sink { _ in latePublished.fulfill() }
+        fixture.service.emit(.batch(images: [late], folders: []))
+        fixture.service.emit(.issue(FolderScanIssue(folderURL: fixture.root, message: "Late failure")))
+        fixture.service.finish()
+        await fulfillment(of: [latePublished], timeout: 0.1)
+        lateSubscription.cancel()
+
+        XCTAssertFalse(fixture.model.isScanning)
+        XCTAssertNil(fixture.model.currentError)
+        XCTAssertEqual(fixture.model.selectedFolderContent?.imageFiles, [discovered])
+        XCTAssertFalse(fixture.model.selectedFolderContent?.isComplete ?? true)
+        XCTAssertEqual(fixture.manager.currentURL, fixture.root)
+    }
+
+    private func makeImage(in folder: URL, name: String) -> ImageFile {
+        ImageFile(url: folder.appendingPathComponent(name), name: name, type: .jpeg,
+                  size: 1, creationDate: .distantPast, modificationDate: .distantPast)
+    }
+
+    private func makeFixture() throws -> RecursiveFolderSessionFixture {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString,
+                                                                                 isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let suite = "RecursiveFolderSessionRegressionTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let service = ControlledFolderEventService()
+        let manager = SecurityScopedAccessManager()
+        let model = FolderSelectionViewModel(fileSystemService: service,
+                                             preferencesService: DefaultPreferencesService(userDefaults: defaults),
+                                             accessManager: manager)
+        return RecursiveFolderSessionFixture(model: model, service: service, manager: manager,
+                                             root: root, defaults: defaults, suite: suite)
+    }
+}
+
+@MainActor
+private struct RecursiveFolderSessionFixture {
+    let model: FolderSelectionViewModel
+    let service: ControlledFolderEventService
+    let manager: SecurityScopedAccessManager
+    let root: URL
+    let defaults: UserDefaults
+    let suite: String
+
+    func cleanup() {
+        model.cancelScanning()
+        manager.stopCurrentAccess()
+        service.finish()
+        defaults.removePersistentDomain(forName: suite)
+        try? FileManager.default.removeItem(at: root)
+    }
+}
+
+private final class ControlledFolderEventService: FileSystemService, @unchecked Sendable {
+    let scanStarted = XCTestExpectation(description: "Incremental scan starts")
+    private let lock = NSLock()
+    private var continuation: AsyncThrowingStream<FolderScanEvent, Error>.Continuation?
+    private var scopes: [Bool] = []
+
+    var requestedScopes: [Bool] { lock.withLock { scopes } }
+
+    func scanEvents(_ url: URL, recursive: Bool) -> AsyncThrowingStream<FolderScanEvent, Error> {
+        AsyncThrowingStream { continuation in
+            lock.withLock {
+                self.continuation = continuation
+                scopes.append(recursive)
+            }
+            scanStarted.fulfill()
+        }
+    }
+
+    func emit(_ event: FolderScanEvent) { _ = lock.withLock { continuation?.yield(event) } }
+    func finish() {
+        let active = lock.withLock {
+            let active = continuation
+            continuation = nil
+            return active
+        }
+        active?.finish()
+    }
+    func scanFolder(_ url: URL, recursive: Bool) async throws -> [ImageFile] {
+        XCTFail("Incremental sessions must use the event API")
+        return []
+    }
     func monitorFolder(_ url: URL) -> AnyPublisher<[ImageFile], Never> { Empty().eraseToAnyPublisher() }
     func createSecurityScopedBookmark(for url: URL) -> Data? { nil }
     func resolveSecurityScopedBookmark(_ bookmarkData: Data) -> URL? { nil }

@@ -19,12 +19,12 @@ class SecurityScopedBookmarkManager: ObservableObject {
     static let shared = SecurityScopedBookmarkManager()
     
     // MARK: - Private Properties
-    private let preferencesService: PreferencesService
+    private var preferencesService: PreferencesService
     private var activeBookmarks: [URL: Data] = [:]
     private var accessedURLs: Set<URL> = []
     
     // MARK: - Initialization
-    private init(preferencesService: PreferencesService = DefaultPreferencesService.shared) {
+    init(preferencesService: PreferencesService = DefaultPreferencesService.shared) {
         self.preferencesService = preferencesService
         // Don't automatically restore bookmarks on initialization to prevent startup crashes
         // Bookmarks will be restored explicitly when the app is ready
@@ -103,6 +103,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
                 // Always populate activeBookmarks for the resolved URL so future lookups work
                 if let original = originalURL, original != resolvedURL {
                     activeBookmarks.removeValue(forKey: original)
+                    reassociateBookmark(from: original, to: resolvedURL, bookmarkData: bookmarkData)
                 }
                 activeBookmarks[resolvedURL] = bookmarkData
                 
@@ -168,6 +169,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
                     if folderURL != resolvedURL {
                         activeBookmarks.removeValue(forKey: folderURL)
                         activeBookmarks[resolvedURL] = bookmarkData
+                        reassociateBookmark(from: folderURL, to: resolvedURL, bookmarkData: bookmarkData)
                     }
                     
                     if isStale {
@@ -229,7 +231,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
             accessedURLs.remove(folderURL)
         }
         
-        saveBookmarksToPreferences()
+        saveBookmarksToPreferences(removing: [folderURL])
         Logger.info("Removed bookmark for \(folderURL.path)", context: "security")
     }
     
@@ -242,7 +244,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
         
         activeBookmarks.removeAll()
         accessedURLs.removeAll()
-        saveBookmarksToPreferences()
+        saveBookmarksToPreferences(removing: Set(preferencesService.recentFolderRecords.map(\.url)))
         
         Logger.info("Cleared all bookmarks", context: "security")
     }
@@ -250,19 +252,29 @@ class SecurityScopedBookmarkManager: ObservableObject {
     // MARK: - Private Methods
     
     /// Save current bookmarks to preferences
-    private func saveBookmarksToPreferences() {
-        let bookmarkDataArray = Array(activeBookmarks.values)
-        
-        // Cast to DefaultPreferencesService to access mutable properties
-        guard let defaultPrefs = preferencesService as? DefaultPreferencesService else {
-            Logger.fail("Cannot save bookmarks - preferences service is not DefaultPreferencesService", context: "security")
-            return
+    private func saveBookmarksToPreferences(removing removedURLs: Set<URL> = []) {
+        var records = preferencesService.recentFolderRecords.map { record in
+            RecentFolderRecord(
+                url: record.url,
+                bookmarkData: removedURLs.contains(record.url) ? nil : activeBookmarks[record.url] ?? record.bookmarkData
+            )
         }
-        
-        defaultPrefs.folderBookmarks = bookmarkDataArray
-        defaultPrefs.savePreferences()
-        
-        Logger.success("Saved \(bookmarkDataArray.count) bookmarks to preferences", context: "security")
+        let knownURLs = Set(records.map(\.url))
+        let newRecords = activeBookmarks.keys.filter { !knownURLs.contains($0) && !removedURLs.contains($0) }
+            .sorted { $0.path < $1.path }
+            .map { RecentFolderRecord(url: $0, bookmarkData: activeBookmarks[$0]) }
+        records.insert(contentsOf: newRecords, at: 0)
+        preferencesService.recentFolderRecords = records
+        preferencesService.savePreferences()
+        Logger.success("Saved ordered folder/bookmark records", context: "security")
+    }
+
+    private func reassociateBookmark(from originalURL: URL, to resolvedURL: URL, bookmarkData: Data) {
+        preferencesService.recentFolderRecords = preferencesService.recentFolderRecords.map { record in
+            guard record.url == originalURL else { return record }
+            return RecentFolderRecord(url: resolvedURL, bookmarkData: bookmarkData)
+        }
+        preferencesService.savePreferences()
     }
     
     // MARK: - Cleanup
@@ -329,21 +341,22 @@ extension SecurityScopedBookmarkManager {
     
     /// Restore bookmarks on app launch (explicit call)
     func restoreBookmarksOnLaunch() {
-        Logger.start("Restoring \(preferencesService.folderBookmarks.count) bookmarks on launch", context: "security")
-        
-        let bookmarkDataArray = preferencesService.folderBookmarks
+        let records = preferencesService.recentFolderRecords.filter { $0.bookmarkData != nil }
+        Logger.start("Restoring \(records.count) bookmarks on launch", context: "security")
         
         // Check if we have any bookmarks to restore
-        guard !bookmarkDataArray.isEmpty else {
+        guard !records.isEmpty else {
             Logger.info("No bookmarks to restore", context: "security")
             return
         }
         
         var successCount = 0
         var failureCount = 0
+        var failedURLs: Set<URL> = []
         
-        for (index, bookmarkData) in bookmarkDataArray.enumerated() {
-            Logger.start("Attempting to restore bookmark \(index + 1)/\(bookmarkDataArray.count)", context: "security")
+        for (index, record) in records.enumerated() {
+            guard let bookmarkData = record.bookmarkData else { continue }
+            Logger.start("Attempting to restore bookmark \(index + 1)/\(records.count)", context: "security")
             
             do {
                 // Try to resolve the bookmark data first to check if it's valid
@@ -359,15 +372,17 @@ extension SecurityScopedBookmarkManager {
                 
                 // Check if the resolved URL is accessible and not a system directory
                 if FileManager.default.fileExists(atPath: resolvedURL.path) && !isSystemDirectory(resolvedURL) {
-                    if restoreAccess(from: bookmarkData) {
+                    if restoreAccess(from: bookmarkData, originalURL: record.url) {
                         successCount += 1
                         Logger.success("Successfully restored bookmark \(index + 1)", context: "security")
                     } else {
                         failureCount += 1
+                        failedURLs.insert(record.url)
                         Logger.fail("Failed to restore bookmark \(index + 1)", context: "security")
                     }
                 } else {
                     failureCount += 1
+                    failedURLs.insert(record.url)
                     if isSystemDirectory(resolvedURL) {
                         Logger.fail("Bookmark \(index + 1) points to system directory: \(resolvedURL.path)", context: "security")
                     } else {
@@ -377,6 +392,7 @@ extension SecurityScopedBookmarkManager {
                 
             } catch {
                 failureCount += 1
+                failedURLs.insert(record.url)
                 Logger.fail("Failed to resolve bookmark \(index + 1)", error: error, context: "security")
             }
         }
@@ -386,7 +402,10 @@ extension SecurityScopedBookmarkManager {
         // Clean up failed bookmarks
         if failureCount > 0 {
             Logger.info("Cleaning up failed bookmarks", context: "security")
-            saveBookmarksToPreferences()
+            for url in failedURLs {
+                activeBookmarks.removeValue(forKey: url)
+            }
+            saveBookmarksToPreferences(removing: failedURLs)
         }
     }
 }

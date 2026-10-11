@@ -1,20 +1,30 @@
 import Foundation
 
 /// Represents the content of a folder containing images
-struct FolderContent: Equatable {
+struct FolderContent: Equatable, Sendable {
     let folderURL: URL
     let imageFiles: [ImageFile]
     let currentIndex: Int
+    let includeSubfolders: Bool
+    let discoveredFolders: [URL]
+    let scanIssues: [FolderScanIssue]
+    let isComplete: Bool
     
     /// Initialize folder content
     /// - Parameters:
     ///   - folderURL: The URL of the folder
     ///   - imageFiles: Array of image files in the folder
     ///   - currentIndex: The currently selected image index (default: 0)
-    init(folderURL: URL, imageFiles: [ImageFile], currentIndex: Int = 0) {
+    init(folderURL: URL, imageFiles: [ImageFile], currentIndex: Int = 0,
+         includeSubfolders: Bool = false, discoveredFolders: [URL] = [],
+         scanIssues: [FolderScanIssue] = [], isComplete: Bool = true) {
         self.folderURL = folderURL
         self.imageFiles = imageFiles
         self.currentIndex = max(0, min(currentIndex, imageFiles.count - 1))
+        self.includeSubfolders = includeSubfolders
+        self.discoveredFolders = discoveredFolders
+        self.scanIssues = scanIssues
+        self.isComplete = isComplete
     }
     
     /// The currently selected image file, if any
@@ -62,7 +72,11 @@ struct FolderContent: Equatable {
         return FolderContent(
             folderURL: folderURL,
             imageFiles: imageFiles,
-            currentIndex: newIndex
+            currentIndex: newIndex,
+            includeSubfolders: includeSubfolders,
+            discoveredFolders: discoveredFolders,
+            scanIssues: scanIssues,
+            isComplete: isComplete
         )
     }
     

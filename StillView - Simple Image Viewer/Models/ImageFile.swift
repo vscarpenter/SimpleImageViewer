@@ -2,8 +2,9 @@ import Foundation
 import UniformTypeIdentifiers
 
 /// Represents an image file with metadata
-struct ImageFile: Identifiable, Equatable, Hashable {
-    let id = UUID()
+struct ImageFile: Identifiable, Equatable, Hashable, Sendable {
+    /// Stable navigation identity. Preserve the original scoped URL for reading the file.
+    var id: URL { url.standardizedFileURL }
     let url: URL
     let name: String
     let type: UTType
@@ -53,17 +54,20 @@ struct ImageFile: Identifiable, Equatable, Hashable {
     /// - Parameter url: The file URL
     /// - Throws: FileSystemError if the file cannot be accessed or is not a supported image
     init(url: URL) throws {
-        self.url = url
-        self.name = url.lastPathComponent
-        
-        // Get file attributes
         let resourceValues = try url.resourceValues(forKeys: [
             .contentTypeKey,
             .fileSizeKey,
             .creationDateKey,
             .contentModificationDateKey
         ])
-        
+        try self.init(url: url, resourceValues: resourceValues)
+    }
+
+    /// Uses the scanner's prefetched metadata without another filesystem lookup.
+    init(url: URL, resourceValues: URLResourceValues) throws {
+        self.url = url
+        self.name = url.lastPathComponent
+
         guard let contentType = resourceValues.contentType else {
             let error = NSError(
                 domain: "ImageFile",
@@ -119,11 +123,11 @@ struct ImageFile: Identifiable, Equatable, Hashable {
     
     /// Equatable conformance based on URL
     static func == (lhs: ImageFile, rhs: ImageFile) -> Bool {
-        return lhs.url == rhs.url
+        return lhs.id == rhs.id
     }
     
     /// Hashable conformance based on URL
     func hash(into hasher: inout Hasher) {
-        hasher.combine(url)
+        hasher.combine(id)
     }
 }
