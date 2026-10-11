@@ -110,25 +110,29 @@ class WindowStateManager: ObservableObject {
     }
     
     /// Restore the previous session state
-    /// - Returns: The restored folder URL and image index, or nil if no valid state
+    /// - Returns: The restored folder URL and image index, or nil if no valid state.
+    ///   The scanner owns access for the returned URL; validation here balances its temporary lease.
     func restorePreviousSession() -> (folderURL: URL, imageIndex: Int)? {
         guard currentWindowState.hasValidFolderState,
-              currentWindowState.isRecentEnough(),
-              let folderURL = currentWindowState.getRestoredFolderURL() else {
+              currentWindowState.isRecentEnough() else {
             return nil
         }
+        let previousBookmark = currentWindowState.lastFolderBookmark
+        let previousPath = currentWindowState.lastFolderPath
+        guard let folderURL = currentWindowState.refreshRestoredFolderBookmark() else { return nil }
+        if currentWindowState.lastFolderBookmark != previousBookmark || currentWindowState.lastFolderPath != previousPath {
+            preferencesService.saveWindowState(currentWindowState)
+        }
         
-        // Start accessing the security-scoped resource
-        guard folderURL.startAccessingSecurityScopedResource() else {
-            Logger.error("Failed to start accessing security-scoped resource for folder: \(folderURL)")
-            return nil
+        let startedAccess = folderURL.startAccessingSecurityScopedResource()
+        defer {
+            if startedAccess { folderURL.stopAccessingSecurityScopedResource() }
         }
         
         // Verify the folder still exists and is accessible
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: folderURL.path, isDirectory: &isDirectory),
               isDirectory.boolValue else {
-            folderURL.stopAccessingSecurityScopedResource()
             return nil
         }
         
@@ -301,6 +305,34 @@ class WindowStateManager: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        Publishers.CombineLatest4(
+            viewModel.$includeSubfolders,
+            viewModel.$sortOrder,
+            viewModel.$filteredFolderURL,
+            viewModel.$browserSearchText
+        )
+        .dropFirst()
+        .sink { [weak self] _, _, _, _ in
+            Task { @MainActor in self?.scheduleSave() }
+        }
+        .store(in: &cancellables)
+
+        viewModel.$folderSidebarVisible
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.scheduleSave() }
+            }
+            .store(in: &cancellables)
+
+        // Incremental discovery or refresh can change the selected file without changing its numeric index.
+        viewModel.$allImageFiles
+            .dropFirst()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.scheduleSave() }
+            }
+            .store(in: &cancellables)
     }
     
     private func handleWindowFrameChange(_ window: NSWindow) {
@@ -345,7 +377,7 @@ class WindowStateManager: ObservableObject {
     /// - Parameter viewModel: The view model to apply state to
     private func applyUIStateWithPreferenceCheck(to viewModel: ImageViewerViewModel) {
         // Apply basic UI state
-        currentWindowState.applyUIState(to: viewModel)
+        currentWindowState.applyUIState(to: viewModel, preferencesService: preferencesService)
         
         // Additional check for AI Insights panel state restoration
         if preferencesService.rememberAIInsightsPanelState {

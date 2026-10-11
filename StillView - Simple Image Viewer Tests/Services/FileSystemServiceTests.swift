@@ -553,6 +553,61 @@ final class FolderPresentationRegressionTests: XCTestCase {
         XCTAssertEqual(fixture.service.scanCount, 0)
     }
 
+    func test_movedRecentBookmark_updatesItsRecordBeforeScanAndPromotesWithoutDuplicate() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let moved = fixture.directory.appendingPathComponent("moved", isDirectory: true)
+        try FileManager.default.createDirectory(at: moved, withIntermediateDirectories: true)
+        let preferences = DefaultPreferencesService(userDefaults: fixture.defaults)
+        let bookmark = Data([0x42])
+        let unrelated = RecentFolderRecord(url: fixture.original, bookmarkData: Data([0x10]))
+        preferences.recentFolderRecords = [
+            unrelated, RecentFolderRecord(url: fixture.candidate, bookmarkData: bookmark)
+        ]
+        fixture.service.resolvedBookmarkURL = moved
+
+        fixture.model.selectRecentFolder(fixture.candidate)
+
+        XCTAssertEqual(preferences.recentFolderRecords, [
+            unrelated, RecentFolderRecord(url: moved, bookmarkData: bookmark)
+        ], "A moved grant must update its existing slot before the scan can publish or fail")
+        await fulfillment(of: [fixture.service.scanStarted], timeout: 2)
+        let completed = expectation(description: "Moved folder scan completes")
+        let subscription = fixture.model.$isScanning.dropFirst().filter { !$0 }.prefix(1)
+            .sink { _ in completed.fulfill() }
+        fixture.service.complete(with: .success([makeImage(in: moved)]))
+        await fulfillment(of: [completed], timeout: 2)
+        subscription.cancel()
+
+        XCTAssertEqual(preferences.recentFolderRecords, [
+            RecentFolderRecord(url: moved, bookmarkData: bookmark), unrelated
+        ])
+        XCTAssertFalse(preferences.recentFolders.contains(fixture.candidate))
+        XCTAssertEqual(fixture.model.selectedFolderURL, moved)
+        XCTAssertEqual(fixture.manager.currentURL, moved)
+    }
+
+    func test_movedRecentBookmark_replacesExistingDestinationRecordWithResolvedGrant() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let moved = fixture.directory.appendingPathComponent("moved", isDirectory: true)
+        try FileManager.default.createDirectory(at: moved, withIntermediateDirectories: true)
+        let preferences = DefaultPreferencesService(userDefaults: fixture.defaults)
+        let bookmark = Data([0x42])
+        let unrelated = RecentFolderRecord(url: fixture.original, bookmarkData: Data([0x10]))
+        preferences.recentFolderRecords = [
+            RecentFolderRecord(url: moved, bookmarkData: Data([0x20])), unrelated,
+            RecentFolderRecord(url: fixture.candidate, bookmarkData: bookmark)
+        ]
+        fixture.service.resolvedBookmarkURL = moved
+
+        fixture.model.selectRecentFolder(fixture.candidate)
+
+        XCTAssertEqual(preferences.recentFolderRecords, [
+            unrelated, RecentFolderRecord(url: moved, bookmarkData: bookmark)
+        ])
+    }
+
     func test_invalidRecentSelection_cancelsEarlierScanBeforeItsLateResult() async throws {
         let fixture = try makeFixture()
         defer { fixture.cleanup() }
@@ -654,6 +709,7 @@ private final class ControlledFolderScanService: FileSystemService, @unchecked S
     private let lock = NSLock()
     private var continuation: CheckedContinuation<[ImageFile], Error>?
     private var requests = 0
+    var resolvedBookmarkURL: URL?
 
     var scanCount: Int { lock.withLock { requests } }
 
@@ -678,7 +734,7 @@ private final class ControlledFolderScanService: FileSystemService, @unchecked S
 
     func monitorFolder(_ url: URL) -> AnyPublisher<[ImageFile], Never> { Empty().eraseToAnyPublisher() }
     func createSecurityScopedBookmark(for url: URL) -> Data? { nil }
-    func resolveSecurityScopedBookmark(_ bookmarkData: Data) -> URL? { nil }
+    func resolveSecurityScopedBookmark(_ bookmarkData: Data) -> URL? { resolvedBookmarkURL }
     func isSupportedImageFile(_ url: URL) -> Bool { true }
     func getFileType(for url: URL) -> UTType? { .jpeg }
 }

@@ -168,7 +168,7 @@ final class ImagePerceptionServiceTests: XCTestCase {
                 XCTAssertEqual(perception, .empty)
                 return ImageInsightModelResponse(content: GeneratedImageInsight(
                     title: "Gray rectangle", summary: "A plain gray rectangle fills the image.",
-                    additionalDetail: nil, tags: ["abstract"], uncertainty: nil, selectedTextLineIndices: []
+                    additionalDetail: nil, tags: ["abstract"], uncertainty: nil
                 ), textLineIndices: [])
             }
         )
@@ -214,7 +214,7 @@ final class ImagePerceptionServiceTests: XCTestCase {
                 try Data("Changed file revision during inference".utf8).write(to: url)
                 return ImageInsightModelResponse(content: GeneratedImageInsight(
                     title: "Old image", summary: "A gray rectangle fills the image.",
-                    additionalDetail: nil, tags: [], uncertainty: nil, selectedTextLineIndices: []
+                    additionalDetail: nil, tags: [], uncertainty: nil
                 ), textLineIndices: [])
             }
         )
@@ -261,7 +261,7 @@ final class ImagePerceptionServiceTests: XCTestCase {
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
                 return ImageInsightModelResponse(content: GeneratedImageInsight(
                     title: "Late response", summary: "A gray rectangle fills the image.",
-                    additionalDetail: nil, tags: [], uncertainty: nil, selectedTextLineIndices: []
+                    additionalDetail: nil, tags: [], uncertainty: nil
                 ), textLineIndices: [])
             }
         )
@@ -288,7 +288,7 @@ final class ImagePerceptionServiceTests: XCTestCase {
             }
             return ImageInsightModelResponse(content: GeneratedImageInsight(
                 title: "Document", summary: "A document contains a list of items.",
-                additionalDetail: nil, tags: [], uncertainty: nil, selectedTextLineIndices: []
+                additionalDetail: nil, tags: [], uncertainty: nil
             ), textLineIndices: indices)
         }
         XCTAssertEqual(attempts, [[0, 29], []])
@@ -301,7 +301,7 @@ final class ImagePerceptionServiceTests: XCTestCase {
             modelTextLineIndices: response.textLineIndices
         )
         XCTAssertEqual(result.recognizedText, perception.recognizedText)
-        XCTAssertTrue(result.limitations.contains { $0.contains("limited text evidence") })
+        XCTAssertFalse(result.limitations.contains { $0.contains("limited text evidence") })
     }
 
     func test_contextRecoveryDoesNotRetryUnrelatedErrors() async {
@@ -347,6 +347,157 @@ final class ImagePerceptionServiceTests: XCTestCase {
             languageCode: "xx", debugDescription: "test"
         )))
         XCTAssertTrue(locale.localizedDescription.contains("language or region"))
+    }
+
+    func test_extractTextDoesNotRequireAppleIntelligenceAvailability() async throws {
+        let folder = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = try writeImage(in: folder)
+        let service = AppleIntelligenceInsightsService(
+            perceptionService: ImagePerceptionService(performRequests: { _, _ in }),
+            availabilityProvider: { .unavailable(.appleIntelligenceDisabled) },
+            responseGenerator: { _, _, _ in
+                XCTFail("Explicit OCR must not invoke the language model")
+                throw ImageInsightError.invalidGeneratedContent
+            }
+        )
+
+        let result = try await service.extractText(for: ImageInsightInput(
+            fileType: "PNG", dimensions: "8 × 8", fileSize: "small", imageURL: url
+        ))
+        XCTAssertEqual(result, .empty)
+    }
+
+    func test_lowConfidenceTextOmissionsReportPartialExtraction() {
+        let result = OCRCleaner.evidence(from: [
+            .init(text: "CLEAR", confidence: 0.9), .init(text: "UNCLEAR", confidence: 0.2)
+        ])
+        XCTAssertEqual(result.recognizedText, ["CLEAR"])
+        XCTAssertTrue(result.textWasTruncated, "Confidence-based omissions need a visible partial-text notice")
+    }
+
+    func test_generationPublishesAcceptedOCRBeforeModelResponse() async throws {
+        let folder = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = try writeImage(in: folder)
+        let published = expectation(description: "OCR published before generation")
+        let publication = TextPublicationProbe()
+        let service = AppleIntelligenceInsightsService(
+            perceptionService: ImagePerceptionService(performRequests: { _, _ in }),
+            availabilityProvider: { .available },
+            responseGenerator: { _, _, _ in
+                let hasPublished = await publication.hasPublished
+                XCTAssertTrue(hasPublished, "The callback must finish before model generation begins")
+                throw ImageInsightError.invalidGeneratedContent
+            }
+        )
+        do {
+            _ = try await service.generateAnalysis(for: ImageInsightInput(
+                fileType: "PNG", dimensions: "8 × 8", fileSize: "small", imageURL: url
+            )) { perception in
+                XCTAssertEqual(perception, .empty)
+                await publication.record()
+                published.fulfill()
+            }
+            XCTFail("The model error should remain an error after successful recognition")
+        } catch let error as ImageInsightError {
+            XCTAssertEqual(error, .invalidGeneratedContent)
+        }
+        await fulfillment(of: [published], timeout: 1)
+    }
+
+    func test_fileChangedDuringOCRRejectsTextBeforePublication() async throws {
+        let folder = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = try writeImage(in: folder)
+        let service = AppleIntelligenceInsightsService(
+            perceptionService: ImagePerceptionService(performRequests: { _, _ in
+                try Data("File changed during OCR".utf8).write(to: url)
+            }),
+            availabilityProvider: { .available },
+            responseGenerator: { _, _, _ in
+                XCTFail("Changed OCR input must not reach the model")
+                throw ImageInsightError.invalidGeneratedContent
+            }
+        )
+        do {
+            _ = try await service.generateAnalysis(for: ImageInsightInput(
+                fileType: "PNG", dimensions: "8 × 8", fileSize: "small", imageURL: url
+            )) { _ in XCTFail("OCR for changed pixels must not publish") }
+            XCTFail("A changed revision should fail")
+        } catch let error as ImageInsightError {
+            XCTAssertEqual(error, .inputChanged)
+        }
+    }
+
+    func test_textRefinementTargetsTallOrDenseBoundedSources() {
+        XCTAssertFalse(ImagePerceptionService.shouldRefineText(width: 1_100, height: 1_660, observationCount: 26))
+        XCTAssertFalse(ImagePerceptionService.shouldRefineText(width: 2_048, height: 1_280, observationCount: 0))
+        XCTAssertTrue(ImagePerceptionService.shouldRefineText(width: 559, height: 2_048, observationCount: 0))
+        XCTAssertTrue(ImagePerceptionService.shouldRefineText(width: 2_048, height: 1_600, observationCount: 16))
+    }
+
+    func test_textDecodeUsesSeparateBoundAndKeepsOrientation() async throws {
+        let folder = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = try writeImage(in: folder, width: 6_000, height: 300, orientation: 6)
+        let scene = try await ImagePerceptionService.loadImage(at: url)
+        let text = try await ImagePerceptionService.loadImage(at: url, maximumDimension: 4_096)
+        XCTAssertEqual(max(scene.width, scene.height), 2_048)
+        XCTAssertEqual(max(text.width, text.height), 4_096)
+        XCTAssertGreaterThan(text.height, text.width)
+    }
+
+    func test_failedOptionalTextRefinementPreservesBaselineWithPartialStatus() async throws {
+        let folder = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = try writeImage(in: folder, width: 300, height: 6_000)
+        let requests = RefinementRequestProbe()
+        let service = ImagePerceptionService(performRequests: { _, _ in
+            if requests.recordRequest() > 1 { throw TestRequestError.failed }
+        })
+
+        let result = try await service.analyze(url: url)
+
+        XCTAssertTrue(result.textObservations.isEmpty)
+        XCTAssertTrue(result.textWasTruncated, "Optional high-resolution failure must leave an honest partial status")
+        XCTAssertEqual(requests.requestCount, 2)
+    }
+
+    func test_cancelledVisionWorkerRetainsScopeUntilActualExit() async throws {
+        let folder = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let image = try await ImagePerceptionService.loadImage(at: writeImage(in: folder))
+        let started = expectation(description: "Vision worker started")
+        let stopped = expectation(description: "Worker scope released")
+        let release = DispatchSemaphore(value: 0)
+        let probe = PerceptionLeaseProbe()
+        let service = ImagePerceptionService(performRequests: { _, _ in
+            started.fulfill()
+            guard release.wait(timeout: .now() + 5) == .success else { throw TestRequestError.timedOut }
+            XCTAssertEqual(probe.stopCount, 0, "The worker grant must survive cancellation")
+        })
+        let task = Task {
+            let lease = try XCTUnwrap(SecurityScopedResourceLease(
+                rootURL: folder, startAccess: { _ in true }, stopAccess: { _ in
+                    probe.recordStop()
+                    stopped.fulfill()
+                }
+            ))
+            return try await service.analyze(image: image, resourceLease: lease)
+        }
+        await fulfillment(of: [started], timeout: 3)
+        task.cancel()
+        XCTAssertEqual(probe.stopCount, 0)
+        release.signal()
+        do {
+            _ = try await task.value
+            XCTFail("Cancelled OCR must not publish its result")
+        } catch is CancellationError {
+            // Cancellation can invalidate publication before the worker exits its file scope.
+        }
+        await fulfillment(of: [stopped], timeout: 3)
+        XCTAssertEqual(probe.stopCount, 1)
     }
 
     private func assertCancellationWins(throwAfterCancellation: Bool) async throws {
@@ -416,5 +567,41 @@ private enum TestRequestError: LocalizedError {
         case .failed: return "The controlled Vision request failed."
         case .timedOut: return "The controlled Vision request timed out."
         }
+    }
+}
+
+private actor TextPublicationProbe {
+    private(set) var hasPublished = false
+    func record() { hasPublished = true }
+}
+
+private final class RefinementRequestProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var requestCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
+    }
+    func recordRequest() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        count += 1
+        return count
+    }
+}
+
+private final class PerceptionLeaseProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var stopCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
+    }
+    func recordStop() {
+        lock.lock()
+        count += 1
+        lock.unlock()
     }
 }

@@ -66,12 +66,14 @@ final class DefaultImageLoaderService: ImageLoaderService {
     private final class LoadWork {
         let url: URL
         let cacheGeneration: UInt64
+        let accessLease: SecurityScopedResourceLease?
         var subscribers: [UUID: Completion] = [:]
         var preloadRequested = false
 
-        init(url: URL, cacheGeneration: UInt64) {
+        init(url: URL, cacheGeneration: UInt64, accessLease: SecurityScopedResourceLease?) {
             self.url = url
             self.cacheGeneration = cacheGeneration
+            self.accessLease = accessLease
         }
     }
 
@@ -79,6 +81,7 @@ final class DefaultImageLoaderService: ImageLoaderService {
     private let memoryManager: ImageMemoryManager
     private let loadingQueue: DispatchQueue
     private let decodeImage: ((URL) throws -> NSImage)?
+    private let accessManager: SecurityScopedAccessManager
     private let stateLock = NSLock()
     private var activeWork: [URL: LoadWork] = [:]
     private var cacheGeneration: UInt64 = 0
@@ -87,12 +90,14 @@ final class DefaultImageLoaderService: ImageLoaderService {
         imageCache: ImageCache? = nil,
         memoryManager: ImageMemoryManager = ImageMemoryManager(),
         loadingQueue: DispatchQueue = DispatchQueue(label: "com.simpleimageviewer.imageloading", qos: .userInitiated),
+        accessManager: SecurityScopedAccessManager = .shared,
         decodeImage: ((URL) throws -> NSImage)? = nil
     ) {
         self.memoryManager = memoryManager
         self.imageCache = imageCache ?? ImageCache(memoryManager: memoryManager)
         self.loadingQueue = loadingQueue
         self.decodeImage = decodeImage
+        self.accessManager = accessManager
     }
 
     func loadImage(from url: URL) -> AnyPublisher<NSImage, Error> {
@@ -162,7 +167,12 @@ final class DefaultImageLoaderService: ImageLoaderService {
     /// Called with stateLock held. Foreground subscribers and preloading share one decode per URL.
     private func work(for url: URL) -> LoadWork {
         if let work = activeWork[url] { return work }
-        let work = LoadWork(url: url, cacheGeneration: cacheGeneration)
+        // Acquire while the selected root is still registered, before the queued operation
+        // can lose its grant to a subsequent folder selection.
+        let work = LoadWork(
+            url: url, cacheGeneration: cacheGeneration,
+            accessLease: accessManager.acquireWorkerAccess(for: url)
+        )
         activeWork[url] = work
         loadingQueue.async { [weak self, work] in
             guard let self else {
@@ -185,11 +195,12 @@ final class DefaultImageLoaderService: ImageLoaderService {
     }
 
     private func perform(_ work: LoadWork) {
+        defer { withExtendedLifetime(work.accessLease) {} }
         // ImageIO's synchronous decode cannot be interrupted. Skip canceled queued work and
         // discard results if cancellation or clearing occurred while a decode was running.
         guard stateLock.withLock({ isCurrent(work) }) else { return }
         let decodedRevision = ImageCache.fileRevision(for: work.url)
-        var result = Result { try decode(url: work.url) }
+        var result = Result { try decode(url: work.url, accessLease: work.accessLease) }
         let completions: [Completion] = stateLock.withLock {
             guard isCurrent(work) else { return [] }
             switch result {
@@ -220,14 +231,14 @@ final class DefaultImageLoaderService: ImageLoaderService {
         return completions
     }
 
-    private func decode(url: URL) throws -> NSImage {
+    private func decode(url: URL, accessLease: SecurityScopedResourceLease?) throws -> NSImage {
         if let decodeImage { return try decodeImage(url) }
-        return try loadImageFromDisk(url: url)
+        return try loadImageFromDisk(url: url, accessLease: accessLease)
     }
     
-    private func loadImageFromDisk(url: URL) throws -> NSImage {
+    private func loadImageFromDisk(url: URL, accessLease: SecurityScopedResourceLease?) throws -> NSImage {
         // Ensure we have security-scoped access
-        guard SecurityScopedAccessManager.shared.hasAccess(to: url) else {
+        guard accessLease != nil || accessManager.hasAccess(to: url) else {
             Logger.error("No security-scoped access to \(url.path)")
             throw ImageLoaderError.fileSystemError
         }

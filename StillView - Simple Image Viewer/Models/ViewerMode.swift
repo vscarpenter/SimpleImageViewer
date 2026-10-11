@@ -93,7 +93,8 @@ enum ImageSortOrder: String, CaseIterable {
         case .name:
             return "Name"
         case .dateCaptured:
-            return "Date Captured"
+            // The source is the file's creation date, rather than EXIF capture time.
+            return "Date Created"
         case .dateModified:
             return "Date Modified"
         case .size:

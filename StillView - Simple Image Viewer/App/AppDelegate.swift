@@ -19,6 +19,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     /// Reference to the main application window
     var mainWindow: NSWindow?
+
+    /// NSWindow keeps its delegate weak, so ownership must last as long as the window.
+    private var mainWindowDelegate: WindowDelegate?
     
     /// Tracks whether the main window is currently visible
     internal var isMainWindowVisible: Bool = true
@@ -205,8 +208,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func setupWindowDelegate(for window: NSWindow) {
-        // Set up window delegate to handle close behavior
         let windowDelegate = WindowDelegate(appDelegate: self)
+        mainWindowDelegate = windowDelegate
         window.delegate = windowDelegate
     }
     

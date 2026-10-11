@@ -139,6 +139,19 @@ class FolderSelectionViewModel: ObservableObject {
             currentError = .bookmarkResolutionFailed(url)
             return
         }
+        if resolvedURL != record.url {
+            var records = preferencesService.recentFolderRecords
+            if let index = records.firstIndex(where: { $0.url == record.url }) {
+                records[index] = RecentFolderRecord(url: resolvedURL, bookmarkData: bookmarkData)
+                // Keep the selected grant if the moved destination was already a recent folder.
+                records = records.enumerated().filter { offset, entry in
+                    offset == index || entry.url.standardizedFileURL != resolvedURL.standardizedFileURL
+                }.map(\.element)
+                preferencesService.recentFolderRecords = records
+                preferencesService.savePreferences()
+                loadRecentFolders()
+            }
+        }
         handleFolderSelection(resolvedURL, accessAlreadyStarted: true)
     }
 
@@ -266,7 +279,7 @@ class FolderSelectionViewModel: ObservableObject {
                         }
                         self.selectedFolderURL = url
                         self.selectedFolderContent = FolderContent(
-                            folderURL: url, imageFiles: snapshot.values.sorted { ImageSortOrder.name.areInIncreasingOrder($0, $1) }, includeSubfolders: recursive,
+                            folderURL: url, imageFiles: Array(snapshot.values), includeSubfolders: recursive,
                             discoveredFolders: Array(folders), scanIssues: issues, isComplete: false)
                         lastPublication = Date()
                         published = true
@@ -280,7 +293,7 @@ class FolderSelectionViewModel: ObservableObject {
                 self.rememberSuccessfulFolder(url)
                 self.selectedFolderURL = url
                 self.selectedFolderContent = FolderContent(
-                    folderURL: url, imageFiles: found.values.sorted { ImageSortOrder.name.areInIncreasingOrder($0, $1) }, includeSubfolders: recursive,
+                    folderURL: url, imageFiles: Array(found.values), includeSubfolders: recursive,
                     discoveredFolders: Array(folders), scanIssues: issues, isComplete: true)
                 self.scanProgress = 1
                 self.imageCount = found.count

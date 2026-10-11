@@ -11,6 +11,21 @@
 
 import Foundation
 
+/// An additional grant held by one worker until it actually finishes accessing the file.
+/// The scoped URL is immutable, and the successful start is balanced exactly once in deinit.
+final class SecurityScopedResourceLease: @unchecked Sendable {
+    let rootURL: URL
+    private let stopAccess: (URL) -> Void
+
+    init?(rootURL: URL, startAccess: (URL) -> Bool, stopAccess: @escaping (URL) -> Void) {
+        guard startAccess(rootURL) else { return nil }
+        self.rootURL = rootURL
+        self.stopAccess = stopAccess
+    }
+
+    deinit { stopAccess(rootURL) }
+}
+
 /// Manages security-scoped resource access for sandboxed applications
 /// Ensures that security-scoped access is maintained throughout the application lifecycle
 class SecurityScopedAccessManager: ObservableObject {
@@ -22,6 +37,8 @@ class SecurityScopedAccessManager: ObservableObject {
     private var currentAccessURL: URL?
     private var favoriteFolderURLs: Set<URL> = []
     private let accessQueue = DispatchQueue(label: "com.vinny.security-scoped-access", qos: .userInitiated)
+    private let startWorkerAccess: (URL) -> Bool
+    private let stopWorkerAccess: (URL) -> Void
     
     // MARK: - Public Properties
     
@@ -33,9 +50,38 @@ class SecurityScopedAccessManager: ObservableObject {
     }
     
     // Keep independent instances available for tests without disturbing the app's active scope.
-    init() {}
+    init(
+        startWorkerAccess: @escaping (URL) -> Bool = { $0.startAccessingSecurityScopedResource() },
+        stopWorkerAccess: @escaping (URL) -> Void = { $0.stopAccessingSecurityScopedResource() }
+    ) {
+        self.startWorkerAccess = startWorkerAccess
+        self.stopWorkerAccess = stopWorkerAccess
+    }
     
     // MARK: - Public Methods
+
+    /// Acquire an independent worker grant before enqueueing file access. Only an already
+    /// registered root may supply this grant; acquiring a lease never restores other bookmarks.
+    /// Keep the lease in the worker closure through its actual exit, even after cancellation.
+    func acquireWorkerAccess(for fileURL: URL) -> SecurityScopedResourceLease? {
+        accessQueue.sync {
+            let root: URL?
+            if let currentAccessURL, Self.isSameOrDescendant(fileURL, of: currentAccessURL) {
+                root = currentAccessURL
+            } else {
+                root = favoriteFolderURLs
+                    .filter { Self.isSameOrDescendant(fileURL, of: $0) }
+                    .sorted { $0.pathComponents.count > $1.pathComponents.count }
+                    .first
+            }
+            guard let root else { return nil }
+            // Use the original scoped URL. A standardized or descendant URL can lose the
+            // security-scoped grant embedded in the URL returned by the folder picker.
+            return SecurityScopedResourceLease(
+                rootURL: root, startAccess: startWorkerAccess, stopAccess: stopWorkerAccess
+            )
+        }
+    }
     
     /// Start security-scoped access for a URL
     /// - Parameter url: The URL that already has security-scoped access started

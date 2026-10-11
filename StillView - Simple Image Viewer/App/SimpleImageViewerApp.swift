@@ -20,6 +20,8 @@ struct SimpleImageViewerApp: App {
     @State private var showingHelp = false
     @State private var showingWhatsNew = false
     @State private var hasCompletedInitialLaunch = false
+    @FocusedValue(\.openFolderAction) private var openFolderAction
+    @FocusedValue(\.backToFoldersAction) private var backToFoldersAction
 
     // WhatsNewService for managing version updates and content
     private let whatsNewService: WhatsNewServiceProtocol = WhatsNewService()
@@ -110,25 +112,21 @@ struct SimpleImageViewerApp: App {
             // Add File menu commands
             CommandGroup(replacing: .newItem) {
                 Button("Open Folder…") {
-                    // Bring window to foreground and open the folder picker
-                    Task { @MainActor in
-                        appDelegate.showMainWindow()
-                        NotificationCenter.default.post(name: .openFolderPanel, object: nil)
-                    }
+                    openFolderAction?()
                 }
                 .keyboardShortcut("o", modifiers: .command)
+                .disabled(openFolderAction == nil)
                 
                 Divider()
                 
                 Button("Back to Folder Selection") {
-                    // Bring window to foreground and go back to folder selection
-                    Task { @MainActor in
-                        appDelegate.showMainWindow()
-                        NotificationCenter.default.post(name: .requestFolderSelection, object: nil)
-                    }
+                    backToFoldersAction?()
                 }
                 .keyboardShortcut("b", modifiers: .command)
+                .disabled(backToFoldersAction == nil)
             }
+
+            ViewerCommands()
             
             // Add Help menu commands
             CommandGroup(replacing: .help) {
@@ -281,4 +279,100 @@ struct SimpleImageViewerApp: App {
         Logger.info("Performance and memory monitoring started")
     }
     
+}
+
+/// The menu bar remains useful in Single, Strip, and Grid without stealing typing keys.
+@MainActor
+private struct ViewerCommands: Commands {
+    @FocusedObject private var viewModel: ImageViewerViewModel?
+    @FocusedValue(\.toggleSubfoldersAction) private var toggleSubfoldersAction
+    @FocusedValue(\.refreshFolderAction) private var refreshFolderAction
+
+    var body: some Commands {
+        CommandGroup(after: .toolbar) {
+            Group {
+                Button("Single") { viewModel?.setViewMode(.single) }
+                    .keyboardShortcut("1", modifiers: .command)
+                Button("Strip") { viewModel?.setViewMode(.strip) }
+                    .keyboardShortcut("2", modifiers: .command)
+                Button("Grid") { viewModel?.setViewMode(.grid) }
+                    .keyboardShortcut("3", modifiers: .command)
+
+                Divider()
+
+                Button(viewModel?.inspectorVisible == true ? "Hide Inspector" : "Show Inspector") {
+                    viewModel?.toggleInspector()
+                }
+                .keyboardShortcut("i", modifiers: [.command, .option])
+                Button("Show AI Insights") { viewModel?.showInspector(tab: .insights) }
+                    .keyboardShortcut("i", modifiers: .command)
+                Toggle("Show Filename", isOn: Binding(
+                    get: { viewModel?.showFileName ?? false },
+                    set: { newValue in
+                        if viewModel?.showFileName != newValue { viewModel?.toggleFileNameDisplay() }
+                    }
+                ))
+
+                Divider()
+
+                Button("Zoom In") { viewModel?.zoomIn() }
+                    .keyboardShortcut("+", modifiers: .command)
+                Button("Zoom Out") { viewModel?.zoomOut() }
+                    .keyboardShortcut("-", modifiers: .command)
+                Button("Fit to Window") { viewModel?.zoomToFit() }
+                    .keyboardShortcut("0", modifiers: .command)
+                Button("Actual Size") { viewModel?.zoomToActualSize() }
+                    .keyboardShortcut("0", modifiers: [.command, .option])
+
+                Divider()
+
+                Toggle("Include Subfolders", isOn: Binding(
+                    get: { viewModel?.includeSubfolders ?? false },
+                    set: { _ in toggleSubfoldersAction?() }
+                ))
+                .disabled(toggleSubfoldersAction == nil)
+                Button("Refresh Folder") { refreshFolderAction?() }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .disabled(refreshFolderAction == nil)
+            }
+            .disabled(viewModel == nil)
+        }
+
+        CommandMenu("Image") {
+            Group {
+                Button("Previous Image") { viewModel?.previousImage() }
+                    .disabled(viewModel?.hasPrevious != true)
+                Button("Next Image") { viewModel?.nextImage() }
+                    .disabled(viewModel?.hasNext != true)
+                Button(viewModel?.isSlideshow == true ? "Stop Slideshow" : "Start Slideshow") {
+                    viewModel?.toggleSlideshow()
+                }
+                .disabled(viewModel?.totalImages == 0)
+
+                Divider()
+
+                Button("Copy Image") {
+                    if let imageFile = viewModel?.currentImageFile { ContextMenuService.shared.copyImage(imageFile) }
+                }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+                Button("Copy Path") {
+                    if let imageFile = viewModel?.currentImageFile { ContextMenuService.shared.copyImagePath(imageFile) }
+                }
+                .keyboardShortcut("c", modifiers: [.command, .option])
+                Button("Share…") { viewModel?.shareCurrentImage() }
+                Button("Reveal in Finder") {
+                    if let imageFile = viewModel?.currentImageFile { ContextMenuService.shared.revealInFinder(imageFile) }
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+
+                Divider()
+
+                Button("Move to Trash") {
+                    Task { await viewModel?.moveCurrentImageToTrash() }
+                }
+                .disabled(viewModel?.canDeleteCurrentImage != true)
+            }
+            .disabled(viewModel?.currentImageFile == nil)
+        }
+    }
 }

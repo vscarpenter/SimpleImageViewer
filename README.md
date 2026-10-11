@@ -26,12 +26,20 @@ A minimalist, elegant image viewer designed specifically for macOS users who wan
 ## ✨ Features
 
 ### 🖼️ **Effortless Browsing**
-Browse through entire folders of images with intuitive keyboard shortcuts. No complex menus or overwhelming interfaces—just pure image viewing.
+Browse a selected folder, or include its subfolders in one image collection. Use the folder tree to filter a branch and its descendants without opening a new folder each time.
+
+- **Folder scope**: New browsing sessions start with the selected folder only. Choose **View → Include Subfolders**, or use the toolbar’s folder menu, to scan the whole tree. The saved session restores its chosen scope.
+- **One collection**: **All images** clears the folder filter. Selecting a tree row shows images in that folder and all its descendants; the count includes those descendants.
+- **Search**: The folder sidebar’s **Filter images…** field matches filenames and relative folder paths. Search and folder filters work together; clear the search to see every image in the selected scope.
+- **Incremental discovery**: Images become available as scanning proceeds. Cancel keeps the images already discovered and marks the collection incomplete; **Refresh Folder** starts a new scan.
+- **Refresh and selection**: **View → Refresh Folder** (**⌘R**) finds files added or removed elsewhere. Sorting and filtering preserve the selected file when it remains visible. Folder changes are not monitored automatically.
+- **Clear boundaries**: Hidden entries, packages, aliases, and symbolic links are excluded. If a subfolder cannot be read, its issue is shown while readable branches remain usable.
 
 ### ⌨️ **Keyboard-First Design**
 - **Arrow keys** for navigation
+- **Up/Down** to move by rows in Grid
 - **+/-** for zoom control
-- **F** or **Enter** for fullscreen
+- **Enter** to open the selected Grid image; **F**, or **Enter** in Single/Strip, for fullscreen
 - **Space** for next image (or stop an active slideshow)
 - **Home/End** for first/last image
 - **S** for slideshow mode
@@ -62,13 +70,14 @@ View all your images with crystal-clear quality:
 - **Comprehensive Help System** with searchable documentation
 
 ### 🧠 **AI Insights (macOS 27+)**
-- **Direct image understanding** - Apple's on-device model receives the selected image and generates a short description and notable visual details
-- **Exact recognized text** - Expand Text in image to read or copy Vision's original OCR output, including repeated lines; OCR can still contain errors
-- **Useful actions** - Copy the description or refresh it; the previous result stays visible if a refresh fails
+- **Direct image understanding** - Apple's on-device model receives the selected image and generates a concise title and summary focused on visible content
+- **Independent text extraction** - Choose **Extract text** in the Insights inspector to read text with Vision, even when StillView’s AI Insights setting is off or Apple Intelligence is unavailable
+- **Original recognized text** - Expand **Text in image** to read or copy OCR output, including repeated lines. StillView keeps recognized words separate from the generated description; recognition can still contain errors
+- **Resilient results** - Extracted text remains available when a description fails. Refresh description or text independently; previous results stay visible if a refresh fails
 - **Local results** - Images, recognized text, prompts, and results stay on this Mac
-- **Manual by design** - Open the inspector, choose Insights, enable it if prompted, then choose Analyze image
-- **Availability** - Requires Apple Intelligence enabled and its on-device model ready; the system selects the eligible model variant
-- **Honest limits** - Descriptions may miss or misinterpret details; extracted text is shown separately from generated observations
+- **Manual by design** - Open the inspector and choose Insights, then **Analyze image** for a description or **Extract text** for OCR. Folder scanning does not analyze every image
+- **Description availability** - Requires StillView’s AI Insights setting, Apple Intelligence enabled, and its on-device model ready; the system selects the eligible model variant
+- **Honest limits** - Descriptions may miss or misinterpret details. Dense or high-resolution images may produce partial text; an incomplete-extraction notice appears when some lines could not be confidently read or included
 
 ### 🔒 **Privacy & Security**
 - **No internet required** - works completely offline
@@ -108,6 +117,8 @@ open "StillView - Simple Image Viewer.xcodeproj"
 4. **View thumbnails** by pressing **T** (strip) or **G** (grid)
 5. **Start slideshow** with **S** key
 6. **Access help** anytime with **⌘?**
+7. **Include subfolders** from the View menu, then use the folder tree or relative-path search to narrow the combined collection
+8. **Read text or describe an image** with **⌘I**; text extraction works independently of AI descriptions
 
 ## 🏗️ Architecture Overview
 
@@ -191,7 +202,7 @@ class ImageViewerViewModel: ObservableObject {
     @Published var currentIndex: Int = 0
     @Published var totalImages: Int = 0
     @Published var zoomLevel: Double = 1.0
-    @Published var viewMode: ViewMode = .normal
+    @Published var viewMode: ViewMode = .single
     @Published var isSlideshow: Bool = false
 }
 ```
@@ -209,6 +220,7 @@ class ImageViewerViewModel: ObservableObject {
 ```swift
 protocol FileSystemService {
     func scanFolder(_ url: URL, recursive: Bool) async throws -> [ImageFile]
+    func scanEvents(_ url: URL, recursive: Bool) -> AsyncThrowingStream<FolderScanEvent, Error>
     func monitorFolder(_ url: URL) -> AnyPublisher<[ImageFile], Never>
     func createSecurityScopedBookmark(for url: URL) -> Data?
     func resolveSecurityScopedBookmark(_ bookmarkData: Data) -> URL?
@@ -216,8 +228,9 @@ protocol FileSystemService {
 ```
 
 **Features:**
-- Asynchronous folder scanning with recursive support
-- Real-time folder monitoring using DispatchSource
+- Cancellable folder scanning with bounded image/folder batches and optional recursion
+- Recoverable issues for unreadable descendant folders
+- Explicit folder refresh in the browser; the existing monitoring API is not connected to automatic recursive refresh
 - Security-scoped bookmark management for sandbox compliance
 - Comprehensive error handling with custom error types
 
@@ -362,6 +375,7 @@ Built-in image shortcuts work while the viewer has focus. Text fields, controls,
 | Key | Action | Description |
 |-----|--------|-------------|
 | `←` / `→` | Previous/Next Image | Navigate through image sequence |
+| `↑` / `↓` | Grid Row Navigation | Move selection by the current number of grid columns, clamped at collection edges |
 | `Space` | Next Image / Stop Slideshow | Stops an active slideshow; otherwise advances |
 | `Page Up` / `Page Down` | Previous/Next Image | Page-based navigation |
 | `Home` | First Image | Jump to beginning of collection |
@@ -385,6 +399,9 @@ Built-in image shortcuts work while the viewer has focus. Text fields, controls,
 | `S` | Slideshow | Start/stop automatic image progression |
 | `I` | Inspector | Toggle the Info and Insights panel |
 | `⌘I` | AI Insights | Open the inspector on Insights |
+| `⌘1` / `⌘2` / `⌘3` | Single / Strip / Grid | Select a viewing mode from the native View menu |
+| `⌘R` | Refresh Folder | Rescan the selected folder using the current subfolder scope |
+| `⌘⌥I` | Inspector | Show or hide the inspector from the View menu |
 | `B` | Back | Return to folder selection |
 | `Delete` / `Backspace` | Move to Trash | Confirm the current image before moving it |
 | `⌘?` | Help System | Open comprehensive help documentation |
@@ -622,6 +639,22 @@ open "StillView - Simple Image Viewer.xcodeproj"
 # Alternative: Open from command line
 xed .
 ```
+
+### Local Build and Run
+
+The Codex **Run** action uses the same project-local entrypoint as the terminal:
+
+```bash
+./script/build_and_run.sh
+./script/build_and_run.sh --verify
+./script/build_and_run.sh --debug
+./script/build_and_run.sh --logs
+./script/build_and_run.sh --telemetry
+```
+
+The script stops only the executable built in this checkout’s `.build/stillview-run` directory, builds the app’s Debug scheme for Apple silicon without distribution signing, and opens that freshly built app. It leaves the installed App Store app and builds from other checkouts alone. Build output stays in the ignored `.build` directory.
+
+It defaults `DEVELOPER_DIR` to `/Applications/Xcode.app/Contents/Developer`; set that variable explicitly to use another compatible Xcode installation. `--verify` checks that this exact build is running. `--logs` streams logs for that process, and `--telemetry` additionally filters to StillView’s local logging subsystem. These modes do not send diagnostics anywhere. `--debug` runs the app’s bundled executable under LLDB. Use Xcode’s signing and archive workflow for distribution builds.
 
 ### Project Configuration
 1. **Bundle Identifier**: `com.vinny.StillView-Image-Viewer`

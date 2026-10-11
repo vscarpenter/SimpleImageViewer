@@ -294,6 +294,126 @@ final class ImageInsightLifecycleRegressionTests: XCTestCase {
         XCTAssertEqual(model.state, .idle)
     }
 
+    func test_extractText_whenInsightsUnavailable_preservesExactText() async {
+        for availability in [ImageInsightAvailability.unavailable(.appDisabled), .unavailable(.appleIntelligenceDisabled)] {
+            let started = expectation(description: "Text extraction started")
+            let service = ControlledTextInsightService(onTextRequest: { started.fulfill() })
+            let model = ImageInsightViewModel(service: service)
+            let input = Self.input("text.jpg")
+            let text = ImagePerceptionResult(textObservations: [
+                .init(text: "  $0058.00  ", confidence: 0.95), .init(text: "  $0058.00  ", confidence: 0.9)
+            ])
+            model.prepareForImage(input, availability: availability)
+
+            model.extractText()
+            await fulfillment(of: [started], timeout: 1)
+            await service.completeText(with: .success(text))
+            await drainMainQueue()
+
+            XCTAssertEqual(model.textResult, text)
+            XCTAssertEqual(model.textState, .result(text))
+            XCTAssertEqual(model.state, .unavailable(availability.message))
+        }
+    }
+
+    func test_generationPublishesTextBeforeDescriptionAndPreservesItAfterFailure() async {
+        let started = expectation(description: "Generation started")
+        let service = ControlledTextInsightService(onGeneration: { started.fulfill() })
+        let model = ImageInsightViewModel(service: service)
+        let text = ImagePerceptionResult(textObservations: [.init(text: "ORIGINAL TEXT", confidence: 0.9)])
+        model.prepareForImage(Self.input("text.jpg"), availability: .available)
+        model.generate()
+        await fulfillment(of: [started], timeout: 1)
+
+        await service.publishText(text)
+        XCTAssertEqual(model.textResult, text)
+        XCTAssertEqual(model.state, .generating)
+        await service.completeGeneration(with: .failure(ImageInsightError.invalidGeneratedContent))
+        await drainMainQueue()
+
+        XCTAssertEqual(model.textState, .result(text))
+        XCTAssertEqual(model.textResult?.recognizedText, ["ORIGINAL TEXT"])
+        XCTAssertNotNil(model.generationError)
+    }
+
+    func test_textPublicationForPreviousImageCannotReplaceCurrentText() async {
+        let started = expectation(description: "Generation started")
+        let service = ControlledTextInsightService(onGeneration: { started.fulfill() })
+        let model = ImageInsightViewModel(service: service)
+        model.prepareForImage(Self.input("first.jpg"), availability: .available)
+        model.generate()
+        await fulfillment(of: [started], timeout: 1)
+        model.prepareForImage(Self.input("second.jpg"), availability: .available)
+
+        await service.publishText(.init(textObservations: [.init(text: "STALE", confidence: 0.9)]))
+        await service.completeGeneration(with: .failure(ImageInsightError.invalidGeneratedContent))
+        await drainMainQueue()
+
+        XCTAssertNil(model.textResult)
+        XCTAssertEqual(model.textState, .idle)
+        XCTAssertEqual(model.state, .idle)
+    }
+
+    func test_textRefreshFailureRetainsPriorExtractionAndHonestError() async {
+        let firstStarted = expectation(description: "First extraction started")
+        let service = ControlledTextInsightService(onTextRequest: { firstStarted.fulfill() })
+        let model = ImageInsightViewModel(service: service)
+        let text = ImagePerceptionResult(textObservations: [.init(text: "TEXT", confidence: 0.9)])
+        model.prepareForImage(Self.input("text.jpg"), availability: .available)
+        model.extractText()
+        await fulfillment(of: [firstStarted], timeout: 1)
+        await service.completeText(with: .success(text))
+        await drainMainQueue()
+        let secondStarted = expectation(description: "Second extraction started")
+        await service.setTextRequestHandler { secondStarted.fulfill() }
+
+        model.extractText()
+        await fulfillment(of: [secondStarted], timeout: 1)
+        XCTAssertEqual(model.textResult, text)
+        await service.completeText(with: .failure(ImagePerceptionError.visionRequestFailed("Controlled error")))
+        await drainMainQueue()
+
+        XCTAssertEqual(model.textState, .result(text))
+        XCTAssertEqual(model.textResult, text)
+        XCTAssertTrue(model.textExtractionError?.contains("Controlled error") == true)
+    }
+
+    func test_cancelTextExtractionRejectsLateSuccess() async {
+        let started = expectation(description: "Extraction started")
+        let service = ControlledTextInsightService(onTextRequest: { started.fulfill() })
+        let model = ImageInsightViewModel(service: service)
+        model.prepareForImage(Self.input("text.jpg"), availability: .available)
+        model.extractText()
+        await fulfillment(of: [started], timeout: 1)
+
+        model.cancelTextExtraction()
+        await service.completeText(with: .success(.init(textObservations: [.init(text: "LATE", confidence: 0.9)])))
+        await drainMainQueue()
+
+        XCTAssertNil(model.textResult)
+        XCTAssertEqual(model.textState, .idle)
+    }
+
+    func test_samePathNewRevisionInvalidatesCachedText() async {
+        let started = expectation(description: "Extraction started")
+        let service = ControlledTextInsightService(onTextRequest: { started.fulfill() })
+        let model = ImageInsightViewModel(service: service)
+        let input = Self.input("text.jpg")
+        model.prepareForImage(input, availability: .available)
+        model.extractText()
+        await fulfillment(of: [started], timeout: 1)
+        await service.completeText(with: .success(.init(textObservations: [.init(text: "OLD", confidence: 0.9)])))
+        await drainMainQueue()
+        let revised = ImageInsightInput(fileType: input.fileType, dimensions: input.dimensions,
+                                        fileSize: input.fileSize, imageURL: input.imageURL,
+                                        fileByteCount: 42, fileModificationDate: .now)
+
+        model.prepareForImage(revised, availability: .available)
+        XCTAssertNil(model.textResult)
+        model.prepareForImage(input, availability: .available)
+        XCTAssertNil(model.textResult)
+    }
+
     private func drainMainQueue() async {
         // Service continuations return through the actor executor before publishing on MainActor.
         for _ in 0..<8 {
@@ -670,5 +790,51 @@ private actor InsightLifecycleService: ImageInsightGenerating {
 
     func completeRequest(_ index: Int, with result: Result<ImageInsightResult, Error>) {
         requests.removeValue(forKey: index)?.resume(with: result)
+    }
+}
+
+private actor ControlledTextInsightService: ImageInsightGenerating {
+    private var onGeneration: @Sendable () -> Void
+    private var onTextRequest: @Sendable () -> Void
+    private var generation: CheckedContinuation<ImageInsightResult, Error>?
+    private var text: CheckedContinuation<ImagePerceptionResult, Error>?
+    private var textPublisher: (@Sendable (ImagePerceptionResult) async -> Void)?
+
+    init(onGeneration: @escaping @Sendable () -> Void = {}, onTextRequest: @escaping @Sendable () -> Void = {}) {
+        self.onGeneration = onGeneration
+        self.onTextRequest = onTextRequest
+    }
+
+    func generateInsight(for input: ImageInsightInput) async throws -> ImageInsightResult {
+        try await generateInsight(for: input, onTextRecognized: { _ in })
+    }
+
+    func generateInsight(
+        for input: ImageInsightInput,
+        onTextRecognized: @escaping @Sendable (ImagePerceptionResult) async -> Void
+    ) async throws -> ImageInsightResult {
+        textPublisher = onTextRecognized
+        return try await withCheckedThrowingContinuation { continuation in
+            generation = continuation
+            onGeneration()
+        }
+    }
+
+    func extractText(for input: ImageInsightInput) async throws -> ImagePerceptionResult {
+        try await withCheckedThrowingContinuation { continuation in
+            text = continuation
+            onTextRequest()
+        }
+    }
+
+    func setTextRequestHandler(_ handler: @escaping @Sendable () -> Void) { onTextRequest = handler }
+    func publishText(_ perception: ImagePerceptionResult) async { await textPublisher?(perception) }
+    func completeGeneration(with result: Result<ImageInsightResult, Error>) {
+        generation?.resume(with: result)
+        generation = nil
+    }
+    func completeText(with result: Result<ImagePerceptionResult, Error>) {
+        text?.resume(with: result)
+        text = nil
     }
 }

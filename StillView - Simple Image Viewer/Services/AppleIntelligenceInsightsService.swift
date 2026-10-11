@@ -53,27 +53,59 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
         try await generateAnalysis(for: input).result
     }
 
-    func generateAnalysis(for input: ImageInsightInput) async throws -> ImageInsightAnalysis {
+    func generateInsight(
+        for input: ImageInsightInput, onTextRecognized: @escaping ImageTextRecognitionHandler
+    ) async throws -> ImageInsightResult {
+        try await generateAnalysis(for: input, onTextRecognized: onTextRecognized).result
+    }
+
+    /// Vision extraction is independent of StillView's AI preference and model readiness.
+    func extractText(for input: ImageInsightInput) async throws -> ImagePerceptionResult {
+        try Task.checkCancellation()
+        guard let imageURL = input.imageURL else { throw ImageInsightError.imageUnavailable }
+        let resourceLease = SecurityScopedAccessManager.shared.acquireWorkerAccess(for: imageURL)
+        defer { withExtendedLifetime(resourceLease) {} }
+        let revision = try Self.fileRevision(at: imageURL)
+        try Self.validateFileRevision(revision, input: input)
+        let perception = try await perceptionService.analyze(url: imageURL, resourceLease: resourceLease)
+        try Task.checkCancellation()
+        guard let currentRevision = try? Self.fileRevision(at: imageURL), currentRevision == revision else {
+            throw ImageInsightError.inputChanged
+        }
+        return perception
+    }
+
+    func generateAnalysis(
+        for input: ImageInsightInput, onTextRecognized: ImageTextRecognitionHandler? = nil
+    ) async throws -> ImageInsightAnalysis {
         try Task.checkCancellation()
         let currentAvailability = availability()
         guard currentAvailability.isAvailable else {
             throw ImageInsightError.unavailable(currentAvailability.message)
         }
         guard let imageURL = input.imageURL else { throw ImageInsightError.imageUnavailable }
+        let resourceLease = SecurityScopedAccessManager.shared.acquireWorkerAccess(for: imageURL)
+        defer { withExtendedLifetime(resourceLease) {} }
         let started = ProcessInfo.processInfo.systemUptime
         let revision = try Self.fileRevision(at: imageURL)
         let model = SystemLanguageModel.default
         let modelName = model.variant.displayName
         let contextSize = model.contextSize
-        guard input.fileByteCount.map({ $0 == revision.byteCount }) ?? true,
-              input.fileModificationDate.map({ $0 == revision.modificationDate }) ?? true,
-              input.modelName.map({ $0 == modelName }) ?? true,
+        try Self.validateFileRevision(revision, input: input)
+        guard input.modelName.map({ $0 == modelName }) ?? true,
               input.contextSize.map({ $0 == contextSize }) ?? true,
               input.promptVersion == ImageInsightPromptBuilder.version else {
             throw ImageInsightError.inputChanged
         }
-        let image = try await ImagePerceptionService.loadImage(at: imageURL)
-        let perception = try await perceptionService.analyze(image: image)
+        let image = try await ImagePerceptionService.loadImage(at: imageURL, resourceLease: resourceLease)
+        let perception = try await perceptionService.analyze(
+            url: imageURL, baseImage: image, resourceLease: resourceLease
+        )
+        try Task.checkCancellation()
+        guard let recognizedRevision = try? Self.fileRevision(at: imageURL), recognizedRevision == revision else {
+            throw ImageInsightError.inputChanged
+        }
+        await onTextRecognized?(perception)
         try Task.checkCancellation()
         do {
             let response = try await responseGenerator(model, image, perception)
@@ -134,6 +166,13 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
         return .generationFailed(message)
     }
 
+    private static func validateFileRevision(_ revision: ImageInsightFileRevision, input: ImageInsightInput) throws {
+        guard input.fileByteCount.map({ $0 == revision.byteCount }) ?? true,
+              input.fileModificationDate.map({ $0 == revision.modificationDate }) ?? true else {
+            throw ImageInsightError.inputChanged
+        }
+    }
+
     private static func fileRevision(at originalURL: URL) throws -> ImageInsightFileRevision {
         var url = originalURL
         url.removeAllCachedResourceValues()
@@ -158,28 +197,7 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
     private static func respond(
         model: SystemLanguageModel, image: CGImage, perception: ImagePerceptionResult
     ) async throws -> ImageInsightModelResponse {
-        let maximumResponseTokens = 800
-        let instructionTokens = try await model.tokenCount(for: Instructions(ImageInsightPromptBuilder.systemInstruction))
-        let schemaTokens = try await model.tokenCount(for: GeneratedImageInsight.generationSchema)
-        // The macOS 27 model can generate from attachments, but its token counter currently
-        // rejects them. Count text with the supported API and reserve space for image tokens.
-        // If the actual request still exceeds context, retry once with pixels alone.
-        let availableTokens = ImageInsightPromptBudget.availableTextTokens(
-            contextSize: model.contextSize, instructionTokens: instructionTokens,
-            schemaTokens: schemaTokens, responseTokens: maximumResponseTokens
-        )
-        let indices = try await ImageInsightPromptBudget.fittingTextLineIndices(
-            lineCount: perception.textObservations.count,
-            availableTokens: availableTokens,
-            tokenCount: { indices in
-                try await model.tokenCount(for: ImageInsightPromptBuilder.prompt(
-                    for: perception, textLineIndices: indices
-                ))
-            }
-        )
-        return try await respondWithContextRecovery(indices: indices) { selectedIndices in
-            try await respondOnce(model: model, image: image, perception: perception, indices: selectedIndices)
-        }
+        try await respondOnce(model: model, image: image, perception: perception, indices: [])
     }
 
     static func respondWithContextRecovery(
@@ -199,12 +217,27 @@ struct AppleIntelligenceInsightsService: ImageInsightGenerating {
     ) async throws -> ImageInsightModelResponse {
         try Task.checkCancellation()
         let session = LanguageModelSession(model: model, instructions: ImageInsightPromptBuilder.systemInstruction)
-        let response = try await session.respond(
-            to: imagePrompt(image: image, perception: perception, indices: indices),
-            generating: GeneratedImageInsight.self,
-            options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 800)
-        )
-        return ImageInsightModelResponse(content: response.content, textLineIndices: indices)
+        let prompt = imagePrompt(image: image, perception: perception, indices: indices)
+        let options = GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 350)
+        let generated: GeneratedImageInsight
+        if perception.hasProminentText {
+            let response = try await session.respond(
+                to: prompt, generating: GeneratedImageDocumentLayout.self, options: options
+            )
+            generated = GeneratedImageInsight(
+                title: response.content.kind.title, summary: response.content.arrangement.summary(for: response.content.kind),
+                additionalDetail: nil, tags: [], uncertainty: nil
+            )
+        } else {
+            let response = try await session.respond(
+                to: prompt, generating: GeneratedImageDescription.self, options: options
+            )
+            generated = GeneratedImageInsight(
+                title: response.content.title, summary: response.content.summary,
+                additionalDetail: nil, tags: [], uncertainty: nil
+            )
+        }
+        return ImageInsightModelResponse(content: generated, textLineIndices: indices)
     }
 
     private static func imagePrompt(image: CGImage, perception: ImagePerceptionResult, indices: [Int]) -> Prompt {
@@ -235,12 +268,85 @@ struct GeneratedImageInsight: Equatable, Sendable {
     let title: String
     @Guide(description: "One or two brief sentences. For documents describe kind and layout, without labels or values.")
     let summary: String
-    @Guide(description: "Normally nil. One important visible fact absent from the summary; no repeated details.")
+    @Guide(description: "Normally nil. One visible fact absent from the summary that materially changes understanding.")
     let additionalDetail: String?
     @Guide(description: "Up to five short tags about visible content, without transcribed labels or values.", .count(0...5))
     let tags: [String]
-    @Guide(description: "Normally nil. Only an ambiguity that changes the main interpretation; absent details do not count.")
+    @Guide(description: "Normally nil. A visible ambiguity that changes the main interpretation, without speculation.")
     let uncertainty: String?
-    @Guide(description: "Up to three different supplied OCR indices for exact excerpts. Empty if unnecessary.", .count(0...3))
-    let selectedTextLineIndices: [Int]
+}
+
+/// The production task has two reusable outputs; empty optional result sections stay omitted.
+@Generable(description: "A concise description of visible content, with exact text handled separately.")
+struct GeneratedImageDescription: Equatable, Sendable {
+    @Guide(description: "At most eight words naming the visible subject. For documents or signs, use their broad kind.")
+    let title: String
+    @Guide(description: "One or two short sentences about visible pixels. For documents describe only visual organization.")
+    let summary: String
+}
+
+@Generable(description: "The broad kind and arrangement of an image containing substantial writing.")
+struct GeneratedImageDocumentLayout: Equatable, Sendable {
+    @Guide(description: "Choose the broad visible kind. Do not use a source name, heading, or interpreted value.")
+    let kind: ImageDocumentKind
+    @Guide(description: "Choose only the broad visible arrangement. Exact alignment, counts, and values are not part of this task.")
+    let arrangement: ImageDocumentArrangement
+}
+
+@Generable(description: "The broad visible kind of an image containing writing.")
+enum ImageDocumentKind: Sendable {
+    case receipt
+    case table
+    case chart
+    case screenshot
+    case page
+    case sign
+    case photograph
+    case other
+
+    var title: String {
+        switch self {
+        case .receipt: return "Receipt"
+        case .table: return "Table"
+        case .chart: return "Chart"
+        case .screenshot: return "Screenshot"
+        case .page: return "Text document"
+        case .sign: return "Sign"
+        case .photograph: return "Image with writing"
+        case .other: return "Text in image"
+        }
+    }
+
+    var subject: String {
+        switch self {
+        case .receipt: return "A receipt"
+        case .table: return "A table"
+        case .chart: return "A chart"
+        case .screenshot: return "A screenshot"
+        case .page: return "A document"
+        case .sign: return "A sign"
+        case .photograph, .other: return "The image"
+        }
+    }
+}
+
+@Generable(description: "Broad visual organization, without exact positions, counts, source wording, or values.")
+enum ImageDocumentArrangement: Sendable {
+    case textBlocks
+    case grid
+    case graphicalMarks
+    case textAndFigures
+    case writingInScene
+    case unclear
+
+    func summary(for kind: ImageDocumentKind) -> String {
+        switch self {
+        case .textBlocks: return "\(kind.subject) contains blocks of text."
+        case .grid: return "\(kind.subject) contains text arranged in a grid."
+        case .graphicalMarks: return "\(kind.subject) contains graphical marks and labels."
+        case .textAndFigures: return "\(kind.subject) contains text."
+        case .writingInScene: return "Text is visible in the image."
+        case .unclear: return "Text is visible, but its organization could not be determined."
+        }
+    }
 }

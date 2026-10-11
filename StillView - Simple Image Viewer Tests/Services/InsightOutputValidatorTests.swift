@@ -3,29 +3,17 @@ import XCTest
 @testable import StillView___Simple_Image_Viewer
 
 final class InsightOutputValidatorTests: XCTestCase {
-    func test_textSelectionAcceptsOnlyExistingUniqueIndicesInReadingOrder() {
-        XCTAssertEqual(InsightOutputValidator.validatedTextLineIndices([2, 0], lineCount: 4), [0, 2])
-        XCTAssertEqual(InsightOutputValidator.validatedTextLineIndices([1], lineCount: 2), [1])
-    }
-
-    func test_textSelectionRejectsInvalidIndicesAndCounts() {
-        for indices in [[], [-1], [4], [0, 0], [0, 1, 2, 3]] {
-            XCTAssertNil(InsightOutputValidator.validatedTextLineIndices(indices, lineCount: 4))
-        }
-        XCTAssertNil(InsightOutputValidator.validatedTextLineIndices([0], lineCount: 0))
-    }
-
-    func test_resultResolvesSelectedQuotesNumbersAndRepeatsToOriginalOCR() throws {
+    func test_resultPreservesExactNumbersQuotesAndRepeatedOCR() throws {
         let text = ["Invoice 4021", "Total $0058.00", "Reference: \"A-09\"", "東京駅", "Total $0058.00"]
-        let result = try validate(draft(indices: [4, 1, 2]), text: text)
+        let result = try validate(draft(), text: text)
         XCTAssertEqual(result.recognizedText, text)
-        XCTAssertEqual(result.selectedTextLines, [text[1], text[2], text[4]])
-        XCTAssertEqual(result.textSelectionSource, .appleIntelligence)
+        XCTAssertEqual(result.selectedTextLines, Array(text.prefix(3)))
+        XCTAssertEqual(result.textSelectionSource, .vision)
     }
 
-    func test_resultUsesOriginalReadingOrderWhenSelectionIsInvalid() throws {
+    func test_compatibilityTextExcerptUsesOriginalVisionReadingOrder() throws {
         let text = ["Invoice 4021", "Total due 58 dollars", "Reference A-09", "Final line"]
-        let result = try validate(draft(indices: [0, 400]), text: text)
+        let result = try validate(draft(), text: text)
         XCTAssertEqual(result.selectedTextLines, Array(text.prefix(3)))
         XCTAssertEqual(result.textSelectionSource, .vision)
     }
@@ -72,16 +60,16 @@ final class InsightOutputValidatorTests: XCTestCase {
         XCTAssertTrue(result.summary.contains("aren't visible"))
     }
 
-    func test_limitedPromptPreservesFullOCRAndRejectsUnprovidedSelection() throws {
+    func test_imageOnlyDescriptionPreservesFullIndependentOCR() throws {
         let observations = (0..<30).map { ImagePerceptionResult.TextObservation(text: "Line \($0)", confidence: 0.9) }
         let result = try InsightOutputValidator.result(
-            from: draft(indices: [15]), perception: .init(textObservations: observations),
+            from: draft(), perception: .init(textObservations: observations),
             provenance: provenance, modelTextLineIndices: [0, 29]
         )
         XCTAssertEqual(result.recognizedText.count, 30)
         XCTAssertEqual(result.selectedTextLines, ["Line 0", "Line 1", "Line 2"])
         XCTAssertEqual(result.textSelectionSource, .vision)
-        XCTAssertTrue(result.limitations.contains { $0.contains("limited text evidence") })
+        XCTAssertFalse(result.limitations.contains { $0.contains("limited text evidence") })
     }
 
     func test_resultRejectsNumericTranscriptionEvenWhenDigitsExistInOCR() {
@@ -100,7 +88,7 @@ final class InsightOutputValidatorTests: XCTestCase {
     func test_optionalGeneratedSupplementFieldsCanBeNil() throws {
         let generated = try GeneratedImageInsight(GeneratedContent(json: """
             {"title":"Simple shapes","summary":"A red square and a blue circle appear on white.",
-             "additionalDetail":null,"tags":[],"uncertainty":null,"selectedTextLineIndices":[]}
+             "additionalDetail":null,"tags":[],"uncertainty":null}
             """))
         let result = try validate(generated)
         XCTAssertTrue(result.usefulDetails.isEmpty)
@@ -111,7 +99,7 @@ final class InsightOutputValidatorTests: XCTestCase {
         let generated = try GeneratedImageInsight(GeneratedContent(json: """
             {"title":"Distant waterfall","summary":"A waterfall descends between rocky cliffs.",
              "additionalDetail":"Mist rises above the pool.","tags":[],
-             "uncertainty":"Mist obscures the base of the waterfall.","selectedTextLineIndices":[]}
+             "uncertainty":"Mist obscures the base of the waterfall."}
             """))
         let result = try validate(generated)
         XCTAssertEqual(result.usefulDetails, ["Mist rises above the pool."])
@@ -122,7 +110,7 @@ final class InsightOutputValidatorTests: XCTestCase {
         let result = try InsightOutputValidator.result(
             from: draft(), perception: .init(textObservations: [], textWasTruncated: true), provenance: provenance
         )
-        XCTAssertEqual(result.limitations, ["Text extraction was limited for this image. Some lines are not included."])
+        XCTAssertEqual(result.limitations, [ImagePerceptionResult.incompleteTextMessage])
     }
 
     func test_cacheIdentityChangesWithModelAndPromptVersion() {
@@ -148,11 +136,11 @@ final class InsightOutputValidatorTests: XCTestCase {
     }
 
     private func draft(
-        summary: String = "Water falls between steep cliffs into a shaded pool.", indices: [Int] = []
+        summary: String = "Water falls between steep cliffs into a shaded pool."
     ) -> GeneratedImageInsight {
         GeneratedImageInsight(
             title: "Waterfall between cliffs", summary: summary, additionalDetail: "Mist rises above the pool.",
-            tags: ["waterfall"], uncertainty: nil, selectedTextLineIndices: indices
+            tags: ["waterfall"], uncertainty: nil
         )
     }
 }

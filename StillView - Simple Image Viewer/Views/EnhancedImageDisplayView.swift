@@ -157,6 +157,23 @@ struct EnhancedImageDisplayView: View {
                 }
             }
         }
+        .overlay(alignment: .bottom) {
+            if viewModel.showFileName, viewModel.currentImageFile != nil {
+                Text(viewModel.currentFileName)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+        .imageContextMenu(for: viewModel.currentImageFile, viewModel: viewModel)
         .onReceive(enhancedProcessing.$isProcessing) { processing in
             isProcessing = processing
         }
