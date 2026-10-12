@@ -8,10 +8,23 @@ if ! command -v swiftlint >/dev/null 2>&1; then
 fi
 
 echo "[pre-commit] Running SwiftLint..."
-swiftlint --quiet || {
-  echo "[pre-commit] SwiftLint reported violations. Fix them or run 'swiftlint autocorrect' where safe." >&2
-  exit 1
-}
+# SwiftLint exits 2 for violations. Any other failure, such as a crash
+# loading sourcekitdInProc, means it stopped before linting anything.
+lint_status=0
+swiftlint --quiet || lint_status=$?
+
+case "$lint_status" in
+  0) ;;
+  2)
+    echo "[pre-commit] SwiftLint reported violations. Fix them or run 'swiftlint autocorrect' where safe." >&2
+    exit 1
+    ;;
+  *)
+    echo "[pre-commit] SwiftLint failed before linting (exit $lint_status). See its error above." >&2
+    echo "[pre-commit] If it could not load sourcekitdInProc, select Xcode: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer" >&2
+    exit 1
+    ;;
+esac
 
 echo "[pre-commit] SwiftLint passed."
 
