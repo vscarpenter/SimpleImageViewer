@@ -148,3 +148,10 @@ Temporary Items
 *.bak
 *.backup
 *.orig
+
+# Marketing images and exports stay local; runbooks, scripts, and manifests stay tracked
+marketing/**/*.png
+marketing/**/*.jpg
+marketing/**/*.jpeg
+marketing/**/*.webp
+marketing/**/*.zip
