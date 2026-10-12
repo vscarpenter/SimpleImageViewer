@@ -1,0 +1,15 @@
+{
+  "zipIntegrityPassed": true,
+  "packages": [
+    {
+      "file": "StillView-5.1-AppStore-Cinematic.zip",
+      "bytes": 43100664,
+      "sha256": "886e202d038f64d7bf5880ff25dc2ca5e860e34c750676042cb6b46b6bd702bf"
+    },
+    {
+      "file": "StillView-5.1-Screenshot-Source.zip",
+      "bytes": 70131265,
+      "sha256": "9b1da736a53135ff041ac9ce889471270c079f879fa870ed1b000790e09772ae"
+    }
+  ]
+}

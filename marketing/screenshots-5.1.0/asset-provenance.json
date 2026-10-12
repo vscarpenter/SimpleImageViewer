@@ -1,0 +1,474 @@
+{
+  "schemaVersion": 1,
+  "verificationDate": "2026-10-12",
+  "scope": "Existing 14 demo JPEGs reused in the StillView 5.1 screenshot set, plus the fictional trailhead notice.",
+  "method": "Read local JPEG EXIF UserComment; cross-check Picsum IDs against the preparation script; retrieve only JSON from each official Picsum /id/{id}/info endpoint; hash unchanged local assets. No photograph download or source-pixel comparison was performed.",
+  "references": [
+    {
+      "url": "https://picsum.photos/",
+      "verifiedOn": "2026-10-12",
+      "supports": "Official documentation for the image-info endpoint, embedded EXIF Picsum ID, and Unsplash image source."
+    },
+    {
+      "url": "https://unsplash.com/license",
+      "verifiedOn": "2026-10-12",
+      "supports": "Unsplash grants free commercial and non-commercial use; attribution is appreciated. The license excludes selling unmodified images and compiling them to replicate a competing service."
+    }
+  ],
+  "limitations": [
+    "The API identifies the source associated with each documented and embedded Picsum ID. It does not independently establish a pixel-level match to the legacy local photograph.",
+    "The injected camera, exposure, dates, GPS coordinates, and keywords are demo values, not verified facts about the original photos.",
+    "This record documents unchanged local files and current official source metadata; it is not a record of a new photograph download."
+  ],
+  "assets": [
+    {
+      "filename": "fjord-overlook.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/fjord-overlook.jpg",
+      "localSHA256": "0ae23cc10b7dd8ab4088497e95e2a2013811f87cf0b4bbb6f944f8ef36230cc4",
+      "kind": "photograph",
+      "mappedPicsumID": "1015",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1015",
+      "embeddedPicsumID": "1015",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1015/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Alexey Topolyanskiy",
+      "unsplashSourcePage": "https://unsplash.com/photos/-oWyJoSqBRM",
+      "apiOriginalDimensions": {
+        "width": 5000,
+        "height": 3333
+      },
+      "picsumMetadataResponse": {
+        "id": "1015",
+        "author": "Alexey Topolyanskiy",
+        "width": 5000,
+        "height": 3333,
+        "url": "https://unsplash.com/photos/-oWyJoSqBRM",
+        "download_url": "https://picsum.photos/id/1015/5000/3333"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "canyon-sunset.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/canyon-sunset.jpg",
+      "localSHA256": "282b30830de9d8583570a0c9e19b7237e4b505cc0bc8236b6827fae40c098657",
+      "kind": "photograph",
+      "mappedPicsumID": "1016",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1016",
+      "embeddedPicsumID": "1016",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1016/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Philippe Wuyts",
+      "unsplashSourcePage": "https://unsplash.com/photos/_h7aBovKia4",
+      "apiOriginalDimensions": {
+        "width": 3844,
+        "height": 2563
+      },
+      "picsumMetadataResponse": {
+        "id": "1016",
+        "author": "Philippe Wuyts",
+        "width": 3844,
+        "height": 2563,
+        "url": "https://unsplash.com/photos/_h7aBovKia4",
+        "download_url": "https://picsum.photos/id/1016/3844/2563"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "highland-road.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/highland-road.jpg",
+      "localSHA256": "ba8525776eb5fe6cbe22babf981134c2c745016b68da700a7e16f9f8ceb6259b",
+      "kind": "photograph",
+      "mappedPicsumID": "1018",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1018",
+      "embeddedPicsumID": "1018",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1018/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Andrew Ridley",
+      "unsplashSourcePage": "https://unsplash.com/photos/Kt5hRENuotI",
+      "apiOriginalDimensions": {
+        "width": 3914,
+        "height": 2935
+      },
+      "picsumMetadataResponse": {
+        "id": "1018",
+        "author": "Andrew Ridley",
+        "width": 3914,
+        "height": 2935,
+        "url": "https://unsplash.com/photos/Kt5hRENuotI",
+        "download_url": "https://picsum.photos/id/1018/3914/2935"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "storm-coast.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/storm-coast.jpg",
+      "localSHA256": "22bda77d95312b21c689b819376dd48912bef8c101d58fa97c5224f686ca7997",
+      "kind": "photograph",
+      "mappedPicsumID": "1019",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1019",
+      "embeddedPicsumID": "1019",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1019/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Patrick Fore",
+      "unsplashSourcePage": "https://unsplash.com/photos/V6s1cmE39XM",
+      "apiOriginalDimensions": {
+        "width": 5000,
+        "height": 3333
+      },
+      "picsumMetadataResponse": {
+        "id": "1019",
+        "author": "Patrick Fore",
+        "width": 5000,
+        "height": 3333,
+        "url": "https://unsplash.com/photos/V6s1cmE39XM",
+        "download_url": "https://picsum.photos/id/1019/5000/3333"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "northern-lights.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/northern-lights.jpg",
+      "localSHA256": "03ebe9cf5c39d8e94e98ed96da04b94d94d3eb003fddebaf836c1704bf2b03be",
+      "kind": "photograph",
+      "mappedPicsumID": "1022",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1022",
+      "embeddedPicsumID": "1022",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1022/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Vashishtha Jogi",
+      "unsplashSourcePage": "https://unsplash.com/photos/bClr95glx6k",
+      "apiOriginalDimensions": {
+        "width": 5000,
+        "height": 2813
+      },
+      "picsumMetadataResponse": {
+        "id": "1022",
+        "author": "Vashishtha Jogi",
+        "width": 5000,
+        "height": 2813,
+        "url": "https://unsplash.com/photos/bClr95glx6k",
+        "download_url": "https://picsum.photos/id/1022/5000/2813"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "city-from-above.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/city-from-above.jpg",
+      "localSHA256": "29abaaa86eb8c437b7bee8d8153f58408237aadb82d97d178ce5894aa0444fe5",
+      "kind": "photograph",
+      "mappedPicsumID": "1029",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1029",
+      "embeddedPicsumID": "1029",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1029/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "freddie marriage",
+      "unsplashSourcePage": "https://unsplash.com/photos/utwYoEu9SU8",
+      "apiOriginalDimensions": {
+        "width": 4887,
+        "height": 2759
+      },
+      "picsumMetadataResponse": {
+        "id": "1029",
+        "author": "freddie marriage",
+        "width": 4887,
+        "height": 2759,
+        "url": "https://unsplash.com/photos/utwYoEu9SU8",
+        "download_url": "https://picsum.photos/id/1029/4887/2759"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "winter-camp.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/winter-camp.jpg",
+      "localSHA256": "ad6b6b7e1c0d23839f9c1e72d64bcf06485909d2fb30e9a5bd370968f751901e",
+      "kind": "photograph",
+      "mappedPicsumID": "1036",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1036",
+      "embeddedPicsumID": "1036",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1036/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Wolfgang Lutz",
+      "unsplashSourcePage": "https://unsplash.com/photos/yOujaSETXlo",
+      "apiOriginalDimensions": {
+        "width": 4608,
+        "height": 3072
+      },
+      "picsumMetadataResponse": {
+        "id": "1036",
+        "author": "Wolfgang Lutz",
+        "width": 4608,
+        "height": 3072,
+        "url": "https://unsplash.com/photos/yOujaSETXlo",
+        "download_url": "https://picsum.photos/id/1036/4608/3072"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "forest-waterfall.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/forest-waterfall.jpg",
+      "localSHA256": "7e82c61428967baca8f2c75ce8e47e1c307c8ed581d12a57826eaf96cdd3e798",
+      "kind": "photograph",
+      "mappedPicsumID": "1039",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1039",
+      "embeddedPicsumID": "1039",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1039/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Andrew Coelho",
+      "unsplashSourcePage": "https://unsplash.com/photos/VB-w_3dnyvI",
+      "apiOriginalDimensions": {
+        "width": 5000,
+        "height": 3337
+      },
+      "picsumMetadataResponse": {
+        "id": "1039",
+        "author": "Andrew Coelho",
+        "width": 5000,
+        "height": 3337,
+        "url": "https://unsplash.com/photos/VB-w_3dnyvI",
+        "download_url": "https://picsum.photos/id/1039/5000/3337"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "hilltop-castle.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/hilltop-castle.jpg",
+      "localSHA256": "ed06130dad2d778916ca83422477a835a4a07c706dc3b75d0e63afa0fb3da99c",
+      "kind": "photograph",
+      "mappedPicsumID": "1040",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1040",
+      "embeddedPicsumID": "1040",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1040/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Rachel Davis",
+      "unsplashSourcePage": "https://unsplash.com/photos/tn2rBnvIl9I",
+      "apiOriginalDimensions": {
+        "width": 4496,
+        "height": 3000
+      },
+      "picsumMetadataResponse": {
+        "id": "1040",
+        "author": "Rachel Davis",
+        "width": 4496,
+        "height": 3000,
+        "url": "https://unsplash.com/photos/tn2rBnvIl9I",
+        "download_url": "https://picsum.photos/id/1040/4496/3000"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "valley-river.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/valley-river.jpg",
+      "localSHA256": "6154d90fcbe32811a385ba6c33a295b10ff23302dd288fad43f2022b36db6c99",
+      "kind": "photograph",
+      "mappedPicsumID": "1043",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1043",
+      "embeddedPicsumID": "1043",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1043/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Christian Joudrey",
+      "unsplashSourcePage": "https://unsplash.com/photos/mWRR1xj95hg",
+      "apiOriginalDimensions": {
+        "width": 5000,
+        "height": 3333
+      },
+      "picsumMetadataResponse": {
+        "id": "1043",
+        "author": "Christian Joudrey",
+        "width": 5000,
+        "height": 3333,
+        "url": "https://unsplash.com/photos/mWRR1xj95hg",
+        "download_url": "https://picsum.photos/id/1043/5000/3333"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "brick-alley.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/brick-alley.jpg",
+      "localSHA256": "ed582545f4660cf080ecf72969b1567ec8d58572dee97fb6cec4e73a1f89b12f",
+      "kind": "photograph",
+      "mappedPicsumID": "1047",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1047",
+      "embeddedPicsumID": "1047",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1047/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "sergee bee",
+      "unsplashSourcePage": "https://unsplash.com/photos/bIQiMWxX_WU",
+      "apiOriginalDimensions": {
+        "width": 3264,
+        "height": 2448
+      },
+      "picsumMetadataResponse": {
+        "id": "1047",
+        "author": "sergee bee",
+        "width": 3264,
+        "height": 2448,
+        "url": "https://unsplash.com/photos/bIQiMWxX_WU",
+        "download_url": "https://picsum.photos/id/1047/3264/2448"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "lakeside-dock.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/lakeside-dock.jpg",
+      "localSHA256": "4f26b0479725b98dcd18aafc4e44f25143baa204f8e1849cf9b2ac621cb031bb",
+      "kind": "photograph",
+      "mappedPicsumID": "1051",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1051",
+      "embeddedPicsumID": "1051",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1051/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Ales Krivec",
+      "unsplashSourcePage": "https://unsplash.com/photos/HkTMcmlMOUQ",
+      "apiOriginalDimensions": {
+        "width": 4928,
+        "height": 3264
+      },
+      "picsumMetadataResponse": {
+        "id": "1051",
+        "author": "Ales Krivec",
+        "width": 4928,
+        "height": 3264,
+        "url": "https://unsplash.com/photos/HkTMcmlMOUQ",
+        "download_url": "https://picsum.photos/id/1051/4928/3264"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "sea-foam.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/sea-foam.jpg",
+      "localSHA256": "1e93f8014d854316b3dba51a032dbae872eaec99be8655d21e58586fc5a4481b",
+      "kind": "photograph",
+      "mappedPicsumID": "1053",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 1053",
+      "embeddedPicsumID": "1053",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/1053/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Anna Popović",
+      "unsplashSourcePage": "https://unsplash.com/photos/x7HJdJZqplo",
+      "apiOriginalDimensions": {
+        "width": 3596,
+        "height": 2393
+      },
+      "picsumMetadataResponse": {
+        "id": "1053",
+        "author": "Anna Popović",
+        "width": 3596,
+        "height": 2393,
+        "url": "https://unsplash.com/photos/x7HJdJZqplo",
+        "download_url": "https://picsum.photos/id/1053/3596/2393"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "raspberries.jpg",
+      "localPath": "marketing/screenshots-4.3.0/sample-photos/raspberries.jpg",
+      "localSHA256": "0b899df56a029498202a57bc3ff545f4cf7e1b0b42983018f5c2d4bcb675e428",
+      "kind": "photograph",
+      "mappedPicsumID": "429",
+      "mappingSource": "marketing/screenshots-4.3.0/scripts/prep_photos.swift",
+      "exifUserComment": "Picsum ID: 429",
+      "embeddedPicsumID": "429",
+      "embeddedIDMatchesMapping": true,
+      "metadataEndpoint": "https://picsum.photos/id/429/info",
+      "metadataVerifiedOn": "2026-10-12",
+      "author": "Glen Carrie",
+      "unsplashSourcePage": "https://unsplash.com/photos/FjjUVn_KHLU",
+      "apiOriginalDimensions": {
+        "width": 4128,
+        "height": 2322
+      },
+      "picsumMetadataResponse": {
+        "id": "429",
+        "author": "Glen Carrie",
+        "width": 4128,
+        "height": 2322,
+        "url": "https://unsplash.com/photos/FjjUVn_KHLU",
+        "download_url": "https://picsum.photos/id/429/4128/2322"
+      },
+      "provenanceBasis": "Preparation-script mapping and matching embedded EXIF Picsum ID; current official Picsum metadata response.",
+      "pixelComparisonPerformed": false,
+      "localModifications": "Resized/re-encoded legacy demo photograph; synthetic EXIF, TIFF, GPS where present, and IPTC keywords were injected by prep_photos.swift.",
+      "licenseReference": "https://unsplash.com/license"
+    },
+    {
+      "filename": "trailhead-notice.png",
+      "localPath": "marketing/screenshots-5.1.0/sample-documents/trailhead-notice.png",
+      "localSHA256": "a0ac72d52479fa0d8c909628ab44ad130ec50f289a1c9ebd29953437856a3e0a",
+      "kind": "authored-demo-document",
+      "dimensions": {
+        "width": 2400,
+        "height": 3000
+      },
+      "source": "Existing StillView screenshot-kit fixture authored for the 5.1 demo library.",
+      "fictional": true,
+      "provenanceBasis": "Tracked local screenshot-kit fixture and its README; not a photograph or an Unsplash asset.",
+      "description": "Fictional Fjord Overlook Trail notice used to demonstrate real on-device OCR.",
+      "licenseReference": null
+    }
+  ]
+}

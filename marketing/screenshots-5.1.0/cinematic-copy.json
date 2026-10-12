@@ -1,0 +1,110 @@
+{
+  "canvas": {
+    "width": 2880,
+    "height": 1800,
+    "headlineSize": 96,
+    "sublineSize": 42
+  },
+  "shots": [
+    {
+      "source": "hero.png",
+      "slug": "hero",
+      "headline": "Your photos. Room to breathe.",
+      "subline": "Open a folder and enjoy the view. No import required.",
+      "photo": "highland-road.jpg",
+      "layout": "window",
+      "windowWidth": 2390,
+      "windowBottom": 20
+    },
+    {
+      "source": "subfolders.png",
+      "slug": "subfolders",
+      "headline": "Every subfolder. One view.",
+      "subline": "Browse everything together. Filter with the folder tree.",
+      "photo": "valley-river.jpg",
+      "layout": "window",
+      "windowWidth": 2368,
+      "windowBottom": 30
+    },
+    {
+      "source": "insights.png",
+      "slug": "ai-insights",
+      "headline": "AI Insights. On your Mac.",
+      "subline": "Explore photo descriptions with on-device Apple Intelligence.",
+      "photo": "winter-camp.jpg",
+      "layout": "window",
+      "windowWidth": 2368,
+      "windowBottom": 30
+    },
+    {
+      "source": "text.png",
+      "slug": "text",
+      "headline": "Copy the words you see.",
+      "subline": "Extract text on your Mac, even with AI Insights off.",
+      "photo": "forest-waterfall.jpg",
+      "layout": "window",
+      "windowWidth": 2368,
+      "windowBottom": 30
+    },
+    {
+      "source": "grid.png",
+      "slug": "grid",
+      "headline": "Find your next favorite.",
+      "subline": "Sort your images and adjust the grid to suit your collection.",
+      "photo": "canyon-sunset.jpg",
+      "layout": "window",
+      "windowWidth": 2368,
+      "windowBottom": 30
+    },
+    {
+      "source": "navigation.png",
+      "slug": "navigation",
+      "headline": "Keep moving. Stay in the moment.",
+      "subline": "Browse with arrow keys, the filmstrip, and quick view shortcuts.",
+      "photo": "lakeside-dock.jpg",
+      "layout": "window",
+      "windowWidth": 2368,
+      "windowBottom": 30
+    },
+    {
+      "source": "info.png",
+      "slug": "info",
+      "headline": "The details behind the image.",
+      "subline": "Camera, exposure, dates, and location in one inspector.",
+      "photo": "northern-lights.jpg",
+      "layout": "window",
+      "windowWidth": 2368,
+      "windowBottom": 30
+    },
+    {
+      "source": "zoom.png",
+      "slug": "zoom",
+      "headline": "Get closer.",
+      "subline": "Switch from Fit to actual size with a single key.",
+      "photo": "canyon-sunset.jpg",
+      "layout": "window",
+      "windowWidth": 2368,
+      "windowBottom": 30
+    },
+    {
+      "source": "immersive.png",
+      "slug": "immersive",
+      "headline": "A view worth lingering over.",
+      "subline": "A quiet interface gives your photos the spotlight.",
+      "photo": "fjord-overlook.jpg",
+      "layout": "window",
+      "windowWidth": 2390,
+      "windowBottom": 20
+    },
+    {
+      "source": "settings.png",
+      "slug": "settings",
+      "headline": "Make it feel like your Mac.",
+      "subline": "Native settings and a searchable keyboard shortcut guide.",
+      "photo": "highland-road.jpg",
+      "layout": "settings",
+      "windowWidth": 1640,
+      "windowBottom": 100
+    }
+  ]
+}

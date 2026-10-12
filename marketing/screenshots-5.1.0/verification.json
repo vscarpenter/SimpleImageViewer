@@ -1,0 +1,123 @@
+{
+  "verifiedAtUTC": "2026-10-12T17:11:46.073216+00:00",
+  "screenshotCount": 10,
+  "allChecksPassed": true,
+  "nativeCaptureHashesMatched": true,
+  "photoHashesMatched": true,
+  "completeWindowsAndRealAIAndOCRVisuallyReviewed": true,
+  "settingsAlphaShadowReviewed": true,
+  "files": [
+    {
+      "file": "01-hero-2880x1800.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "pngColorType": 2,
+      "hasAlpha": false,
+      "profile": "sRGB IEC61966-2.1",
+      "sha256": "0df0c95a119dff1a55bb563e68b9f53d62f4d77e261feb5a3a5df8e3435b6c9d",
+      "bytes": 4833032
+    },
+    {
+      "file": "02-subfolders-2880x1800.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "pngColorType": 2,
+      "hasAlpha": false,
+      "profile": "sRGB IEC61966-2.1",
+      "sha256": "7d689708191f0b469c77588d551e1eef6efe446a4611ff6fe18d80fca4c28df3",
+      "bytes": 4302206
+    },
+    {
+      "file": "03-ai-insights-2880x1800.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "pngColorType": 2,
+      "hasAlpha": false,
+      "profile": "sRGB IEC61966-2.1",
+      "sha256": "e9eca1b2091a40d4d23ee501cce6ed817d74242e9ce2d32d130aa8874731f1e4",
+      "bytes": 4286745
+    },
+    {
+      "file": "04-text-2880x1800.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "pngColorType": 2,
+      "hasAlpha": false,
+      "profile": "sRGB IEC61966-2.1",
+      "sha256": "8db5777ca200debb60f5f6de01561daf4b84d31f10cbd7ebac437519fb00f531",
+      "bytes": 1678696
+    },
+    {
+      "file": "05-grid-2880x1800.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "pngColorType": 2,
+      "hasAlpha": false,
+      "profile": "sRGB IEC61966-2.1",
+      "sha256": "6daddfbc5e747a02067f77c900a13ad8bac098781533a59fcca848fe052d8230",
+      "bytes": 4037911
+    },
+    {
+      "file": "06-navigation-2880x1800.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "pngColorType": 2,
+      "hasAlpha": false,
+      "profile": "sRGB IEC61966-2.1",
+      "sha256": "83e960c57347920f1d0af0f587cb5dd2033f23cc22765190fae94da640cc1bc2",
+      "bytes": 4872653
+    },
+    {
+      "file": "07-info-2880x1800.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "pngColorType": 2,
+      "hasAlpha": false,
+      "profile": "sRGB IEC61966-2.1",
+      "sha256": "2976c2e3de529c48ac1a575784995dd09e386a840b0f7cff214d4b77092074d7",
+      "bytes": 4288898
+    },
+    {
+      "file": "08-zoom-2880x1800.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "pngColorType": 2,
+      "hasAlpha": false,
+      "profile": "sRGB IEC61966-2.1",
+      "sha256": "33d6f8d750611e3cbc9225a41bb8ae52d965a5f94fa73fb0d68af0926ef3f96a",
+      "bytes": 6704926
+    },
+    {
+      "file": "09-immersive-2880x1800.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "pngColorType": 2,
+      "hasAlpha": false,
+      "profile": "sRGB IEC61966-2.1",
+      "sha256": "f7eced0fd572e03aa60b0b4b5393e8cea8e73557768689f83ab8384360a8dcce",
+      "bytes": 6091130
+    },
+    {
+      "file": "10-settings-2880x1800.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "pngColorType": 2,
+      "hasAlpha": false,
+      "profile": "sRGB IEC61966-2.1",
+      "sha256": "ce0432b50d709542e0795b44e26b36ad535d8bd9236c0a544c51f9de4aedbbb8",
+      "bytes": 2162936
+    }
+  ],
+  "portableSourceKitReproducedAllTenExportsExactly": true,
+  "portableSourceKitReproducedContactSheetExactly": true
+}

@@ -1,5 +1,7 @@
 # StillView 5.1.0 marketing screenshots
 
+**Completed cinematic set — October 12, 2026:** ten fresh 2880 × 1800 opaque sRGB App Store screenshots are available in [`appstore-cinematic/`](appstore-cinematic/), with upload and editable-source ZIPs in [`exports/`](exports/). See [`CINEMATIC-SET.md`](CINEMATIC-SET.md) for the verified shot list, provenance, capture helper update, and re-render instructions. The plan below is retained as reference.
+
 The capture plan for the 5.1.0 (45) listing. Frames still need capturing on a Mac running the 5.1 build; this folder holds the shot list, captions, demo library, and scripts. Shoot every frame fresh, because 5.1 changed the descriptions, toolbar labels, and Grid selection outline that older frames show.
 
 ## Shot list

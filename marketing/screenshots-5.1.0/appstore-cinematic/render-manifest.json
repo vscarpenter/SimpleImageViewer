@@ -1,0 +1,286 @@
+{
+  "canvas" : [
+    2880,
+    1800
+  ],
+  "colorSpace" : "sRGB",
+  "contactSheetSHA256" : "fff2be631bea3f50457a2575e6b1ef3f4da5deb4b326f1fcd934379569c3c964",
+  "copyFile" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/cinematic-copy.json",
+  "copySHA256" : "d003027c02bf6196debe707152b70bc9e783ef0685a4bd2693539f7c5d171910",
+  "opaque" : true,
+  "preview" : false,
+  "productionReady" : true,
+  "shots" : [
+    {
+      "file" : "01-hero-2880x1800.png",
+      "headline" : "Your photos. Room to breathe.",
+      "order" : 1,
+      "outputSHA256" : "0df0c95a119dff1a55bb563e68b9f53d62f4d77e261feb5a3a5df8e3435b6c9d",
+      "paletteSource" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-4.3.0\/sample-photos\/highland-road.jpg",
+      "source" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/captures\/hero.png",
+      "sourcePixels" : [
+        2880,
+        1800
+      ],
+      "sourceSHA256" : "e8879ee855fef66884ded8b22c26356e19d558e5fad10f109eed465fbe391d81",
+      "subline" : "Open a folder and enjoy the view. No import required.",
+      "transparentCrop" : [
+        0,
+        0,
+        2880,
+        1800
+      ],
+      "uniformScale" : 0.82986111111111116,
+      "windowRect" : [
+        245,
+        20,
+        2390,
+        1493.75
+      ]
+    },
+    {
+      "file" : "02-subfolders-2880x1800.png",
+      "headline" : "Every subfolder. One view.",
+      "order" : 2,
+      "outputSHA256" : "7d689708191f0b469c77588d551e1eef6efe446a4611ff6fe18d80fca4c28df3",
+      "paletteSource" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-4.3.0\/sample-photos\/valley-river.jpg",
+      "source" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/captures\/subfolders.png",
+      "sourcePixels" : [
+        2880,
+        1800
+      ],
+      "sourceSHA256" : "66162aa0e6e8b33f3d0de33f67844d279091ac054b9930e3d41a38db2b29d394",
+      "subline" : "Browse everything together. Filter with the folder tree.",
+      "transparentCrop" : [
+        0,
+        0,
+        2880,
+        1800
+      ],
+      "uniformScale" : 0.82222222222222219,
+      "windowRect" : [
+        256,
+        30,
+        2368,
+        1480
+      ]
+    },
+    {
+      "file" : "03-ai-insights-2880x1800.png",
+      "headline" : "AI Insights. On your Mac.",
+      "order" : 3,
+      "outputSHA256" : "e9eca1b2091a40d4d23ee501cce6ed817d74242e9ce2d32d130aa8874731f1e4",
+      "paletteSource" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-4.3.0\/sample-photos\/winter-camp.jpg",
+      "source" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/captures\/insights.png",
+      "sourcePixels" : [
+        2880,
+        1800
+      ],
+      "sourceSHA256" : "c58642ad5e7a480b4f4fa0ad4aa7e3eacb747c9315ded6f44f822767c99d88da",
+      "subline" : "Explore photo descriptions with on-device Apple Intelligence.",
+      "transparentCrop" : [
+        0,
+        0,
+        2880,
+        1800
+      ],
+      "uniformScale" : 0.82222222222222219,
+      "windowRect" : [
+        256,
+        30,
+        2368,
+        1480
+      ]
+    },
+    {
+      "file" : "04-text-2880x1800.png",
+      "headline" : "Copy the words you see.",
+      "order" : 4,
+      "outputSHA256" : "8db5777ca200debb60f5f6de01561daf4b84d31f10cbd7ebac437519fb00f531",
+      "paletteSource" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-4.3.0\/sample-photos\/forest-waterfall.jpg",
+      "source" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/captures\/text.png",
+      "sourcePixels" : [
+        2880,
+        1800
+      ],
+      "sourceSHA256" : "1e4b8aea2bb3a88cb5788d2e5cf70f5abdf89ace5eb4c972ee74c47652dfe989",
+      "subline" : "Extract text on your Mac, even with AI Insights off.",
+      "transparentCrop" : [
+        0,
+        0,
+        2880,
+        1800
+      ],
+      "uniformScale" : 0.82222222222222219,
+      "windowRect" : [
+        256,
+        30,
+        2368,
+        1480
+      ]
+    },
+    {
+      "file" : "05-grid-2880x1800.png",
+      "headline" : "Find your next favorite.",
+      "order" : 5,
+      "outputSHA256" : "6daddfbc5e747a02067f77c900a13ad8bac098781533a59fcca848fe052d8230",
+      "paletteSource" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-4.3.0\/sample-photos\/canyon-sunset.jpg",
+      "source" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/captures\/grid.png",
+      "sourcePixels" : [
+        2880,
+        1800
+      ],
+      "sourceSHA256" : "7e6b2dac9ca186e249415b36aba1b2aca3e728b5a8027fbe7cc319946e328608",
+      "subline" : "Sort your images and adjust the grid to suit your collection.",
+      "transparentCrop" : [
+        0,
+        0,
+        2880,
+        1800
+      ],
+      "uniformScale" : 0.82222222222222219,
+      "windowRect" : [
+        256,
+        30,
+        2368,
+        1480
+      ]
+    },
+    {
+      "file" : "06-navigation-2880x1800.png",
+      "headline" : "Keep moving. Stay in the moment.",
+      "order" : 6,
+      "outputSHA256" : "83e960c57347920f1d0af0f587cb5dd2033f23cc22765190fae94da640cc1bc2",
+      "paletteSource" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-4.3.0\/sample-photos\/lakeside-dock.jpg",
+      "source" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/captures\/navigation.png",
+      "sourcePixels" : [
+        2880,
+        1800
+      ],
+      "sourceSHA256" : "e59421f60a08a7ae5946f05bf2e59cfd837b1ba920629207dbce97de3030bb3e",
+      "subline" : "Browse with arrow keys, the filmstrip, and quick view shortcuts.",
+      "transparentCrop" : [
+        0,
+        0,
+        2880,
+        1800
+      ],
+      "uniformScale" : 0.82222222222222219,
+      "windowRect" : [
+        256,
+        30,
+        2368,
+        1480
+      ]
+    },
+    {
+      "file" : "07-info-2880x1800.png",
+      "headline" : "The details behind the image.",
+      "order" : 7,
+      "outputSHA256" : "2976c2e3de529c48ac1a575784995dd09e386a840b0f7cff214d4b77092074d7",
+      "paletteSource" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-4.3.0\/sample-photos\/northern-lights.jpg",
+      "source" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/captures\/info.png",
+      "sourcePixels" : [
+        2880,
+        1800
+      ],
+      "sourceSHA256" : "eed2c7f0e1d52b873e4929607576fb39be17f5b80d09145ec2ead92de8c559d1",
+      "subline" : "Camera, exposure, dates, and location in one inspector.",
+      "transparentCrop" : [
+        0,
+        0,
+        2880,
+        1800
+      ],
+      "uniformScale" : 0.82222222222222219,
+      "windowRect" : [
+        256,
+        30,
+        2368,
+        1480
+      ]
+    },
+    {
+      "file" : "08-zoom-2880x1800.png",
+      "headline" : "Get closer.",
+      "order" : 8,
+      "outputSHA256" : "33d6f8d750611e3cbc9225a41bb8ae52d965a5f94fa73fb0d68af0926ef3f96a",
+      "paletteSource" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-4.3.0\/sample-photos\/canyon-sunset.jpg",
+      "source" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/captures\/zoom.png",
+      "sourcePixels" : [
+        2880,
+        1800
+      ],
+      "sourceSHA256" : "4b175629b1e58bd0d65ab0d566043c3bc1fd01033430473a2b8c4ef262ccae0d",
+      "subline" : "Switch from Fit to actual size with a single key.",
+      "transparentCrop" : [
+        0,
+        0,
+        2880,
+        1800
+      ],
+      "uniformScale" : 0.82222222222222219,
+      "windowRect" : [
+        256,
+        30,
+        2368,
+        1480
+      ]
+    },
+    {
+      "file" : "09-immersive-2880x1800.png",
+      "headline" : "A view worth lingering over.",
+      "order" : 9,
+      "outputSHA256" : "f7eced0fd572e03aa60b0b4b5393e8cea8e73557768689f83ab8384360a8dcce",
+      "paletteSource" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-4.3.0\/sample-photos\/fjord-overlook.jpg",
+      "source" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/captures\/immersive.png",
+      "sourcePixels" : [
+        2880,
+        1800
+      ],
+      "sourceSHA256" : "74c0aec52685ddeda663ad14ff1a97290383880f2efa6792e89d2ccdc1bfec80",
+      "subline" : "A quiet interface gives your photos the spotlight.",
+      "transparentCrop" : [
+        0,
+        0,
+        2880,
+        1800
+      ],
+      "uniformScale" : 0.82986111111111116,
+      "windowRect" : [
+        245,
+        20,
+        2390,
+        1493.75
+      ]
+    },
+    {
+      "file" : "10-settings-2880x1800.png",
+      "headline" : "Make it feel like your Mac.",
+      "order" : 10,
+      "outputSHA256" : "ce0432b50d709542e0795b44e26b36ad535d8bd9236c0a544c51f9de4aedbbb8",
+      "paletteSource" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-4.3.0\/sample-photos\/highland-road.jpg",
+      "source" : "\/Users\/vinnycarpenter\/Projects\/SimpleImageViewer\/marketing\/screenshots-5.1.0\/captures\/settings.png",
+      "sourcePixels" : [
+        1120,
+        1056
+      ],
+      "sourceSHA256" : "887533bbf3f371d0f59f4b002721d69291814a21884f7f6e234ef1238c1fabfb",
+      "subline" : "Native settings and a searchable keyboard shortcut guide.",
+      "transparentCrop" : [
+        0,
+        0,
+        1120,
+        1056
+      ],
+      "uniformScale" : 1.4642857142857142,
+      "windowRect" : [
+        1120,
+        110,
+        1640,
+        1546.2857142857142
+      ]
+    }
+  ],
+  "transformPolicy" : "Fully transparent outer padding crop; uniform scale; no retouching, perspective, replacement UI, or result synthesis."
+}

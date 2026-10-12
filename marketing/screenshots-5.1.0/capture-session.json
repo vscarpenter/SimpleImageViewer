@@ -1,0 +1,95 @@
+{
+  "createdAtUTC": "2026-10-12T17:11:46.054613+00:00",
+  "appVersion": "5.1.0",
+  "build": "45",
+  "sourceCommit": "88f8259e72d6f8527f3d60f3c05ca91e9479ecd3",
+  "osVersion": "27.0.1",
+  "osBuild": "26A434",
+  "captureBuild": "/tmp/stillview-appstore-capture-2026-10-12/StillView Capture.app",
+  "singleExecutableDebugBuild": true,
+  "sandboxEntitlementsPreserved": true,
+  "captureScope": "SCShareableContent.currentProcess and desktopIndependentWindow filter",
+  "captureHelperPatch": "scripts/window-snapshot-macos27.patch",
+  "helperPatchSHA256": "b1668a9696e46543b7f3a804d9ac1ba423374bd90b72e8b658904d2d68ffea90",
+  "originalHelperSourceRestored": true,
+  "originalHelperDiffSHA256": "82438b26a4237c3ba90af16f2bb55a903edba03db3a1e7e80fca47ec01b44ae2",
+  "appearanceDuringCapture": "Dark",
+  "originalAppearanceRestored": "Light",
+  "aiInsightsRestored": true,
+  "imageDescriptions": "Real on-device output, unedited",
+  "ocr": "16 real recognized lines, captured with AI Insights off",
+  "captureMapping": [
+    {
+      "file": "hero.png",
+      "helperOriginal": "captures/native/snap-004.png",
+      "sha256": "e8879ee855fef66884ded8b22c26356e19d558e5fad10f109eed465fbe391d81",
+      "capturedAtUTC": "2026-10-12T16:52:25.841640+00:00"
+    },
+    {
+      "file": "subfolders.png",
+      "helperOriginal": "captures/native/snap-003.png",
+      "sha256": "66162aa0e6e8b33f3d0de33f67844d279091ac054b9930e3d41a38db2b29d394",
+      "capturedAtUTC": "2026-10-12T16:52:06.319921+00:00"
+    },
+    {
+      "file": "insights.png",
+      "helperOriginal": "captures/native/snap-013.png",
+      "sha256": "c58642ad5e7a480b4f4fa0ad4aa7e3eacb747c9315ded6f44f822767c99d88da",
+      "capturedAtUTC": "2026-10-12T17:00:40.371866+00:00"
+    },
+    {
+      "file": "text.png",
+      "helperOriginal": "captures/native/snap-010.png",
+      "sha256": "1e4b8aea2bb3a88cb5788d2e5cf70f5abdf89ace5eb4c972ee74c47652dfe989",
+      "capturedAtUTC": "2026-10-12T16:57:46.936964+00:00"
+    },
+    {
+      "file": "grid.png",
+      "helperOriginal": "captures/native/snap-005.png",
+      "sha256": "7e6b2dac9ca186e249415b36aba1b2aca3e728b5a8027fbe7cc319946e328608",
+      "capturedAtUTC": "2026-10-12T16:53:00.412616+00:00"
+    },
+    {
+      "file": "navigation.png",
+      "helperOriginal": "captures/native/snap-006.png",
+      "sha256": "e59421f60a08a7ae5946f05bf2e59cfd837b1ba920629207dbce97de3030bb3e",
+      "capturedAtUTC": "2026-10-12T16:53:28.150219+00:00"
+    },
+    {
+      "file": "info.png",
+      "helperOriginal": "captures/native/snap-007.png",
+      "sha256": "eed2c7f0e1d52b873e4929607576fb39be17f5b80d09145ec2ead92de8c559d1",
+      "capturedAtUTC": "2026-10-12T16:54:04.523161+00:00"
+    },
+    {
+      "file": "zoom.png",
+      "helperOriginal": "captures/native/snap-012.png",
+      "sha256": "4b175629b1e58bd0d65ab0d566043c3bc1fd01033430473a2b8c4ef262ccae0d",
+      "capturedAtUTC": "2026-10-12T17:00:04.068527+00:00"
+    },
+    {
+      "file": "immersive.png",
+      "helperOriginal": "captures/native/snap-009.png",
+      "sha256": "74c0aec52685ddeda663ad14ff1a97290383880f2efa6792e89d2ccdc1bfec80",
+      "capturedAtUTC": "2026-10-12T16:55:39.552993+00:00"
+    },
+    {
+      "file": "settings.png",
+      "helperOriginal": "captures/native/snap-011.png",
+      "sha256": "887533bbf3f371d0f59f4b002721d69291814a21884f7f6e234ef1238c1fabfb",
+      "capturedAtUTC": "2026-10-12T16:58:24.920040+00:00"
+    }
+  ],
+  "temporaryBuildCrash": {
+    "cause": "Mismatched launcher/debug-library signatures in an early temporary app copy",
+    "lastReportLocalTime": "2026-10-12 11:29:57 -0500",
+    "brokenCopyDisabled": true,
+    "replacementObservedStableThroughAllCaptures": true
+  },
+  "publishing": {
+    "appStoreUpload": false,
+    "websitePublication": false,
+    "gitCommit": false,
+    "gitPush": false
+  }
+}
