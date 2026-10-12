@@ -1,12 +1,14 @@
 name: CodeQL
 
+# Paused: CodeQL's traced Swift builds don't work with Xcode 27 or on macOS 27, because
+# Apple dropped the Intel-compatible binaries the tracer needs (CodeQL 2.27.2 release
+# notes; https://github.com/github/codeql/issues/22742). This app requires the macOS 27
+# SDK, so every run ended in a configuration error without scanning anything.
+# Run it manually from the Actions tab to check for support. Once a CodeQL release
+# supports Xcode 27, restore these triggers:
+#   push and pull_request on main, and schedule cron '0 7 * * 1'.
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  schedule:
-    - cron: '0 7 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
