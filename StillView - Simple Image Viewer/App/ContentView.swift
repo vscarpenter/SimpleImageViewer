@@ -507,7 +507,16 @@ private struct FolderBrowserSidebar: View {
                 set: { folderURL in
                     // Establish list focus before projection can replace the selected grid tile.
                     focusedControl = .folders
-                    viewModel.filteredFolderURL = folderURL == viewModel.currentFolderURL ? nil : folderURL
+                    let model = viewModel
+                    let root = model.currentFolderURL
+                    let filter = folderURL == root ? nil : folderURL
+                    guard filter != model.filteredFolderURL else { return }
+                    // List can deliver selection during a view update; publish on the next main-loop turn,
+                    // and drop it if a different root loaded in the meantime.
+                    DispatchQueue.main.async {
+                        guard model.currentFolderURL == root else { return }
+                        model.filteredFolderURL = filter
+                    }
                 }
             )) {
                 if let root = viewModel.currentFolderURL {
