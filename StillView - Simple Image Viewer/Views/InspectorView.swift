@@ -418,6 +418,27 @@ private struct InspectorInsightsTab: View {
 
     @ViewBuilder
     private var stateContent: some View {
+        if viewModel.canPresentImageInsightContent || viewModel.currentImageFile == nil {
+            acceptedStateContent
+        } else {
+            if viewModel.imageInsightAvailability.isAvailable {
+                privacyNote
+            } else {
+                unavailableSection(viewModel.imageInsightAvailability.message)
+            }
+            if !viewModel.isPreparingImageInsight {
+                Text(viewModel.canGenerateImageInsight
+                     ? "Choose Analyze image or Extract text to check this image."
+                     : "Choose Extract text to check this image.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.appSecondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var acceptedStateContent: some View {
         switch insightViewModel.state {
         case .idle:
             privacyNote
@@ -441,6 +462,7 @@ private struct InspectorInsightsTab: View {
     }
 
     private var displayedResult: ImageInsightResult? {
+        guard viewModel.canPresentImageInsightContent else { return nil }
         switch insightViewModel.state {
         case .result(let result): return result
         case .generating: return insightViewModel.result
@@ -581,6 +603,11 @@ private struct InspectorInsightsTab: View {
 
     @ViewBuilder
     private var independentTextContent: some View {
+        if viewModel.canPresentImageInsightContent { acceptedTextContent }
+    }
+
+    @ViewBuilder
+    private var acceptedTextContent: some View {
         if let message = insightViewModel.textExtractionError {
             VStack(alignment: .leading, spacing: 6) {
                 Label(insightViewModel.textResult == nil ? "Couldn’t extract text" : "Couldn’t refresh text",
@@ -710,11 +737,13 @@ private struct InspectorInsightsTab: View {
 
     private var bottomAction: some View {
         VStack(spacing: 12) {
-            if case .generating = insightViewModel.state {
+            if viewModel.isPreparingImageInsight {
+                preparationProgress
+            } else if case .generating = insightViewModel.state {
                 generationProgress
             }
 
-            if isExtractingText {
+            if !viewModel.isPreparingImageInsight && isExtractingText {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text("Reading text…")
@@ -749,7 +778,7 @@ private struct InspectorInsightsTab: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            .disabled(!insightViewModel.canExtractText)
+            .disabled(!viewModel.canExtractImageText)
             .accessibilityIdentifier("insights.extractText")
             .help("Recognize text on this Mac, even when AI Insights is unavailable")
         }
@@ -759,6 +788,22 @@ private struct InspectorInsightsTab: View {
             Rectangle()
                 .fill(Color.appHairline)
                 .frame(height: 1)
+        }
+    }
+
+    private var preparationProgress: some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+                .accessibilityHidden(true)
+            Text("Preparing image…")
+                .font(.system(size: 12))
+                .foregroundColor(.appSecondaryText)
+                .accessibilityIdentifier("insights.preparationProgress")
+            Spacer(minLength: 0)
+            Button("Cancel") { viewModel.cancelImageInsightPreparation() }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Cancel image preparation")
+                .accessibilityIdentifier("insights.cancelPreparation")
         }
     }
 
@@ -805,7 +850,7 @@ private struct InspectorInsightsTab: View {
             Label(actionTitle, systemImage: displayedResult == nil ? "sparkles" : "arrow.clockwise")
         }
         .buttonStyle(.bordered)
-        .disabled(!isAppDisabled && !viewModel.canGenerateImageInsight)
+        .disabled(viewModel.isPreparingImageInsight || !isAppDisabled && !viewModel.canGenerateImageInsight)
         .accessibilityIdentifier("insights.analyze")
         .help(isAppDisabled ? "Enable on-device Insights in StillView" : "Analyze the selected image on this Mac")
     }

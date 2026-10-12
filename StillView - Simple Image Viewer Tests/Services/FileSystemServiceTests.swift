@@ -1,4 +1,5 @@
 import XCTest
+import AppKit
 import Combine
 import Darwin
 import UniformTypeIdentifiers
@@ -527,6 +528,29 @@ final class FolderPresentationRegressionTests: XCTestCase {
         XCTAssertEqual(fixture.model.selectedFolderContent?.folderURL, fixture.original)
         XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
         XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+    }
+
+    func test_unavailableRecentWithoutGrant_preservesItsPendingLegacyEligibility() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let unavailable = fixture.directory.appendingPathComponent("offline", isDirectory: true)
+        let preferences = DefaultPreferencesService(userDefaults: fixture.defaults)
+        let record = RecentFolderRecord(url: unavailable, bookmarkData: nil)
+        preferences.recentFolderRecords = [record]
+        fixture.defaults.set([Data([0x42])], forKey: "pendingLegacyFolderBookmarks")
+        fixture.defaults.set(try JSONEncoder().encode([unavailable]), forKey: "pendingLegacyFolderURLs")
+
+        fixture.model.selectRecentFolder(unavailable)
+
+        guard case .folderNotFound(let url) = fixture.model.currentError else {
+            return XCTFail("Unavailable folder should expose its actionable folder error")
+        }
+        XCTAssertEqual(url, unavailable)
+        XCTAssertEqual(preferences.recentFolderRecords, [record])
+        XCTAssertNotNil(fixture.defaults.object(forKey: "pendingLegacyFolderBookmarks"))
+        XCTAssertEqual(fixture.manager.currentURL, fixture.original)
+        XCTAssertEqual(fixture.model.selectedFolderURL, fixture.original)
+        XCTAssertEqual(fixture.service.scanCount, 0)
     }
 
     func test_expiredRecentBookmark_exposesOnlyTheFolderAlert() async throws {
@@ -1151,4 +1175,660 @@ private final class ControlledFolderEventService: FileSystemService, @unchecked 
     func resolveSecurityScopedBookmark(_ bookmarkData: Data) -> URL? { nil }
     func isSupportedImageFile(_ url: URL) -> Bool { true }
     func getFileType(for url: URL) -> UTType? { .jpeg }
+}
+
+final class LegacyFolderGrantRegressionTests: XCTestCase {
+    private var suites: [String] = []
+
+    override func tearDown() {
+        for suite in suites { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
+        suites.removeAll()
+        super.tearDown()
+    }
+
+    func test_unresolvedLegacyGrant_isPreservedWithoutBorrowingAnotherFolderIdentity() throws {
+        let defaults = try makeDefaults()
+        let folders = ["a", "b"].map { URL(fileURLWithPath: "/Users/fixture/\($0)", isDirectory: true) }
+        let unresolved = Data([0x42])
+        defaults.set(try NSKeyedArchiver.archivedData(withRootObject: folders,
+                                                     requiringSecureCoding: true), forKey: "recentFolders")
+        defaults.set([unresolved], forKey: "folderBookmarks")
+        let service = DefaultPreferencesService(userDefaults: defaults)
+
+        XCTAssertEqual(service.recentFolderRecords, folders.map { RecentFolderRecord(url: $0, bookmarkData: nil) })
+
+        XCTAssertEqual(defaults.array(forKey: "pendingLegacyFolderBookmarks") as? [Data], [unresolved])
+        let eligible = try JSONDecoder().decode([URL].self, from: XCTUnwrap(defaults.data(forKey: "pendingLegacyFolderURLs")))
+        XCTAssertEqual(eligible, folders)
+        let relaunched = DefaultPreferencesService(userDefaults: defaults)
+        XCTAssertEqual(relaunched.recentFolderRecords, service.recentFolderRecords)
+        XCTAssertEqual(defaults.array(forKey: "pendingLegacyFolderBookmarks") as? [Data], [unresolved])
+    }
+
+    func test_removingRecentFolder_revokesPendingEligibilityBeforeLaterReaddition() throws {
+        let defaults = try makeDefaults()
+        let folders = ["a", "b"].map { URL(fileURLWithPath: "/Users/fixture/\($0)", isDirectory: true) }
+        let service = DefaultPreferencesService(userDefaults: defaults)
+        service.recentFolderRecords = folders.map { RecentFolderRecord(url: $0, bookmarkData: nil) }
+        defaults.set([Data([0x42])], forKey: "pendingLegacyFolderBookmarks")
+        defaults.set(try JSONEncoder().encode(folders), forKey: "pendingLegacyFolderURLs")
+
+        service.removeRecentFolder(folders[0])
+        service.addRecentFolder(folders[0])
+
+        let eligible = try JSONDecoder().decode([URL].self, from: XCTUnwrap(defaults.data(forKey: "pendingLegacyFolderURLs")))
+        XCTAssertEqual(eligible, [folders[1]], "A removed and re-added folder must not silently regain an old grant")
+    }
+
+    func test_clearRecentFolders_alsoRemovesUnresolvedLegacyGrants() throws {
+        let defaults = try makeDefaults()
+        let root = URL(fileURLWithPath: "/Users/fixture/offline", isDirectory: true)
+        let service = DefaultPreferencesService(userDefaults: defaults)
+        service.recentFolderRecords = [RecentFolderRecord(url: root, bookmarkData: nil)]
+        defaults.set([Data([0x42])], forKey: "pendingLegacyFolderBookmarks")
+        defaults.set(try JSONEncoder().encode([root]), forKey: "pendingLegacyFolderURLs")
+
+        service.clearRecentFolders()
+
+        XCTAssertTrue(service.recentFolderRecords.isEmpty)
+        XCTAssertNil(defaults.object(forKey: "pendingLegacyFolderBookmarks"))
+        XCTAssertNil(defaults.object(forKey: "pendingLegacyFolderURLs"))
+    }
+
+    func test_relaunch_retriesUnavailableGrantsAndMatchesEachResolvedURL() async throws {
+        let defaults = try makeDefaults()
+        let first = URL(fileURLWithPath: "/Users/fixture/a", isDirectory: true)
+        let second = URL(fileURLWithPath: "/Users/fixture/b", isDirectory: true)
+        let firstGrant = Data([0x41])
+        let secondGrant = Data([0x42])
+        let probe = LegacyGrantResolutionProbe(urls: [firstGrant: first, secondGrant: second], unavailable: [firstGrant])
+        defaults.set(try NSKeyedArchiver.archivedData(withRootObject: [first, second], requiringSecureCoding: true),
+                     forKey: "recentFolders")
+        defaults.set([secondGrant, firstGrant], forKey: "folderBookmarks")
+        let service = DefaultPreferencesService(userDefaults: defaults, legacyBookmarkResolver: { try probe.resolve($0, options: $1) })
+        XCTAssertEqual(service.recentFolders, [first, second])
+        XCTAssertEqual(probe.callCount, 0, "Reading preferences must not perform provider resolution")
+
+        await Task.detached { service.reconcilePendingLegacyFolderBookmarks() }.value
+        XCTAssertEqual(service.recentFolderRecords, [RecentFolderRecord(url: first, bookmarkData: nil),
+                                                    RecentFolderRecord(url: second, bookmarkData: secondGrant)])
+        probe.makeAvailable(firstGrant)
+        let relaunched = DefaultPreferencesService(userDefaults: defaults, legacyBookmarkResolver: { try probe.resolve($0, options: $1) })
+        await Task.detached { relaunched.reconcilePendingLegacyFolderBookmarks() }.value
+
+        XCTAssertEqual(relaunched.recentFolderRecords, [RecentFolderRecord(url: first, bookmarkData: firstGrant),
+                                                       RecentFolderRecord(url: second, bookmarkData: secondGrant)])
+        XCTAssertNil(defaults.object(forKey: "pendingLegacyFolderBookmarks"))
+        XCTAssertTrue(probe.options.allSatisfy { $0.contains(.withoutMounting) && $0.contains(.withoutUI) })
+    }
+
+    func test_removedThenReaddedFolder_doesNotRecoverAnUnresolvedGrant() async throws {
+        let defaults = try makeDefaults()
+        let first = URL(fileURLWithPath: "/Users/fixture/a", isDirectory: true)
+        let second = URL(fileURLWithPath: "/Users/fixture/b", isDirectory: true)
+        let grant = Data([0x41])
+        let probe = LegacyGrantResolutionProbe(urls: [grant: first])
+        let service = DefaultPreferencesService(userDefaults: defaults, legacyBookmarkResolver: { try probe.resolve($0, options: $1) })
+        service.recentFolderRecords = [first, second].map { RecentFolderRecord(url: $0, bookmarkData: nil) }
+        defaults.set([grant], forKey: "pendingLegacyFolderBookmarks")
+        defaults.set(try JSONEncoder().encode([first, second]), forKey: "pendingLegacyFolderURLs")
+        service.removeRecentFolder(first)
+        service.addRecentFolder(first)
+
+        await Task.detached { service.reconcilePendingLegacyFolderBookmarks() }.value
+
+        XCTAssertEqual(service.recentFolderRecords.first?.url, first)
+        XCTAssertNil(service.recentFolderRecords.first?.bookmarkData)
+        XCTAssertEqual(service.recentFolders, [first, second])
+    }
+
+    func test_clearAndRelaunch_doesNotRestorePendingRecords() async throws {
+        let defaults = try makeDefaults()
+        let root = URL(fileURLWithPath: "/Users/fixture/a", isDirectory: true)
+        let grant = Data([0x41])
+        let probe = LegacyGrantResolutionProbe(urls: [grant: root])
+        let service = DefaultPreferencesService(userDefaults: defaults, legacyBookmarkResolver: { try probe.resolve($0, options: $1) })
+        service.recentFolderRecords = [RecentFolderRecord(url: root, bookmarkData: nil)]
+        defaults.set([grant], forKey: "pendingLegacyFolderBookmarks")
+        defaults.set(try JSONEncoder().encode([root]), forKey: "pendingLegacyFolderURLs")
+        service.clearRecentFolders()
+        let relaunched = DefaultPreferencesService(userDefaults: defaults, legacyBookmarkResolver: { try probe.resolve($0, options: $1) })
+
+        await Task.detached { relaunched.reconcilePendingLegacyFolderBookmarks() }.value
+
+        XCTAssertTrue(relaunched.recentFolderRecords.isEmpty)
+        XCTAssertEqual(probe.callCount, 0)
+    }
+
+    func test_reconciliation_keepsFreshGrantAndRejectsUnrelatedResolvedURL() async throws {
+        let defaults = try makeDefaults()
+        let root = URL(fileURLWithPath: "/Users/fixture/a", isDirectory: true)
+        let unrelated = URL(fileURLWithPath: "/Users/fixture/elsewhere", isDirectory: true)
+        let old = Data([0x41])
+        let orphan = Data([0x42])
+        let fresh = Data([0x43])
+        let probe = LegacyGrantResolutionProbe(urls: [old: root, orphan: unrelated])
+        let service = DefaultPreferencesService(userDefaults: defaults, legacyBookmarkResolver: { try probe.resolve($0, options: $1) })
+        service.recentFolderRecords = [RecentFolderRecord(url: root, bookmarkData: fresh)]
+        defaults.set([orphan, old], forKey: "pendingLegacyFolderBookmarks")
+        defaults.set(try JSONEncoder().encode([root]), forKey: "pendingLegacyFolderURLs")
+
+        await Task.detached { service.reconcilePendingLegacyFolderBookmarks() }.value
+
+        XCTAssertEqual(service.recentFolderRecords, [RecentFolderRecord(url: root, bookmarkData: fresh)])
+        XCTAssertEqual(defaults.array(forKey: "pendingLegacyFolderBookmarks") as? [Data], [orphan])
+    }
+
+    func test_staleUISnapshot_preservesRecoveredAndFreshGrantsForSurvivingURLs() async throws {
+        let defaults = try makeDefaults()
+        let root = URL(fileURLWithPath: "/Users/fixture/a", isDirectory: true)
+        let other = URL(fileURLWithPath: "/Users/fixture/b", isDirectory: true)
+        let recovered = Data([0x41])
+        let fresh = Data([0x42])
+        let probe = LegacyGrantResolutionProbe(urls: [recovered: root])
+        let service = DefaultPreferencesService(userDefaults: defaults, legacyBookmarkResolver: { try probe.resolve($0, options: $1) })
+        service.recentFolderRecords = [RecentFolderRecord(url: root, bookmarkData: nil)]
+        defaults.set([recovered], forKey: "pendingLegacyFolderBookmarks")
+        defaults.set(try JSONEncoder().encode([root]), forKey: "pendingLegacyFolderURLs")
+        let staleSnapshot = service.recentFolderRecords
+        await Task.detached { service.reconcilePendingLegacyFolderBookmarks() }.value
+        XCTAssertEqual(service.recentFolderRecords.first?.bookmarkData, recovered)
+        XCTAssertNil(defaults.object(forKey: "pendingLegacyFolderBookmarks"))
+
+        service.recentFolderRecords = staleSnapshot + [RecentFolderRecord(url: other, bookmarkData: nil)]
+        XCTAssertEqual(service.recentFolderRecords.first?.bookmarkData, recovered)
+        service.recentFolderRecords = [RecentFolderRecord(url: root, bookmarkData: fresh)]
+        service.recentFolderRecords = staleSnapshot + [RecentFolderRecord(url: other, bookmarkData: nil)]
+
+        XCTAssertEqual(service.recentFolderRecords, [RecentFolderRecord(url: root, bookmarkData: fresh),
+                                                    RecentFolderRecord(url: other, bookmarkData: nil)])
+    }
+
+    func test_explicitBookmarkRemoval_revokesGrantAndItsPendingRecoveryEligibility() async throws {
+        let defaults = try makeDefaults()
+        let root = URL(fileURLWithPath: "/Users/fixture/a", isDirectory: true)
+        let grant = Data([0x41])
+        let probe = LegacyGrantResolutionProbe(urls: [grant: root])
+        let service = DefaultPreferencesService(userDefaults: defaults, legacyBookmarkResolver: { try probe.resolve($0, options: $1) })
+        service.recentFolderRecords = [RecentFolderRecord(url: root, bookmarkData: grant)]
+        defaults.set([grant], forKey: "pendingLegacyFolderBookmarks")
+        defaults.set(try JSONEncoder().encode([root]), forKey: "pendingLegacyFolderURLs")
+        let manager = SecurityScopedBookmarkManager(preferencesService: service)
+
+        manager.removeBookmark(for: root)
+        await Task.detached { service.reconcilePendingLegacyFolderBookmarks() }.value
+
+        XCTAssertEqual(service.recentFolderRecords, [RecentFolderRecord(url: root, bookmarkData: nil)])
+        XCTAssertNil(defaults.object(forKey: "pendingLegacyFolderBookmarks"))
+        XCTAssertEqual(probe.callCount, 0)
+    }
+
+    private func makeDefaults() throws -> UserDefaults {
+        let suite = "LegacyFolderGrantRegressionTests." + UUID().uuidString
+        suites.append(suite)
+        return try XCTUnwrap(UserDefaults(suiteName: suite))
+    }
+}
+
+@MainActor
+final class SessionRestorationEligibilityRegressionTests: XCTestCase {
+    func test_eligibility_doesNotResolveOrValidateTheSavedProviderOnMainActor() throws {
+        let suite = "SessionRestorationEligibilityRegressionTests." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = DefaultPreferencesService(userDefaults: defaults)
+        var saved = WindowState()
+        saved.lastFolderPath = "/Users/fixture/offline-provider"
+        saved.lastFolderBookmark = Data([0x42])
+        preferences.saveWindowState(saved)
+        let manager = WindowStateManager(preferencesService: preferences)
+
+        XCTAssertTrue(manager.hasValidPreviousSession(), "Eligibility is a cheap snapshot check; resolution belongs to the worker")
+        XCTAssertEqual(preferences.loadWindowState()?.lastFolderBookmark, saved.lastFolderBookmark)
+    }
+}
+
+private final class LegacyGrantResolutionProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private let urls: [Data: URL]
+    private var unavailable: Set<Data>
+    private var requestedOptions: [URL.BookmarkResolutionOptions] = []
+    var callCount: Int { lock.withLock { requestedOptions.count } }
+    var options: [URL.BookmarkResolutionOptions] { lock.withLock { requestedOptions } }
+    init(urls: [Data: URL], unavailable: Set<Data> = []) {
+        self.urls = urls
+        self.unavailable = unavailable
+    }
+    func makeAvailable(_ data: Data) { _ = lock.withLock { unavailable.remove(data) } }
+    func resolve(_ data: Data, options: URL.BookmarkResolutionOptions) throws -> URL {
+        try lock.withLock {
+            requestedOptions.append(options)
+            guard !unavailable.contains(data), let url = urls[data] else { throw CocoaError(.fileReadNoSuchFile) }
+            return url
+        }
+    }
+}
+
+@MainActor
+final class SessionRestorationWorkerRegressionTests: XCTestCase {
+    func test_welcomePickerIntentAndCancel_discardHeldStartupRestoration() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let restoration = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+        let panel = ControlledFolderPanelPresenter()
+        let picker = FolderSelectionViewModel(
+            fileSystemService: ControlledFolderScanService(), preferencesService: fixture.preferences,
+            panelPresenter: panel, onExplicitFolderSelection: { manager.cancelSessionRestoration() }
+        )
+
+        picker.selectFolder()
+        XCTAssertTrue(picker.isShowingFolderPicker)
+        panel.complete(with: nil)
+        gate.release.signal()
+        let restored = await restoration.value
+
+        XCTAssertNil(restored, "Opening the welcome picker must supersede startup before a folder is selected")
+        XCTAssertFalse(picker.isShowingFolderPicker)
+        XCTAssertNil(picker.selectedFolderContent)
+        XCTAssertEqual(manager.currentWindowState.lastFolderBookmark, fixture.saved.lastFolderBookmark)
+        XCTAssertFalse(gate.timedOut)
+    }
+
+    func test_welcomeRecentIntent_beforeFirstBatchDiscardsHeldStartupRestoration() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let candidate = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: candidate, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: candidate) }
+        fixture.preferences.recentFolderRecords = [RecentFolderRecord(url: candidate, bookmarkData: Data([0x77]))]
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let restoration = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+        let service = ControlledFolderScanService()
+        service.resolvedBookmarkURL = candidate
+        let picker = FolderSelectionViewModel(
+            fileSystemService: service, preferencesService: fixture.preferences,
+            accessManager: SecurityScopedAccessManager(startWorkerAccess: { _ in true }, stopWorkerAccess: { _ in }),
+            onExplicitFolderSelection: { manager.cancelSessionRestoration() }
+        )
+        defer {
+            picker.cancelScanning(keepingPartialResults: false)
+            service.complete(with: .failure(CancellationError()))
+        }
+
+        picker.selectRecentFolder(candidate)
+        await fulfillment(of: [service.scanStarted], timeout: 10)
+        XCTAssertTrue(picker.isScanning)
+        XCTAssertNil(picker.selectedFolderContent, "The explicit choice has not published its first batch")
+        gate.release.signal()
+        let restored = await restoration.value
+
+        XCTAssertNil(restored, "Startup must not win while the chosen recent folder is still scanning")
+        XCTAssertTrue(picker.isScanning)
+        XCTAssertNil(picker.selectedFolderContent)
+        XCTAssertFalse(gate.timedOut)
+    }
+
+    func test_unavailableRecentIntent_discardsHeldStartupEvenWhenNoScanStarts() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let unavailable = URL(fileURLWithPath: "/Users/fixture/disconnected-provider", isDirectory: true)
+        fixture.preferences.recentFolderRecords = [RecentFolderRecord(url: unavailable, bookmarkData: Data([0x99]))]
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let restoration = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+        let service = ControlledFolderScanService()
+        let picker = FolderSelectionViewModel(
+            fileSystemService: service, preferencesService: fixture.preferences,
+            onExplicitFolderSelection: { manager.cancelSessionRestoration() }
+        )
+
+        picker.selectRecentFolder(unavailable)
+        gate.release.signal()
+        let restored = await restoration.value
+
+        XCTAssertNil(restored, "An unavailable explicit choice must still supersede the automatic folder")
+        guard case .bookmarkResolutionFailed(let url) = picker.currentError else {
+            return XCTFail("The unavailable recent folder must retain its own error")
+        }
+        XCTAssertEqual(url, unavailable)
+        XCTAssertEqual(service.scanCount, 0)
+        XCTAssertEqual(manager.currentWindowState.lastFolderBookmark, fixture.saved.lastFolderBookmark)
+        XCTAssertFalse(gate.timedOut)
+    }
+
+    func test_automaticFolderOperations_doNotCancelHeldStartupRestoration() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let restoration = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+        let picker = FolderSelectionViewModel(
+            fileSystemService: ControlledFolderScanService(), preferencesService: fixture.preferences,
+            onExplicitFolderSelection: { manager.cancelSessionRestoration() }
+        )
+        picker.selectedFolderURL = fixture.probe.root
+
+        picker.restoreLastFolder(fixture.probe.root)
+        picker.refreshCurrentFolder()
+        picker.applyIncludeSubfolders(true)
+        picker.cancelScanning(keepingPartialResults: false)
+        gate.release.signal()
+        let restored = await restoration.value
+
+        XCTAssertEqual(restored?.folderURL, fixture.probe.root)
+        XCTAssertEqual(restored?.imageIndex, fixture.saved.lastImageIndex)
+        XCTAssertFalse(gate.timedOut)
+    }
+
+    func test_duplicatePickerRequest_notifiesExplicitIntentOnceBeforePresentation() throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let panel = ControlledFolderPanelPresenter()
+        var explicitRequests = 0
+        let picker = FolderSelectionViewModel(
+            preferencesService: fixture.preferences, panelPresenter: panel, onExplicitFolderSelection: {
+                XCTAssertEqual(panel.presentationCount, 0, "Intent must be recorded before presentation")
+                explicitRequests += 1
+            }
+        )
+
+        picker.selectFolder()
+        picker.selectFolder()
+        panel.complete(with: nil)
+
+        XCTAssertEqual(explicitRequests, 1)
+        XCTAssertEqual(panel.presentationCount, 1)
+    }
+
+    func test_navigationBeforeQueuedStartupTask_runsPreventsRestoreNotification() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.makeManager(validator: { _ in true })
+        let delegate = AppDelegate()
+        delegate.windowStateManager = manager
+        let window = NSWindow(contentRect: CGRect(x: 100, y: 100, width: 800, height: 600),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        defer { window.orderOut(nil) }
+        let unexpectedRestore = expectation(description: "Canceled startup must not restore a previous folder")
+        unexpectedRestore.isInverted = true
+        let subscription = NotificationCenter.default.publisher(for: .restoreWindowState)
+            .sink { _ in unexpectedRestore.fulfill() }
+        defer { subscription.cancel() }
+
+        delegate.setMainWindow(window)
+        manager.cancelSessionRestoration()
+        await fulfillment(of: [unexpectedRestore], timeout: 0.1)
+
+        XCTAssertTrue(fixture.probe.options.isEmpty, "Cancellation before enqueue execution must skip provider I/O")
+        XCTAssertEqual(manager.currentWindowState.lastFolderBookmark, fixture.saved.lastFolderBookmark)
+    }
+
+    func test_automaticBookmarkPaths_disableMounting() {
+        let probe = SessionBookmarkResolutionProbe()
+        var state = WindowState()
+        state.lastFolderPath = probe.root.path
+        state.lastFolderBookmark = Data([0x42])
+
+        XCTAssertEqual(state.getRestoredFolderURL(bookmarkResolver: { try probe.resolve($0, options: $1) }), probe.root)
+        XCTAssertEqual(state.refreshRestoredFolderBookmark(bookmarkResolver: { try probe.resolve($0, options: $1) }), probe.root)
+
+        XCTAssertEqual(probe.options.count, 2)
+        XCTAssertTrue(probe.options.allSatisfy { $0.contains(.withoutMounting) && $0.contains(.withoutUI) })
+    }
+
+    func test_providerValidation_runsOffMainActorAndRetainsEarlyAutosaveState() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let task = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+        XCTAssertFalse(gate.ranOnMainThread)
+        let heartbeat = expectation(description: "Main actor remains responsive during provider validation")
+        DispatchQueue.main.async { heartbeat.fulfill() }
+        await fulfillment(of: [heartbeat], timeout: 2)
+        manager.updateWindowVisibility(false)
+        manager.saveWindowState()
+        XCTAssertEqual(fixture.preferences.loadWindowState()?.lastFolderBookmark, fixture.saved.lastFolderBookmark)
+        XCTAssertEqual(fixture.preferences.loadWindowState()?.selectedImagePath, fixture.saved.selectedImagePath)
+        gate.release.signal()
+
+        let restored = await task.value
+
+        XCTAssertEqual(restored?.folderURL, fixture.probe.root)
+        XCTAssertEqual(restored?.imageIndex, fixture.saved.lastImageIndex)
+        XCTAssertFalse(manager.currentWindowState.isVisible)
+        XCTAssertTrue(manager.currentWindowState.includeSubfolders)
+        XCTAssertFalse(gate.timedOut)
+        XCTAssertTrue(fixture.probe.options.allSatisfy { $0.contains(.withoutMounting) })
+        XCTAssertFalse(fixture.probe.ranOnMainThread)
+    }
+
+    func test_explicitNavigationCancellation_discardsDelayedRestoration() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let task = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+
+        manager.cancelSessionRestoration()
+        gate.release.signal()
+        let restored = await task.value
+
+        XCTAssertNil(restored)
+        XCTAssertEqual(manager.currentWindowState.lastFolderBookmark, fixture.saved.lastFolderBookmark)
+        XCTAssertEqual(manager.currentWindowState.lastFolderPath, fixture.saved.lastFolderPath)
+    }
+
+    func test_userSelectedFolder_supersedesDelayedStartupRestoration() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let replacement = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: replacement, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: replacement) }
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let task = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+
+        manager.updateFolderState(folderURL: replacement, imageIndex: 3)
+        manager.saveWindowState()
+        gate.release.signal()
+        let restored = await task.value
+
+        XCTAssertNil(restored)
+        XCTAssertEqual(manager.currentWindowState.lastFolderPath, replacement.path)
+        XCTAssertEqual(fixture.preferences.loadWindowState()?.lastFolderPath, replacement.path)
+        XCTAssertEqual(manager.currentWindowState.lastImageIndex, 3)
+    }
+
+    func test_taskCancellation_doesNotPublishProviderResult() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let task = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+
+        task.cancel()
+        gate.release.signal()
+        let restored = await task.value
+
+        XCTAssertNil(restored)
+        XCTAssertEqual(manager.currentWindowState.lastFolderBookmark, fixture.saved.lastFolderBookmark)
+    }
+}
+
+private final class SessionBookmarkResolutionProbe: @unchecked Sendable {
+    let root = URL(fileURLWithPath: "/Users/fixture/offline-provider", isDirectory: true)
+    private let lock = NSLock()
+    private var recordedOptions: [URL.BookmarkResolutionOptions] = []
+    private var mainThread = false
+    var options: [URL.BookmarkResolutionOptions] { lock.withLock { recordedOptions } }
+    var ranOnMainThread: Bool { lock.withLock { mainThread } }
+    func resolve(_ data: Data, options: URL.BookmarkResolutionOptions) throws -> WindowFolderBookmarkResolution {
+        lock.withLock {
+            recordedOptions.append(options)
+            mainThread = mainThread || Thread.isMainThread
+        }
+        return WindowFolderBookmarkResolution(url: root, isStale: false)
+    }
+}
+
+private final class SessionProviderValidationGate: @unchecked Sendable {
+    let entered = XCTestExpectation(description: "Provider validation entered")
+    let release = DispatchSemaphore(value: 0)
+    private let lock = NSLock()
+    private var mainThread = false
+    private var waitTimedOut = false
+    var ranOnMainThread: Bool { lock.withLock { mainThread } }
+    var timedOut: Bool { lock.withLock { waitTimedOut } }
+    func validate(_ url: URL) -> Bool {
+        let isMain = Thread.isMainThread
+        lock.withLock { mainThread = isMain }
+        entered.fulfill()
+        guard !isMain else { return false }
+        let timeout = release.wait(timeout: .now() + 10) == .timedOut
+        lock.withLock { waitTimedOut = timeout }
+        return !timeout
+    }
+}
+
+@MainActor
+private struct SessionProviderFixture {
+    let suite: String
+    let defaults: UserDefaults
+    let preferences: DefaultPreferencesService
+    let saved: WindowState
+    let probe = SessionBookmarkResolutionProbe()
+    init() throws {
+        suite = "SessionProviderFixture." + UUID().uuidString
+        defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        preferences = DefaultPreferencesService(userDefaults: defaults)
+        var state = WindowState()
+        state.lastFolderPath = probe.root.path
+        state.lastFolderBookmark = Data([0x42])
+        state.lastImageIndex = 7
+        state.includeSubfolders = true
+        state.selectedImagePath = probe.root.appendingPathComponent("child/selected.jpg").path
+        state.filteredFolderPath = probe.root.appendingPathComponent("child", isDirectory: true).path
+        saved = state
+        preferences.saveWindowState(state)
+    }
+    func makeManager(validator: @escaping @Sendable (URL) -> Bool) -> WindowStateManager {
+        let resolver = probe
+        return WindowStateManager(preferencesService: preferences,
+                                  restoredBookmarkResolver: { try resolver.resolve($0, options: $1) },
+                                  restoredFolderValidator: validator)
+    }
+    func cleanup() { defaults.removePersistentDomain(forName: suite) }
+}
+
+@MainActor
+final class BookmarkStartupConcurrencyRegressionTests: XCTestCase {
+    func test_workerReads_duringStartupPublicationStayConsistentAndDoNotBlockPreferenceSaving() async throws {
+        let suite = "BookmarkStartupConcurrencyRegressionTests." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = BookmarkPublicationPreferences(userDefaults: defaults)
+        let entries = (0..<10).map { index in
+            (Data([UInt8(index)]), URL(fileURLWithPath: "/Users/fixture/root-\(index)", isDirectory: true))
+        }
+        let urlsByData = Dictionary(uniqueKeysWithValues: entries)
+        let expected = Set(entries.map { $0.1 })
+        preferences.recentFolderRecords = entries.map { RecentFolderRecord(url: $0.1, bookmarkData: $0.0) }
+        let manager = SecurityScopedBookmarkManager(
+            preferencesService: preferences,
+            resolveLaunchBookmark: { data in
+                guard let url = urlsByData[data] else { throw CocoaError(.fileReadCorruptFile) }
+                return url
+            },
+            launchStartAccess: { _ in true }, launchStopAccess: { _ in }, launchFolderExists: { _ in true })
+        let reader = BookmarkStateReadProbe(manager: manager)
+        let worker = Task.detached { reader.readUntilStopped() }
+        defer { reader.stop() }
+        await fulfillment(of: [reader.entered], timeout: 10)
+        var publicationSnapshots: [Set<URL>] = []
+        preferences.onSave = {
+            // A preferences callback can consult the access manager's worker queue. It must
+            // never wait for a bookmark-state lock held across this preferences operation.
+            XCTAssertTrue(reader.captureOnWorker(), "Bookmark lock must be released before saving preferences")
+            publicationSnapshots.append(Set(manager.getBookmarkedFolders()))
+        }
+
+        await manager.restoreBookmarksOnLaunchAsync()
+        reader.stop()
+        await worker.value
+
+        XCTAssertEqual(Set(manager.getBookmarkedFolders()), expected)
+        XCTAssertTrue(expected.allSatisfy { manager.hasBookmark(for: $0) })
+        XCTAssertEqual(publicationSnapshots.count, entries.count)
+        XCTAssertEqual(publicationSnapshots.map(\.count), Array(1...entries.count))
+        XCTAssertTrue(reader.snapshots.allSatisfy { $0.isSubset(of: expected) })
+        XCTAssertTrue(reader.lookupsWereConsistent)
+        XCTAssertGreaterThan(reader.snapshots.count, entries.count)
+    }
+}
+
+private final class BookmarkPublicationPreferences: DefaultPreferencesService, @unchecked Sendable {
+    var onSave: (() -> Void)?
+    override func savePreferences() {
+        super.savePreferences()
+        onSave?()
+    }
+}
+
+/// The cross-thread handle exposes only the manager's synchronized state readers.
+private final class BookmarkStateReadProbe: @unchecked Sendable {
+    let entered = XCTestExpectation(description: "Background bookmark reader started")
+    private let manager: SecurityScopedBookmarkManager
+    private let lock = NSLock()
+    private var stopped = false
+    private var recordedSnapshots: [Set<URL>] = []
+    private var consistent = true
+    var snapshots: [Set<URL>] { lock.withLock { recordedSnapshots } }
+    var lookupsWereConsistent: Bool { lock.withLock { consistent } }
+    init(manager: SecurityScopedBookmarkManager) { self.manager = manager }
+    func stop() { lock.withLock { stopped = true } }
+    func readUntilStopped() {
+        capture()
+        entered.fulfill()
+        let deadline = Date().addingTimeInterval(10)
+        while !lock.withLock({ stopped }), Date() < deadline {
+            capture()
+            Thread.sleep(forTimeInterval: 0.0001)
+        }
+    }
+    func captureOnWorker() -> Bool {
+        let completed = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            capture()
+            completed.signal()
+        }
+        return completed.wait(timeout: .now() + 2) == .success
+    }
+    private func capture() {
+        let snapshot = Set(manager.getBookmarkedFolders())
+        let allPresent = snapshot.allSatisfy { manager.hasBookmark(for: $0) }
+        lock.withLock {
+            recordedSnapshots.append(snapshot)
+            consistent = consistent && allPresent
+        }
+    }
 }

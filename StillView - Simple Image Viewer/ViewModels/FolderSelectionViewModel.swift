@@ -63,6 +63,7 @@ class FolderSelectionViewModel: ObservableObject {
     private var preferencesService: PreferencesService
     private let accessManager: SecurityScopedAccessManager
     private let panelPresenter: FolderPanelPresenting
+    private let onExplicitFolderSelection: @MainActor () -> Void
     private var cancellables = Set<AnyCancellable>()
     private var scanTask: Task<Void, Never>?
     private var scanGeneration = UUID()
@@ -73,14 +74,17 @@ class FolderSelectionViewModel: ObservableObject {
     /// - Parameters:
     ///   - fileSystemService: Service for file system operations
     ///   - preferencesService: Service for managing user preferences
+    ///   - onExplicitFolderSelection: Supersedes startup restoration before user-selected folder work begins.
     init(fileSystemService: FileSystemService = DefaultFileSystemService(),
          preferencesService: PreferencesService = DefaultPreferencesService(),
          panelPresenter: FolderPanelPresenting? = nil,
-         accessManager: SecurityScopedAccessManager = .shared) {
+         accessManager: SecurityScopedAccessManager = .shared,
+         onExplicitFolderSelection: @escaping @MainActor () -> Void = {}) {
         self.fileSystemService = fileSystemService
         self.preferencesService = preferencesService
         self.panelPresenter = panelPresenter ?? SystemFolderPanelPresenter()
         self.accessManager = accessManager
+        self.onExplicitFolderSelection = onExplicitFolderSelection
 
         loadRecentFolders()
         setupBindings()
@@ -98,6 +102,7 @@ class FolderSelectionViewModel: ObservableObject {
         // panel.begin is non-modal, so a second request (menu, button) while
         // the panel is up would open a duplicate.
         guard !isShowingFolderPicker else { return }
+        onExplicitFolderSelection()
         isShowingFolderPicker = true
         currentError = nil
         
@@ -121,6 +126,7 @@ class FolderSelectionViewModel: ObservableObject {
     /// Select a folder from the recent folders list
     /// - Parameter url: The folder URL to select
     func selectRecentFolder(_ url: URL) {
+        onExplicitFolderSelection()
         // A newer request supersedes an in-flight scan even when its bookmark cannot be resolved.
         cancelScanning(keepingPartialResults: false)
         currentError = nil
@@ -129,7 +135,8 @@ class FolderSelectionViewModel: ObservableObject {
               let bookmarkData = record.bookmarkData else {
             guard FileManager.default.fileExists(atPath: url.path) else {
                 currentError = .folderNotFound(url)
-                removeRecentFolder(url)
+                // An unavailable provider may still have a legacy grant pending reconciliation.
+                // Keep the recent record until the user explicitly removes it or clears the list.
                 return
             }
             handleFolderSelection(url)

@@ -13,8 +13,24 @@ import Foundation
 import CoreGraphics
 import AppKit
 
+struct WindowFolderBookmarkResolution: Sendable {
+    let url: URL
+    let isStale: Bool
+}
+
+typealias WindowFolderBookmarkResolver = @Sendable (Data, URL.BookmarkResolutionOptions) throws -> WindowFolderBookmarkResolution
+
+enum WindowFolderBookmarkResolving {
+    static let resolve: WindowFolderBookmarkResolver = { data, options in
+        var stale = false
+        let url = try URL(resolvingBookmarkData: data, options: options,
+                          relativeTo: nil, bookmarkDataIsStale: &stale)
+        return WindowFolderBookmarkResolution(url: url, isStale: stale)
+    }
+}
+
 /// Model for persisting and restoring window state and application state
-struct WindowState: Codable {
+struct WindowState: Codable, Sendable {
     // MARK: - Window Properties
     
     /// The window frame (position and size)
@@ -305,19 +321,14 @@ struct WindowState: Codable {
     
     /// Get the restored folder URL from bookmark data
     /// - Returns: The folder URL if bookmark can be resolved, nil otherwise
-    func getRestoredFolderURL() -> URL? {
+    func getRestoredFolderURL(bookmarkResolver: WindowFolderBookmarkResolver = WindowFolderBookmarkResolving.resolve) -> URL? {
         guard let bookmarkData = lastFolderBookmark else { return nil }
         
         do {
-            var isStale = false
-            let url = try URL(
-                resolvingBookmarkData: bookmarkData,
-                options: [.withSecurityScope, .withoutUI],
-                relativeTo: nil,
-                bookmarkDataIsStale: &isStale
-            )
+            let resolved = try bookmarkResolver(bookmarkData, [.withSecurityScope, .withoutUI, .withoutMounting])
+            let url = resolved.url
             
-            if isStale {
+            if resolved.isStale {
                 Logger.warning("Bookmark is stale for folder: \(lastFolderPath ?? "unknown")")
             }
             
@@ -329,17 +340,14 @@ struct WindowState: Codable {
     }
 
     /// Refresh a resolvable stale bookmark without leaving a security-scope lease with the caller.
-    mutating func refreshRestoredFolderBookmark() -> URL? {
+    mutating func refreshRestoredFolderBookmark(
+        bookmarkResolver: WindowFolderBookmarkResolver = WindowFolderBookmarkResolving.resolve
+    ) -> URL? {
         guard let data = lastFolderBookmark else { return nil }
         do {
-            var isStale = false
-            let url = try URL(
-                resolvingBookmarkData: data,
-                options: [.withSecurityScope, .withoutUI],
-                relativeTo: nil,
-                bookmarkDataIsStale: &isStale
-            )
-            if isStale {
+            let resolved = try bookmarkResolver(data, [.withSecurityScope, .withoutUI, .withoutMounting])
+            let url = resolved.url
+            if resolved.isStale {
                 let startedAccess = url.startAccessingSecurityScopedResource()
                 defer {
                     if startedAccess { url.stopAccessingSecurityScopedResource() }

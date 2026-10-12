@@ -177,6 +177,17 @@ final class ImageInsightViewModel: ObservableObject {
         restoreTextState()
     }
 
+    /// A known external edit invalidates stored evidence before replacement metadata or pixels can finish.
+    func invalidateCurrentImage() {
+        cancelGeneration(resetToIdle: false)
+        cancelTextExtraction()
+        if let input = currentInput { invalidateCurrentResults(for: input) }
+        currentInput = nil
+        generationError = nil
+        textExtractionError = nil
+        restoreResultOrIdle()
+    }
+
     private func isCurrentExtraction(_ extractionID: UUID, input: ImageInsightInput) -> Bool {
         activeTextExtractionID == extractionID && currentInput == input
     }

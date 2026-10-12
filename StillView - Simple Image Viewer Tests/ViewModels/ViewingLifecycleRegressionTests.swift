@@ -6,6 +6,79 @@ import XCTest
 
 @MainActor
 final class ViewingLifecycleRegressionTests: XCTestCase {
+    func test_folderSelectionCommands_cannotMutateRetainedCollectionOrStartAnotherScan() throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader())
+        model.loadFolderContent(fixture.folder)
+        model.navigateToIndex(1)
+        let selectedURL = model.currentImageFile?.url
+        let picker = FolderSelectionViewModel(
+            preferencesService: fixture.preferences,
+            accessManager: SecurityScopedAccessManager(startWorkerAccess: { _ in true }, stopWorkerAccess: { _ in })
+        )
+        picker.selectedFolderURL = fixture.directory
+        defer {
+            model.stopSlideshow()
+            picker.cancelScanning(keepingPartialResults: false)
+        }
+        let commands = ViewerSceneCommandScope(isViewerVisible: false, viewModel: model, folderPicker: picker)
+
+        commands.viewModel?.setViewMode(.grid)
+        commands.viewModel?.startSlideshow()
+        commands.refreshFolder?()
+        commands.setIncludeSubfolders?(true)
+
+        XCTAssertEqual(model.viewMode, .single)
+        XCTAssertFalse(model.isSlideshow)
+        XCTAssertFalse(picker.isScanning)
+        XCTAssertFalse(picker.includeSubfolders)
+        XCTAssertEqual(model.currentImageFile?.url, selectedURL)
+        XCTAssertEqual(model.allImageFiles.map(\.url), fixture.files.map(\.url))
+    }
+
+    func test_visibleEmptyCollection_keepsFolderRefreshAvailable() throws {
+        let fixture = try LifecycleFixture(count: 0)
+        defer { fixture.cleanUp() }
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader())
+        model.loadFolderContent(fixture.folder)
+        let picker = FolderSelectionViewModel(
+            preferencesService: fixture.preferences,
+            accessManager: SecurityScopedAccessManager(startWorkerAccess: { _ in true }, stopWorkerAccess: { _ in })
+        )
+        picker.selectedFolderURL = fixture.directory
+        defer { picker.cancelScanning(keepingPartialResults: false) }
+        let commands = ViewerSceneCommandScope(isViewerVisible: true, viewModel: model, folderPicker: picker)
+
+        commands.refreshFolder?()
+
+        XCTAssertTrue(picker.isScanning)
+        XCTAssertTrue(commands.viewModel === model)
+        XCTAssertEqual(model.totalImages, 0)
+    }
+
+    func test_leavingViewer_stopsSlideshowWithoutDiscardingSavedBrowsingState() throws {
+        let fixture = try LifecycleFixture(count: 3)
+        defer { fixture.cleanUp() }
+        let model = fixture.makeViewModel(loader: LifecycleImageLoader())
+        model.loadFolderContent(fixture.folder)
+        model.applySortOrder(.size)
+        model.browserSearchText = "image"
+        model.navigateToIndex(1)
+        let selectedURL = model.currentImageFile?.url
+        model.startSlideshow()
+        XCTAssertTrue(model.isSlideshow)
+
+        ViewerSceneCommandScope.endViewerActivities(model)
+
+        XCTAssertFalse(model.isSlideshow)
+        XCTAssertEqual(model.currentFolderURL, fixture.directory)
+        XCTAssertEqual(model.currentImageFile?.url, selectedURL)
+        XCTAssertEqual(model.sortOrder, .size)
+        XCTAssertEqual(model.browserSearchText, "image")
+        XCTAssertEqual(model.totalImages, 3)
+    }
+
     func test_selection_keepsCachedBWhenSlowACompletes() async throws {
         let fixture = try LifecycleFixture(count: 2)
         defer { fixture.cleanUp() }

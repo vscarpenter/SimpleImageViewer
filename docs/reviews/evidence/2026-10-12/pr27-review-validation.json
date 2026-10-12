@@ -1,0 +1,36 @@
+{
+  "reviewedCommit": "272d1196cfb27635b606ede766468cb75414e26b",
+  "sourceCommit": "da2f495763837e9ce4063aa57353e9ab29229e0c",
+  "finding": "https://github.com/vscarpenter/SimpleImageViewer/pull/27#discussion_r4249778905",
+  "behavioralRed": {
+    "executed": 11,
+    "failures": 4
+  },
+  "focusedGreen": {
+    "passed": 39,
+    "failed": 0
+  },
+  "fullGreen": {
+    "passed": 340,
+    "failed": 0,
+    "skipped": 0
+  },
+  "debugBuild": "Passed",
+  "releaseArchive": "Passed; unsigned",
+  "archivePath": "/tmp/stillview-pr27-review-2026-10-12.xcarchive",
+  "executableSHA256": "885feefe0e0679a3d3920f6944df4b2cedaffc40d59a3a3ef58ae2bd924a068d",
+  "version": "5.1.0",
+  "build": "45",
+  "whatsNewMatchesSource": true,
+  "privacyManifestMatchesSource": true,
+  "debugHelperExcluded": {
+    "Save Window Snapshot @2x": true,
+    "DebugWindowSnapshot": true,
+    "CGWindowListCreateImage": true
+  },
+  "preservedUserHelperDiffSHA256": "82438b26a4237c3ba90af16f2bb55a903edba03db3a1e7e80fca47ec01b44ae2",
+  "lint": "Passed; zero serious violations, one existing complexity warning",
+  "testMembership": "15 active sources passed",
+  "independentSourceReview": "No remaining concrete findings",
+  "additionalNativeProviderTesting": false
+}

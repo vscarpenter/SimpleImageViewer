@@ -1,0 +1,8 @@
+Test Case '-[StillView___Simple_Image_Viewer_Tests.AsyncImageInsightPreparationRegressionTests test_folderRefreshInvalidatesSameURLEvidenceBeforeReplacementInput]' started.
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/ViewModels/ImageInsightLifecycleRegressionTests.swift:842: error: -[StillView___Simple_Image_Viewer_Tests.AsyncImageInsightPreparationRegressionTests test_folderRefreshInvalidatesSameURLEvidenceBeforeReplacementInput] : XCTAssertNil failed: "ImageInsightResult(title: "Original image", summary: "Original visible content.", usefulDetails: [], tags: [], limitations: [], recognizedText: [], selectedTextLines: [], textSelectionSource: StillView___Simple_Image_Viewer.ImageInsightTextSelectionSource.vision, provenance: nil)"
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/ViewModels/ImageInsightLifecycleRegressionTests.swift:843: error: -[StillView___Simple_Image_Viewer_Tests.AsyncImageInsightPreparationRegressionTests test_folderRefreshInvalidatesSameURLEvidenceBeforeReplacementInput] : XCTAssertNil failed: "ImagePerceptionResult(textObservations: [StillView___Simple_Image_Viewer.ImagePerceptionResult.TextObservation(text: "ORIGINAL TEXT", confidence: 0.9, boundingBox: (0.0, 0.0, 0.0, 0.0))], textWasTruncated: false)"
+Test Case '-[StillView___Simple_Image_Viewer_Tests.AsyncImageInsightPreparationRegressionTests test_folderRefreshInvalidatesSameURLEvidenceBeforeReplacementInput]' failed (0.140 seconds).
+	 Executed 1 test, with 2 failures (0 unexpected) in 0.140 (0.141) seconds
+	 Executed 1 test, with 2 failures (0 unexpected) in 0.140 (0.141) seconds
+	 Executed 1 test, with 2 failures (0 unexpected) in 0.140 (0.142) seconds
+** TEST FAILED **

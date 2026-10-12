@@ -1,0 +1,109 @@
+Full Release app-hosted suite; source commit a79e1cf.
+335 passed, 0 failed, 0 skipped; 28 additional tests against reviewed base.
+
+Test Suite 'All tests' started at 2026-10-12 10:12:01.585.
+Test Suite 'StillView - Simple Image Viewer Tests.xctest' started at 2026-10-12 10:12:01.585.
+Test Suite 'ApplicationPersistenceRegressionTests' started at 2026-10-12 10:12:01.585.
+Test Suite 'ApplicationPersistenceRegressionTests' passed at 2026-10-12 10:12:01.603.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.017 (0.018) seconds
+Test Suite 'AsyncImageInsightPreparationRegressionTests' started at 2026-10-12 10:12:01.603.
+Test Suite 'AsyncImageInsightPreparationRegressionTests' passed at 2026-10-12 10:12:01.978.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.372 (0.375) seconds
+Test Suite 'BeforeAfterSliderViewTests' started at 2026-10-12 10:12:01.978.
+Test Suite 'BeforeAfterSliderViewTests' passed at 2026-10-12 10:12:01.981.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.002 (0.003) seconds
+Test Suite 'BookmarkStartupConcurrencyRegressionTests' started at 2026-10-12 10:12:01.981.
+Test Suite 'BookmarkStartupConcurrencyRegressionTests' passed at 2026-10-12 10:12:01.996.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.014 (0.014) seconds
+Test Suite 'BookmarkStartupRegressionTests' started at 2026-10-12 10:12:01.996.
+Test Suite 'BookmarkStartupRegressionTests' passed at 2026-10-12 10:12:02.005.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.009 (0.010) seconds
+Test Suite 'FileSystemServiceTests' started at 2026-10-12 10:12:02.006.
+Test Suite 'FileSystemServiceTests' passed at 2026-10-12 10:12:02.143.
+	 Executed 17 tests, with 0 failures (0 unexpected) in 0.134 (0.137) seconds
+Test Suite 'FolderContentTests' started at 2026-10-12 10:12:02.143.
+Test Suite 'FolderContentTests' passed at 2026-10-12 10:12:02.167.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.022 (0.024) seconds
+Test Suite 'FolderPresentationRegressionTests' started at 2026-10-12 10:12:02.167.
+Test Suite 'FolderPresentationRegressionTests' passed at 2026-10-12 10:12:02.559.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.388 (0.392) seconds
+Test Suite 'ImageCacheAccountingRegressionTests' started at 2026-10-12 10:12:02.559.
+Test Suite 'ImageCacheAccountingRegressionTests' passed at 2026-10-12 10:12:02.649.
+	 Executed 26 tests, with 0 failures (0 unexpected) in 0.085 (0.090) seconds
+Test Suite 'ImageDecodingRegressionTests' started at 2026-10-12 10:12:02.649.
+Test Suite 'ImageDecodingRegressionTests' passed at 2026-10-12 10:12:02.800.
+	 Executed 14 tests, with 0 failures (0 unexpected) in 0.147 (0.151) seconds
+Test Suite 'ImageFileTests' started at 2026-10-12 10:12:02.800.
+Test Suite 'ImageFileTests' passed at 2026-10-12 10:12:02.815.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.012 (0.014) seconds
+Test Suite 'ImageInsightAccessRegressionTests' started at 2026-10-12 10:12:02.815.
+Test Suite 'ImageInsightAccessRegressionTests' passed at 2026-10-12 10:12:02.867.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.050 (0.053) seconds
+Test Suite 'ImageInsightCoreTests' started at 2026-10-12 10:12:02.868.
+Test Suite 'ImageInsightCoreTests' passed at 2026-10-12 10:12:02.879.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.010 (0.011) seconds
+Test Suite 'ImageInsightLifecycleRegressionTests' started at 2026-10-12 10:12:02.879.
+Test Suite 'ImageInsightLifecycleRegressionTests' passed at 2026-10-12 10:12:03.079.
+	 Executed 20 tests, with 0 failures (0 unexpected) in 0.196 (0.200) seconds
+Test Suite 'ImageInsightPrivacyAndProjectTests' started at 2026-10-12 10:12:03.079.
+Test Suite 'ImageInsightPrivacyAndProjectTests' passed at 2026-10-12 10:12:03.097.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.016 (0.017) seconds
+Test Suite 'ImageInsightViewModelTests' started at 2026-10-12 10:12:03.097.
+Test Suite 'ImageInsightViewModelTests' passed at 2026-10-12 10:12:03.164.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.066 (0.067) seconds
+Test Suite 'ImageMetadataFormattingTests' started at 2026-10-12 10:12:03.164.
+Test Suite 'ImageMetadataFormattingTests' passed at 2026-10-12 10:12:03.169.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.003 (0.004) seconds
+Test Suite 'ImagePerceptionServiceTests' started at 2026-10-12 10:12:03.169.
+Test Suite 'ImagePerceptionServiceTests' passed at 2026-10-12 10:12:03.707.
+	 Executed 31 tests, with 0 failures (0 unexpected) in 0.530 (0.538) seconds
+Test Suite 'ImageViewportTests' started at 2026-10-12 10:12:03.707.
+Test Suite 'ImageViewportTests' passed at 2026-10-12 10:12:03.716.
+	 Executed 15 tests, with 0 failures (0 unexpected) in 0.006 (0.009) seconds
+Test Suite 'ImageViewportZoomCommandTests' started at 2026-10-12 10:12:03.716.
+Test Suite 'ImageViewportZoomCommandTests' passed at 2026-10-12 10:12:03.728.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.011 (0.012) seconds
+Test Suite 'InsightOutputValidatorTests' started at 2026-10-12 10:12:03.728.
+Test Suite 'InsightOutputValidatorTests' passed at 2026-10-12 10:12:03.737.
+	 Executed 14 tests, with 0 failures (0 unexpected) in 0.007 (0.009) seconds
+Test Suite 'LegacyFolderGrantRegressionTests' started at 2026-10-12 10:12:03.737.
+Test Suite 'LegacyFolderGrantRegressionTests' passed at 2026-10-12 10:12:03.777.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.038 (0.040) seconds
+Test Suite 'PreferencesWindowLifecycleRegressionTests' started at 2026-10-12 10:12:03.777.
+Test Suite 'PreferencesWindowLifecycleRegressionTests' passed at 2026-10-12 10:12:04.079.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.302 (0.302) seconds
+Test Suite 'RecursiveBrowsingProjectionTests' started at 2026-10-12 10:12:04.080.
+Test Suite 'RecursiveBrowsingProjectionTests' passed at 2026-10-12 10:12:10.876.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 6.794 (6.796) seconds
+Test Suite 'RecursiveFolderScanTests' started at 2026-10-12 10:12:10.876.
+Test Suite 'RecursiveFolderScanTests' passed at 2026-10-12 10:12:10.974.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.096 (0.098) seconds
+Test Suite 'RecursiveFolderSessionRegressionTests' started at 2026-10-12 10:12:10.974.
+Test Suite 'RecursiveFolderSessionRegressionTests' passed at 2026-10-12 10:12:11.099.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.124 (0.125) seconds
+Test Suite 'SecurityScopedAccessPathRegressionTests' started at 2026-10-12 10:12:11.099.
+Test Suite 'SecurityScopedAccessPathRegressionTests' passed at 2026-10-12 10:12:11.111.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.011 (0.012) seconds
+Test Suite 'SessionRestorationEligibilityRegressionTests' started at 2026-10-12 10:12:11.111.
+Test Suite 'SessionRestorationEligibilityRegressionTests' passed at 2026-10-12 10:12:11.113.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'SessionRestorationWorkerRegressionTests' started at 2026-10-12 10:12:11.113.
+Test Suite 'SessionRestorationWorkerRegressionTests' passed at 2026-10-12 10:12:11.259.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.144 (0.145) seconds
+Test Suite 'SmokeTests' started at 2026-10-12 10:12:11.259.
+Test Suite 'SmokeTests' passed at 2026-10-12 10:12:11.264.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.004 (0.005) seconds
+Test Suite 'TrashLifecycleRegressionTests' started at 2026-10-12 10:12:11.264.
+Test Suite 'TrashLifecycleRegressionTests' passed at 2026-10-12 10:12:11.414.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.147 (0.150) seconds
+Test Suite 'ViewerModeTests' started at 2026-10-12 10:12:11.414.
+Test Suite 'ViewerModeTests' passed at 2026-10-12 10:12:11.449.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.031 (0.034) seconds
+Test Suite 'ViewingLifecycleRegressionTests' started at 2026-10-12 10:12:11.449.
+Test Suite 'ViewingLifecycleRegressionTests' passed at 2026-10-12 10:12:11.642.
+	 Executed 18 tests, with 0 failures (0 unexpected) in 0.189 (0.193) seconds
+Test Suite 'StillView - Simple Image Viewer Tests.xctest' passed at 2026-10-12 10:12:11.642.
+	 Executed 335 tests, with 0 failures (0 unexpected) in 9.979 (10.057) seconds
+Test Suite 'All tests' passed at 2026-10-12 10:12:11.642.
+	 Executed 335 tests, with 0 failures (0 unexpected) in 9.979 (10.058) seconds
+** TEST SUCCEEDED **

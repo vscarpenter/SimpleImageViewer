@@ -6,7 +6,7 @@ struct ContentView: View {
     let windowStateManager: WindowStateManager
     @StateObject private var imageViewerViewModel = ImageViewerViewModel()
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
-    @StateObject private var folderPicker = FolderSelectionViewModel()
+    @StateObject private var folderPicker: FolderSelectionViewModel
     @State private var showImageViewer = false
     @State private var restoredImageIndex: Int?
     @State private var restoringState: WindowState?
@@ -19,16 +19,24 @@ struct ContentView: View {
     @State private var stageArrowsVisible = false
     @State private var stageArrowsHideTask: Task<Void, Never>?
 
+    init(windowStateManager: WindowStateManager) {
+        self.windowStateManager = windowStateManager
+        _folderPicker = StateObject(wrappedValue: FolderSelectionViewModel(
+            onExplicitFolderSelection: { windowStateManager.cancelSessionRestoration() }
+        ))
+    }
+
     // MARK: - Body
     var body: some View {
+        let commandScope = ViewerSceneCommandScope(
+            isViewerVisible: showImageViewer, viewModel: imageViewerViewModel, folderPicker: folderPicker
+        )
         observedContent
-            .focusedSceneObject(imageViewerViewModel)
+            .focusedSceneObject(commandScope.viewModel)
             .focusedSceneValue(\.openFolderAction, { openFolder() })
             .focusedSceneValue(\.backToFoldersAction, { returnToFolderSelection() })
-            .focusedSceneValue(\.setIncludeSubfoldersAction, { included in
-                folderPicker.applyIncludeSubfolders(included)
-            })
-            .focusedSceneValue(\.refreshFolderAction, { folderPicker.refreshCurrentFolder() })
+            .focusedSceneValue(\.setIncludeSubfoldersAction, commandScope.setIncludeSubfolders)
+            .focusedSceneValue(\.refreshFolderAction, commandScope.refreshFolder)
     }
 
     private var observedContent: some View {
@@ -383,13 +391,13 @@ struct ContentView: View {
     }
     
     private func returnToFolderSelection() {
+        windowStateManager.cancelSessionRestoration()
         folderPicker.cancelScanning(keepingPartialResults: false)
-        imageViewerViewModel.cancelImageInsightGeneration()
-        imageViewerViewModel.cancelImageTextExtraction()
+        ViewerSceneCommandScope.endViewerActivities(imageViewerViewModel)
+        stageArrowsHideTask?.cancel()
+        stageArrowsVisible = false
         restoredImageIndex = nil
         restoringState = nil
-        imageViewerViewModel.stopSlideshow()
-        imageViewerViewModel.shouldNavigateToFolderSelection = false
         showImageViewer = false
     }
 
@@ -542,6 +550,33 @@ private struct FolderBrowserSidebar: View {
             .accessibilityLabel("Folders")
         }
         .focusedValue(\.viewerKeyboardFocus, .control)
+    }
+}
+
+/// Keeps scene menu actions separate from the collection retained for session restoration.
+@MainActor
+struct ViewerSceneCommandScope {
+    let viewModel: ImageViewerViewModel?
+    let setIncludeSubfolders: ((Bool) -> Void)?
+    let refreshFolder: (() -> Void)?
+
+    init(isViewerVisible: Bool, viewModel: ImageViewerViewModel, folderPicker: FolderSelectionViewModel) {
+        guard isViewerVisible else {
+            self.viewModel = nil
+            self.setIncludeSubfolders = nil
+            self.refreshFolder = nil
+            return
+        }
+        self.viewModel = viewModel
+        self.setIncludeSubfolders = { folderPicker.applyIncludeSubfolders($0) }
+        self.refreshFolder = { folderPicker.refreshCurrentFolder() }
+    }
+
+    static func endViewerActivities(_ viewModel: ImageViewerViewModel) {
+        viewModel.cancelImageInsightGeneration()
+        viewModel.cancelImageTextExtraction()
+        viewModel.stopSlideshow()
+        viewModel.shouldNavigateToFolderSelection = false
     }
 }
 

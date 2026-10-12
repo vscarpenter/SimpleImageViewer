@@ -20,6 +20,9 @@ class SecurityScopedBookmarkManager: ObservableObject {
     
     // MARK: - Private Properties
     private var preferencesService: PreferencesService
+    // This state is also read by the access manager's worker queue. Never hold this
+    // lock while resolving bookmarks, accessing resources, or calling other services.
+    private let stateLock = NSLock()
     private var activeBookmarks: [URL: Data] = [:]
     private var accessedURLs: Set<URL> = []
     private let resolveLaunchBookmark: (Data) throws -> URL
@@ -32,7 +35,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
         preferencesService: PreferencesService = DefaultPreferencesService.shared,
         resolveLaunchBookmark: @escaping (Data) throws -> URL = { data in
             var isStale = false
-            // Launch runs on the main thread; never block it mounting an unreachable network volume.
+            // Automatic launch must never mount an unreachable volume.
             return try URL(
                 resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI, .withoutMounting],
                 relativeTo: nil, bookmarkDataIsStale: &isStale)
@@ -74,7 +77,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
             )
             
             // Store in memory
-            activeBookmarks[folderURL] = bookmarkData
+            stateLock.withLock { activeBookmarks[folderURL] = bookmarkData }
             
             // Save to preferences
             saveBookmarksToPreferences()
@@ -92,7 +95,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
     /// - Parameter folderURL: The folder URL to restore access for
     /// - Returns: True if access was successfully restored
     func restoreAccess(for folderURL: URL) -> Bool {
-        guard let bookmarkData = activeBookmarks[folderURL] else {
+        guard let bookmarkData = stateLock.withLock({ activeBookmarks[folderURL] }) else {
             Logger.warning("No bookmark found for \(folderURL.path)", context: "security")
             return false
         }
@@ -119,16 +122,17 @@ class SecurityScopedBookmarkManager: ObservableObject {
             let hasAccess = resolvedURL.startAccessingSecurityScopedResource()
             
             if hasAccess {
-                // Ensure in-memory maps reflect restored access
-                // Track the accessed URL
-                accessedURLs.insert(resolvedURL)
+                stateLock.withLock {
+                    accessedURLs.insert(resolvedURL)
+                    if let original = originalURL, original != resolvedURL {
+                        activeBookmarks.removeValue(forKey: original)
+                    }
+                    activeBookmarks[resolvedURL] = bookmarkData
+                }
 
-                // Always populate activeBookmarks for the resolved URL so future lookups work
                 if let original = originalURL, original != resolvedURL {
-                    activeBookmarks.removeValue(forKey: original)
                     reassociateBookmark(from: original, to: resolvedURL, bookmarkData: bookmarkData)
                 }
-                activeBookmarks[resolvedURL] = bookmarkData
                 
                 // Register with SecurityScopedAccessManager
                 _ = SecurityScopedAccessManager.shared.startAccess(for: resolvedURL)
@@ -160,7 +164,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
     /// - Parameter folderURL: The folder URL to restore access for
     /// - Returns: True if access was successfully restored
     func restoreAccessWithRetry(for folderURL: URL, maxRetries: Int = 3) -> Bool {
-        guard let bookmarkData = activeBookmarks[folderURL] else {
+        guard let bookmarkData = stateLock.withLock({ activeBookmarks[folderURL] }) else {
             Logger.warning("No bookmark found for \(folderURL.path)", context: "security")
             return false
         }
@@ -178,7 +182,7 @@ class SecurityScopedBookmarkManager: ObservableObject {
                 )
                 
                 // Check if we already have access to avoid duplicate calls
-                if accessedURLs.contains(resolvedURL) {
+                if stateLock.withLock({ accessedURLs.contains(resolvedURL) }) {
                     Logger.success("Already have access to \(resolvedURL.path)", context: "security")
                     return true
                 }
@@ -186,12 +190,15 @@ class SecurityScopedBookmarkManager: ObservableObject {
                 let hasAccess = resolvedURL.startAccessingSecurityScopedResource()
                 
                 if hasAccess {
-                    accessedURLs.insert(resolvedURL)
-                    
-                    // Update active bookmarks if URL changed
-                    if folderURL != resolvedURL {
-                        activeBookmarks.removeValue(forKey: folderURL)
+                    stateLock.withLock {
+                        accessedURLs.insert(resolvedURL)
+                        if folderURL != resolvedURL {
+                            activeBookmarks.removeValue(forKey: folderURL)
+                        }
                         activeBookmarks[resolvedURL] = bookmarkData
+                    }
+
+                    if folderURL != resolvedURL {
                         reassociateBookmark(from: folderURL, to: resolvedURL, bookmarkData: bookmarkData)
                     }
                     
@@ -234,24 +241,25 @@ class SecurityScopedBookmarkManager: ObservableObject {
     /// - Parameter folderURL: The folder URL to check
     /// - Returns: True if we have a bookmark for this folder
     func hasBookmark(for folderURL: URL) -> Bool {
-        return activeBookmarks[folderURL] != nil
+        stateLock.withLock { activeBookmarks[folderURL] != nil }
     }
     
     /// Get all folders we have bookmarks for
     /// - Returns: Array of folder URLs we have bookmarks for
     func getBookmarkedFolders() -> [URL] {
-        return Array(activeBookmarks.keys)
+        stateLock.withLock { Array(activeBookmarks.keys) }
     }
     
     /// Remove bookmark for a specific folder
     /// - Parameter folderURL: The folder URL to remove bookmark for
     func removeBookmark(for folderURL: URL) {
-        activeBookmarks.removeValue(forKey: folderURL)
-        
-        // Stop accessing if currently accessed
-        if accessedURLs.contains(folderURL) {
+        let wasAccessed = stateLock.withLock {
+            activeBookmarks.removeValue(forKey: folderURL)
+            return accessedURLs.remove(folderURL) != nil
+        }
+
+        if wasAccessed {
             folderURL.stopAccessingSecurityScopedResource()
-            accessedURLs.remove(folderURL)
         }
         
         saveBookmarksToPreferences(removing: [folderURL])
@@ -260,13 +268,15 @@ class SecurityScopedBookmarkManager: ObservableObject {
     
     /// Clear all bookmarks (useful for testing or reset)
     func clearAllBookmarks() {
-        // Stop accessing all URLs
-        for url in accessedURLs {
+        let accessed = stateLock.withLock {
+            let urls = accessedURLs
+            activeBookmarks.removeAll()
+            accessedURLs.removeAll()
+            return urls
+        }
+        for url in accessed {
             url.stopAccessingSecurityScopedResource()
         }
-        
-        activeBookmarks.removeAll()
-        accessedURLs.removeAll()
         saveBookmarksToPreferences(removing: Set(preferencesService.recentFolderRecords.map(\.url)))
         
         Logger.info("Cleared all bookmarks", context: "security")
@@ -276,18 +286,20 @@ class SecurityScopedBookmarkManager: ObservableObject {
     
     /// Save current bookmarks to preferences
     private func saveBookmarksToPreferences(removing removedURLs: Set<URL> = []) {
+        let bookmarks = stateLock.withLock { activeBookmarks }
         var records = preferencesService.recentFolderRecords.map { record in
             RecentFolderRecord(
                 url: record.url,
-                bookmarkData: removedURLs.contains(record.url) ? nil : activeBookmarks[record.url] ?? record.bookmarkData
+                bookmarkData: removedURLs.contains(record.url) ? nil : bookmarks[record.url] ?? record.bookmarkData
             )
         }
         let knownURLs = Set(records.map(\.url))
-        let newRecords = activeBookmarks.keys.filter { !knownURLs.contains($0) && !removedURLs.contains($0) }
+        let newRecords = bookmarks.keys.filter { !knownURLs.contains($0) && !removedURLs.contains($0) }
             .sorted { $0.path < $1.path }
-            .map { RecentFolderRecord(url: $0, bookmarkData: activeBookmarks[$0]) }
+            .map { RecentFolderRecord(url: $0, bookmarkData: bookmarks[$0]) }
         records.insert(contentsOf: newRecords, at: 0)
         preferencesService.recentFolderRecords = records
+        for url in removedURLs { preferencesService.clearFolderBookmark(for: url) }
         preferencesService.savePreferences()
         Logger.success("Saved ordered folder/bookmark records", context: "security")
     }
@@ -303,7 +315,8 @@ class SecurityScopedBookmarkManager: ObservableObject {
     // MARK: - Cleanup
     deinit {
         // Stop accessing all security-scoped resources
-        for url in accessedURLs {
+        let accessed = stateLock.withLock { accessedURLs }
+        for url in accessed {
             url.stopAccessingSecurityScopedResource()
         }
     }
@@ -344,6 +357,37 @@ class SecurityScopedBookmarkManager: ObservableObject {
 // MARK: - Convenience Extensions
 
 extension SecurityScopedBookmarkManager {
+
+    /// Startup prepares bookmark identities without holding every recent folder open. Provider
+    /// resolution, validation and renewal run off the UI thread; a browsing session owns access.
+    @MainActor
+    func restoreBookmarksOnLaunchAsync() async {
+        let records = preferencesService.recentFolderRecords
+        let dependencies = LaunchBookmarkDependencies(
+            resolve: resolveLaunchBookmark, start: launchStartAccess, stop: launchStopAccess,
+            exists: launchFolderExists, allowed: { [self] in !isSystemDirectory($0) })
+        let worker = Task.detached(priority: .utility) {
+            records.compactMap { record -> PreparedLaunchBookmark? in
+                guard !Task.isCancelled, let data = record.bookmarkData,
+                      let url = try? dependencies.resolve(data), dependencies.allowed(url),
+                      dependencies.start(url) else { return nil }
+                defer { dependencies.stop(url) }
+                guard dependencies.exists(url), !Task.isCancelled else { return nil }
+                let renewed = (try? url.bookmarkData(options: [.withSecurityScope])) ?? data
+                return PreparedLaunchBookmark(original: record, url: url, data: renewed)
+            }
+        }
+        let prepared = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
+        guard !Task.isCancelled else { return }
+        for bookmark in prepared {
+            guard preferencesService.recentFolderRecords.contains(bookmark.original) else { continue }
+            stateLock.withLock {
+                if bookmark.original.url != bookmark.url { activeBookmarks.removeValue(forKey: bookmark.original.url) }
+                activeBookmarks[bookmark.url] = bookmark.data
+            }
+            reassociateBookmark(from: bookmark.original.url, to: bookmark.url, bookmarkData: bookmark.data)
+        }
+    }
     
     /// Create bookmark and restore access in one call
     /// - Parameter folderURL: The folder URL to bookmark and access
@@ -358,7 +402,7 @@ extension SecurityScopedBookmarkManager {
     func restoreAllAccess() {
         Logger.start("Restoring access to all bookmarked folders", context: "security")
         
-        let folders = Array(activeBookmarks.keys)
+        let folders = getBookmarkedFolders()
         var successCount = 0
         
         for folderURL in folders {
@@ -421,4 +465,19 @@ extension SecurityScopedBookmarkManager {
         Logger.info("Restored \(successCount) bookmarks, \(failureCount) failed", context: "security")
         
     }
+}
+
+private struct PreparedLaunchBookmark: Sendable {
+    let original: RecentFolderRecord
+    let url: URL
+    let data: Data
+}
+
+/// Immutable callback snapshot; production callbacks use Foundation's thread-safe URL operations.
+private struct LaunchBookmarkDependencies: @unchecked Sendable {
+    let resolve: (Data) throws -> URL
+    let start: (URL) -> Bool
+    let stop: (URL) -> Void
+    let exists: (URL) -> Bool
+    let allowed: (URL) -> Bool
 }

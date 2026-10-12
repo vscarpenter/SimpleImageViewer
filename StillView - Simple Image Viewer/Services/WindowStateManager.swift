@@ -34,6 +34,9 @@ class WindowStateManager: ObservableObject {
     private var currentFolderURL: URL?
     private var currentImageIndex: Int = 0
     private var hasReceivedFolderState = false
+    private var sessionRestorationGeneration = UUID()
+    private let restoredBookmarkResolver: WindowFolderBookmarkResolver
+    private let restoredFolderValidator: @Sendable (URL) -> Bool
     
     // Debounce saving to avoid excessive writes
     private let saveDebounceInterval: TimeInterval = 2.0
@@ -42,8 +45,15 @@ class WindowStateManager: ObservableObject {
     
     /// Initialize the window state manager
     /// - Parameter preferencesService: The preferences service to use for persistence
-    init(preferencesService: PreferencesService = DefaultPreferencesService()) {
+    init(preferencesService: PreferencesService = DefaultPreferencesService(),
+         restoredBookmarkResolver: @escaping WindowFolderBookmarkResolver = WindowFolderBookmarkResolving.resolve,
+         restoredFolderValidator: @escaping @Sendable (URL) -> Bool = { url in
+             var isDirectory: ObjCBool = false
+             return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+         }) {
         self.preferencesService = preferencesService
+        self.restoredBookmarkResolver = restoredBookmarkResolver
+        self.restoredFolderValidator = restoredFolderValidator
         loadWindowState()
         setupAutoSave()
     }
@@ -81,6 +91,7 @@ class WindowStateManager: ObservableObject {
     ///   - folderURL: The currently selected folder URL
     ///   - imageIndex: The current image index
     func updateFolderState(folderURL: URL?, imageIndex: Int) {
+        cancelSessionRestoration()
         hasReceivedFolderState = true
         currentFolderURL = folderURL
         currentImageIndex = imageIndex
@@ -116,35 +127,48 @@ class WindowStateManager: ObservableObject {
     /// Restore the previous session state
     /// - Returns: The restored folder URL and image index, or nil if no valid state.
     ///   The scanner owns access for the returned URL; validation here balances its temporary lease.
-    func restorePreviousSession() -> (folderURL: URL, imageIndex: Int)? {
-        guard currentWindowState.hasValidFolderState,
-              currentWindowState.isRecentEnough() else {
-            return nil
+    var sessionRestorationToken: UUID { sessionRestorationGeneration }
+
+    func restorePreviousSession(expectedGeneration: UUID? = nil) async -> (folderURL: URL, imageIndex: Int)? {
+        let generation = expectedGeneration ?? sessionRestorationGeneration
+        guard generation == sessionRestorationGeneration, hasValidPreviousSession() else { return nil }
+        let snapshot = currentWindowState
+        let resolver = restoredBookmarkResolver
+        let validator = restoredFolderValidator
+        let worker = Task.detached(priority: .utility) { () -> (WindowState, URL)? in
+            guard !Task.isCancelled else { return nil }
+            var restored = snapshot
+            guard let url = restored.refreshRestoredFolderBookmark(bookmarkResolver: resolver),
+                  !Task.isCancelled else { return nil }
+            let startedAccess = url.startAccessingSecurityScopedResource()
+            defer { if startedAccess { url.stopAccessingSecurityScopedResource() } }
+            guard validator(url), !Task.isCancelled else { return nil }
+            return (restored, url)
         }
-        let previousBookmark = currentWindowState.lastFolderBookmark
-        let previousPath = currentWindowState.lastFolderPath
-        guard let folderURL = currentWindowState.refreshRestoredFolderBookmark() else { return nil }
-        if currentWindowState.lastFolderBookmark != previousBookmark || currentWindowState.lastFolderPath != previousPath {
+        let result = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
+        guard !Task.isCancelled, generation == sessionRestorationGeneration,
+              currentWindowState.lastFolderBookmark == snapshot.lastFolderBookmark,
+              currentWindowState.lastFolderPath == snapshot.lastFolderPath,
+              let (restored, url) = result else { return nil }
+        // Preserve window events and autosaves that occurred while provider I/O was in flight.
+        currentWindowState.lastFolderBookmark = restored.lastFolderBookmark
+        currentWindowState.lastFolderPath = restored.lastFolderPath
+        currentWindowState.selectedImagePath = restored.selectedImagePath
+        currentWindowState.filteredFolderPath = restored.filteredFolderPath
+        if restored.lastFolderBookmark != snapshot.lastFolderBookmark || restored.lastFolderPath != snapshot.lastFolderPath {
             preferencesService.saveWindowState(currentWindowState)
         }
-        
-        let startedAccess = folderURL.startAccessingSecurityScopedResource()
-        defer {
-            if startedAccess { folderURL.stopAccessingSecurityScopedResource() }
-        }
-        
-        // Verify the folder still exists and is accessible
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: folderURL.path, isDirectory: &isDirectory),
-              isDirectory.boolValue else {
-            return nil
-        }
-        
-        return (folderURL: folderURL, imageIndex: max(0, currentWindowState.lastImageIndex))
+        return (folderURL: url, imageIndex: max(0, snapshot.lastImageIndex))
+    }
+
+    /// A user opening a picker or leaving the viewer supersedes any delayed startup restoration.
+    func cancelSessionRestoration() {
+        sessionRestorationGeneration = UUID()
     }
     
     /// Clear the saved window state
     func clearWindowState() {
+        cancelSessionRestoration()
         hasReceivedFolderState = true
         currentFolderURL = nil
         currentImageIndex = 0
@@ -162,9 +186,7 @@ class WindowStateManager: ObservableObject {
     /// Check if there's a valid previous session to restore
     /// - Returns: True if there's a valid session to restore
     func hasValidPreviousSession() -> Bool {
-        return currentWindowState.hasValidFolderState && 
-               currentWindowState.isRecentEnough() &&
-               currentWindowState.getRestoredFolderURL() != nil
+        return currentWindowState.hasValidFolderState && currentWindowState.isRecentEnough()
     }
     
     // MARK: - Private Methods
