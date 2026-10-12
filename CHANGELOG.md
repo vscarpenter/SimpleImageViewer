@@ -11,6 +11,10 @@
 - Shorten AI descriptions and add a higher-resolution OCR pass for tall documents.
 - Keep recent folder bookmarks paired with their URLs, including folders that are temporarily unavailable.
 - Label creation-time sorting Date Created and apply the chosen sort to every loaded snapshot.
+- Keep a scan stuck on slow network I/O from delaying the next folder by more than a second.
+- Keep the View menu and toolbar Include Subfolders controls in agreement after a canceled scan.
+- Copy Image reads and encodes off the main thread; worker access checks cache each folder's resolved path.
+- Name the open-folder command Open Folder… everywhere, link stillviewapp.com from Help and About, and list every menu shortcut in Help.
 
 ## 5.0.0 (44)
 

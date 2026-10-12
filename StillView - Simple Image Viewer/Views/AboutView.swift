@@ -107,6 +107,20 @@ struct AboutView: View {
                     Spacer()
                 }
 
+                if let websiteURL = URL(string: "https://stillviewapp.com/") {
+                    HStack(spacing: 8) {
+                        Image(systemName: "globe")
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+
+                        Link("stillviewapp.com", destination: websiteURL)
+                            .font(.subheadline)
+                            .accessibilityHint("Opens the StillView website in your default browser")
+
+                        Spacer()
+                    }
+                }
+
                 if let privacyPolicyURL = URL(string: "https://stillviewapp.com/privacy.html") {
                     HStack(spacing: 8) {
                         Image(systemName: "hand.raised")

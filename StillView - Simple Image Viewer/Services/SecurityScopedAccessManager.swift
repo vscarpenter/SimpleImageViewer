@@ -36,6 +36,8 @@ class SecurityScopedAccessManager: ObservableObject {
     // MARK: - Private Properties
     private var currentAccessURL: URL?
     private var favoriteFolderURLs: Set<URL> = []
+    /// Resolved root paths, so per-file checks on the browsing path resolve only the file.
+    private var canonicalRootComponents: [URL: [String]] = [:]
     private let accessQueue = DispatchQueue(label: "com.vinny.security-scoped-access", qos: .userInitiated)
     private let startWorkerAccess: (URL) -> Bool
     private let stopWorkerAccess: (URL) -> Void
@@ -64,13 +66,16 @@ class SecurityScopedAccessManager: ObservableObject {
     /// registered root may supply this grant; acquiring a lease never restores other bookmarks.
     /// Keep the lease in the worker closure through its actual exit, even after cancellation.
     func acquireWorkerAccess(for fileURL: URL) -> SecurityScopedResourceLease? {
-        accessQueue.sync {
+        guard fileURL.isFileURL else { return nil }
+        // Resolve the file once, outside the queue; roots come from the cache.
+        let fileComponents = Self.canonicalPathComponents(for: fileURL)
+        return accessQueue.sync {
             let root: URL?
-            if let currentAccessURL, Self.isSameOrDescendant(fileURL, of: currentAccessURL) {
+            if let currentAccessURL, isPath(fileComponents, within: currentAccessURL) {
                 root = currentAccessURL
             } else {
                 root = favoriteFolderURLs
-                    .filter { Self.isSameOrDescendant(fileURL, of: $0) }
+                    .filter { isPath(fileComponents, within: $0) }
                     .sorted { $0.pathComponents.count > $1.pathComponents.count }
                     .first
             }
@@ -178,6 +183,19 @@ class SecurityScopedAccessManager: ObservableObject {
             
             return false
         }
+    }
+
+    /// Must be called on `accessQueue`.
+    private func isPath(_ fileComponents: [String], within root: URL) -> Bool {
+        guard root.isFileURL else { return false }
+        let rootComponents: [String]
+        if let cached = canonicalRootComponents[root] {
+            rootComponents = cached
+        } else {
+            rootComponents = Self.canonicalPathComponents(for: root)
+            canonicalRootComponents[root] = rootComponents
+        }
+        return fileComponents.starts(with: rootComponents)
     }
 
     /// Resolve aliases only for containment checks; stored URLs retain their security scopes.

@@ -170,6 +170,10 @@ struct SimpleImageViewerApp: App {
 
                 Divider()
 
+                if let websiteURL = URL(string: "https://stillviewapp.com/") {
+                    Link("StillView Website", destination: websiteURL)
+                }
+
                 if let privacyURL = URL(string: "https://stillviewapp.com/privacy.html") {
                     Link("Privacy Policy", destination: privacyURL)
                 }
@@ -281,7 +285,7 @@ struct SimpleImageViewerApp: App {
 @MainActor
 private struct ViewerCommands: Commands {
     @FocusedObject private var viewModel: ImageViewerViewModel?
-    @FocusedValue(\.toggleSubfoldersAction) private var toggleSubfoldersAction
+    @FocusedValue(\.setIncludeSubfoldersAction) private var setIncludeSubfoldersAction
     @FocusedValue(\.refreshFolderAction) private var refreshFolderAction
 
     var body: some Commands {
@@ -324,9 +328,9 @@ private struct ViewerCommands: Commands {
 
                 Toggle("Include Subfolders", isOn: Binding(
                     get: { viewModel?.includeSubfolders ?? false },
-                    set: { _ in toggleSubfoldersAction?() }
+                    set: { included in setIncludeSubfoldersAction?(included) }
                 ))
-                .disabled(toggleSubfoldersAction == nil)
+                .disabled(setIncludeSubfoldersAction == nil)
                 Button("Refresh Folder") { refreshFolderAction?() }
                     .keyboardShortcut("r", modifiers: .command)
                     .disabled(refreshFolderAction == nil)

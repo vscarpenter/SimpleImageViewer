@@ -25,8 +25,8 @@ struct ContentView: View {
             .focusedSceneObject(imageViewerViewModel)
             .focusedSceneValue(\.openFolderAction, { openFolder() })
             .focusedSceneValue(\.backToFoldersAction, { returnToFolderSelection() })
-            .focusedSceneValue(\.toggleSubfoldersAction, {
-                folderPicker.setIncludeSubfolders(!folderPicker.includeSubfolders)
+            .focusedSceneValue(\.setIncludeSubfoldersAction, { included in
+                folderPicker.applyIncludeSubfolders(included)
             })
             .focusedSceneValue(\.refreshFolderAction, { folderPicker.refreshCurrentFolder() })
     }
@@ -448,9 +448,9 @@ struct ContentView: View {
             if imageViewerViewModel.filteredFolderURL != nil || !imageViewerViewModel.browserSearchText.isEmpty {
                 Button("Clear Filter") { imageViewerViewModel.clearBrowsingFilter() }
             } else if !imageViewerViewModel.includeSubfolders {
-                Button("Include Subfolders") { folderPicker.setIncludeSubfolders(true) }
+                Button("Include Subfolders") { folderPicker.applyIncludeSubfolders(true) }
             }
-            Button("Choose Folder…") { folderPicker.selectFolder() }
+            Button("Open Folder…") { folderPicker.selectFolder() }
         }
         .focusedValue(\.viewerKeyboardFocus, .control)
     }

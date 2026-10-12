@@ -15,22 +15,31 @@ class ContextMenuService: ObservableObject {
     
     /// Copy the current image to the clipboard
     func copyImage(_ imageFile: ImageFile) {
-        guard let image = NSImage(contentsOf: imageFile.url) else {
+        let url = imageFile.url
+        // Hold folder access for the background read, even if the selection changes meanwhile.
+        let lease = SecurityScopedAccessManager.shared.acquireWorkerAccess(for: url)
+        Task {
+            // Reading and encoding a large image must not block the main thread.
+            let tiffData = await Task.detached(priority: .userInitiated) {
+                withExtendedLifetime(lease) { NSImage(contentsOf: url)?.tiffRepresentation }
+            }.value
+            guard let tiffData else {
+                ErrorHandlingService.shared.showNotification(
+                    "Unable to load image for copying",
+                    type: .error
+                )
+                return
+            }
+
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setData(tiffData, forType: .tiff)
+
             ErrorHandlingService.shared.showNotification(
-                "Unable to load image for copying",
-                type: .error
+                "Image copied to clipboard",
+                type: .success
             )
-            return
         }
-        
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.writeObjects([image])
-        
-        ErrorHandlingService.shared.showNotification(
-            "Image copied to clipboard",
-            type: .success
-        )
     }
     
     /// Copy the image file path to the clipboard
@@ -140,7 +149,7 @@ enum ContextMenuAction: String, CaseIterable {
         case .jumpToImage:
             return "Jump to Image"
         case .selectFolder:
-            return "Select Folder…"
+            return "Open Folder…"
         case .toggleViewMode:
             return "Change View"
         case .openPreferences:

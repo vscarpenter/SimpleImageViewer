@@ -120,7 +120,7 @@ struct ContextMenuProvider {
             Button(action: {
                 ContextMenuService.shared.selectFolder(viewModel: viewModel)
             }) {
-                Label("Select Folder…", systemImage: "folder.badge.plus")
+                Label("Open Folder…", systemImage: "folder.badge.plus")
             }
             .keyboardShortcut("o", modifiers: .command)
             
