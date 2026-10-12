@@ -1411,6 +1411,146 @@ private final class LegacyGrantResolutionProbe: @unchecked Sendable {
 
 @MainActor
 final class SessionRestorationWorkerRegressionTests: XCTestCase {
+    func test_welcomePickerIntentAndCancel_discardHeldStartupRestoration() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let restoration = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+        let panel = ControlledFolderPanelPresenter()
+        let picker = FolderSelectionViewModel(
+            fileSystemService: ControlledFolderScanService(), preferencesService: fixture.preferences,
+            panelPresenter: panel, onExplicitFolderSelection: { manager.cancelSessionRestoration() }
+        )
+
+        picker.selectFolder()
+        XCTAssertTrue(picker.isShowingFolderPicker)
+        panel.complete(with: nil)
+        gate.release.signal()
+        let restored = await restoration.value
+
+        XCTAssertNil(restored, "Opening the welcome picker must supersede startup before a folder is selected")
+        XCTAssertFalse(picker.isShowingFolderPicker)
+        XCTAssertNil(picker.selectedFolderContent)
+        XCTAssertEqual(manager.currentWindowState.lastFolderBookmark, fixture.saved.lastFolderBookmark)
+        XCTAssertFalse(gate.timedOut)
+    }
+
+    func test_welcomeRecentIntent_beforeFirstBatchDiscardsHeldStartupRestoration() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let candidate = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: candidate, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: candidate) }
+        fixture.preferences.recentFolderRecords = [RecentFolderRecord(url: candidate, bookmarkData: Data([0x77]))]
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let restoration = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+        let service = ControlledFolderScanService()
+        service.resolvedBookmarkURL = candidate
+        let picker = FolderSelectionViewModel(
+            fileSystemService: service, preferencesService: fixture.preferences,
+            accessManager: SecurityScopedAccessManager(startWorkerAccess: { _ in true }, stopWorkerAccess: { _ in }),
+            onExplicitFolderSelection: { manager.cancelSessionRestoration() }
+        )
+        defer {
+            picker.cancelScanning(keepingPartialResults: false)
+            service.complete(with: .failure(CancellationError()))
+        }
+
+        picker.selectRecentFolder(candidate)
+        await fulfillment(of: [service.scanStarted], timeout: 10)
+        XCTAssertTrue(picker.isScanning)
+        XCTAssertNil(picker.selectedFolderContent, "The explicit choice has not published its first batch")
+        gate.release.signal()
+        let restored = await restoration.value
+
+        XCTAssertNil(restored, "Startup must not win while the chosen recent folder is still scanning")
+        XCTAssertTrue(picker.isScanning)
+        XCTAssertNil(picker.selectedFolderContent)
+        XCTAssertFalse(gate.timedOut)
+    }
+
+    func test_unavailableRecentIntent_discardsHeldStartupEvenWhenNoScanStarts() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let unavailable = URL(fileURLWithPath: "/Users/fixture/disconnected-provider", isDirectory: true)
+        fixture.preferences.recentFolderRecords = [RecentFolderRecord(url: unavailable, bookmarkData: Data([0x99]))]
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let restoration = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+        let service = ControlledFolderScanService()
+        let picker = FolderSelectionViewModel(
+            fileSystemService: service, preferencesService: fixture.preferences,
+            onExplicitFolderSelection: { manager.cancelSessionRestoration() }
+        )
+
+        picker.selectRecentFolder(unavailable)
+        gate.release.signal()
+        let restored = await restoration.value
+
+        XCTAssertNil(restored, "An unavailable explicit choice must still supersede the automatic folder")
+        guard case .bookmarkResolutionFailed(let url) = picker.currentError else {
+            return XCTFail("The unavailable recent folder must retain its own error")
+        }
+        XCTAssertEqual(url, unavailable)
+        XCTAssertEqual(service.scanCount, 0)
+        XCTAssertEqual(manager.currentWindowState.lastFolderBookmark, fixture.saved.lastFolderBookmark)
+        XCTAssertFalse(gate.timedOut)
+    }
+
+    func test_automaticFolderOperations_doNotCancelHeldStartupRestoration() async throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let gate = SessionProviderValidationGate()
+        defer { gate.release.signal() }
+        let manager = fixture.makeManager(validator: { gate.validate($0) })
+        let restoration = Task { await manager.restorePreviousSession() }
+        await fulfillment(of: [gate.entered], timeout: 10)
+        let picker = FolderSelectionViewModel(
+            fileSystemService: ControlledFolderScanService(), preferencesService: fixture.preferences,
+            onExplicitFolderSelection: { manager.cancelSessionRestoration() }
+        )
+        picker.selectedFolderURL = fixture.probe.root
+
+        picker.restoreLastFolder(fixture.probe.root)
+        picker.refreshCurrentFolder()
+        picker.applyIncludeSubfolders(true)
+        picker.cancelScanning(keepingPartialResults: false)
+        gate.release.signal()
+        let restored = await restoration.value
+
+        XCTAssertEqual(restored?.folderURL, fixture.probe.root)
+        XCTAssertEqual(restored?.imageIndex, fixture.saved.lastImageIndex)
+        XCTAssertFalse(gate.timedOut)
+    }
+
+    func test_duplicatePickerRequest_notifiesExplicitIntentOnceBeforePresentation() throws {
+        let fixture = try SessionProviderFixture()
+        defer { fixture.cleanup() }
+        let panel = ControlledFolderPanelPresenter()
+        var explicitRequests = 0
+        let picker = FolderSelectionViewModel(
+            preferencesService: fixture.preferences, panelPresenter: panel, onExplicitFolderSelection: {
+                XCTAssertEqual(panel.presentationCount, 0, "Intent must be recorded before presentation")
+                explicitRequests += 1
+            }
+        )
+
+        picker.selectFolder()
+        picker.selectFolder()
+        panel.complete(with: nil)
+
+        XCTAssertEqual(explicitRequests, 1)
+        XCTAssertEqual(panel.presentationCount, 1)
+    }
+
     func test_navigationBeforeQueuedStartupTask_runsPreventsRestoreNotification() async throws {
         let fixture = try SessionProviderFixture()
         defer { fixture.cleanup() }

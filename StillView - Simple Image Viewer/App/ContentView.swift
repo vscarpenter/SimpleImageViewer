@@ -6,7 +6,7 @@ struct ContentView: View {
     let windowStateManager: WindowStateManager
     @StateObject private var imageViewerViewModel = ImageViewerViewModel()
     @StateObject private var errorHandlingService = ErrorHandlingService.shared
-    @StateObject private var folderPicker = FolderSelectionViewModel()
+    @StateObject private var folderPicker: FolderSelectionViewModel
     @State private var showImageViewer = false
     @State private var restoredImageIndex: Int?
     @State private var restoringState: WindowState?
@@ -18,6 +18,13 @@ struct ContentView: View {
     // Stage hover-arrow visibility (fade in on pointer move, out after ~3 s idle)
     @State private var stageArrowsVisible = false
     @State private var stageArrowsHideTask: Task<Void, Never>?
+
+    init(windowStateManager: WindowStateManager) {
+        self.windowStateManager = windowStateManager
+        _folderPicker = StateObject(wrappedValue: FolderSelectionViewModel(
+            onExplicitFolderSelection: { windowStateManager.cancelSessionRestoration() }
+        ))
+    }
 
     // MARK: - Body
     var body: some View {
@@ -395,7 +402,6 @@ struct ContentView: View {
     }
 
     private func openFolder() {
-        windowStateManager.cancelSessionRestoration()
         restoringState = nil
         restoredImageIndex = nil
         restorationApplied = false
