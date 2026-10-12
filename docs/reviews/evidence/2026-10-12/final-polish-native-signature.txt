@@ -1,0 +1,28 @@
+Executable=/private/tmp/stillview-final-polish-native-2026-10-12/StillView - Simple Image Viewer.app/Contents/MacOS/StillView - Simple Image Viewer
+Identifier=com.vinny.StillView-Image-Viewer
+Format=app bundle with Mach-O thin (arm64)
+CodeDirectory v=20400 size=5401 flags=0x2(adhoc) hashes=158+7 location=embedded
+Hash type=sha256 size=32
+CandidateCDHash sha256=69c21055eb1d9095323b02d9a5de98f82f1e9a25
+CandidateCDHashFull sha256=69c21055eb1d9095323b02d9a5de98f82f1e9a253ab3138a5bad2487a9c85530
+Hash choices=sha256
+CMSDigest=69c21055eb1d9095323b02d9a5de98f82f1e9a253ab3138a5bad2487a9c85530
+CMSDigestType=2
+CDHash=69c21055eb1d9095323b02d9a5de98f82f1e9a25
+Signature=adhoc
+Info.plist entries=25
+TeamIdentifier=not set
+Sealed Resources version=2 rules=13 files=6
+Internal requirements count=0 size=12
+Total signatures=1
+Chosen signature=1
+[Dict]
+	[Key] com.apple.security.app-sandbox
+	[Value]
+		[Bool] true
+	[Key] com.apple.security.files.bookmarks.app-scope
+	[Value]
+		[Bool] true
+	[Key] com.apple.security.files.user-selected.read-write
+	[Value]
+		[Bool] true

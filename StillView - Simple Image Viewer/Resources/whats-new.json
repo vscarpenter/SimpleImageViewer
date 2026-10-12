@@ -8,22 +8,17 @@
       "items": [
         {
           "title": "Browse Subfolders",
-          "description": "Choose View → Include Subfolders to see every image in a folder and its subfolders together. A collapsible folder tree filters by branch, and search finds images by name or path.",
+          "description": "Choose View → Include Subfolders to combine supported images from a folder and its subfolders. Filter a branch and its descendants in the folder tree, or search by name or relative path.",
           "isHighlighted": true
         },
         {
           "title": "Text Without AI Insights",
-          "description": "Read and copy the text in an image even when AI Insights is off or Apple Intelligence is unavailable. Recognized text stays available if a description fails.",
+          "description": "Extract and copy text even when AI Insights is off or Apple Intelligence is unavailable. Text stays available if a description fails. Recognition may contain errors; partial extraction is marked.",
           "isHighlighted": true
         },
         {
-          "title": "Pick Up Where You Left Off",
-          "description": "StillView reopens your last folder with the same image, sort order, subfolder setting, folder filter, and search.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Refresh Folder",
-          "description": "Press ⌘R to pick up added, removed, or changed images without reopening the folder. Your selected image stays in place.",
+          "title": "Restore and Refresh Your Collection",
+          "description": "Restore your last accessible folder, selected image when available, sort, subfolder scope, filter, and search. Press ⌘R to find file changes while keeping your selection when that file is still available.",
           "isHighlighted": false
         }
       ]
@@ -34,17 +29,12 @@
       "items": [
         {
           "title": "Clearer Image Insights",
-          "description": "Descriptions are shorter and stick to what is visible. Tall documents and receipts get a higher-resolution text pass for better recognition.",
+          "description": "Shorter descriptions focus on visible content, and tall documents use a higher-resolution text pass. Check Again refreshes model readiness. Descriptions and recognized text may still contain errors.",
           "isHighlighted": false
         },
         {
-          "title": "Faster Grid Navigation",
-          "description": "Up and Down arrows move by row in Grid, a visible outline marks the selection, and Return opens the selected image.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Smoother Large Folders",
-          "description": "Images appear while a large folder is still being scanned, and thumbnails load with less memory.",
+          "title": "Grid and Image Controls",
+          "description": "Up and Down move by row in Grid, an outline marks the selection, and Return opens the image. Images appear during scanning, and copying images runs in the background.",
           "isHighlighted": false
         }
       ]
@@ -54,13 +44,8 @@
       "type": "bugFixes",
       "items": [
         {
-          "title": "Reliable Recent Folders",
-          "description": "Recent folders keep their access permission, including folders on a drive that is temporarily disconnected.",
-          "isHighlighted": false
-        },
-        {
-          "title": "Accurate Sort Labels",
-          "description": "Sorting by creation time is now labeled Date Created, and the chosen sort applies after every folder load.",
+          "title": "More Reliable Folder Browsing",
+          "description": "Folder menus agree after canceled scans, and switching folders recovers from slow scans. Trashed images stay out of older scan results. Saved folder permissions are better preserved, and Open Folder… can reopen a closed window.",
           "isHighlighted": false
         }
       ]

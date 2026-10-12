@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-12",
+  "baseCommit": "3fb4803d6a448ce18160eb4933c68b8bfcde5e09",
+  "workingTree": "user DEBUG screenshot helper preserved; release-copy/documentation updates remain local",
+  "version": "5.1.0",
+  "build": "45",
+  "bundleID": "com.vinny.StillView-Image-Viewer",
+  "deploymentTarget": "27.0",
+  "toolchain": {
+    "macOS": "27.0.1",
+    "osBuild": "26A434",
+    "xcode": "27.0",
+    "xcodeBuild": "27A266a",
+    "sdk": "27.0",
+    "architecture": "arm64"
+  },
+  "tests": {
+    "configuration": "Release, ENABLE_TESTABILITY=YES, CODE_SIGNING_ALLOWED=NO",
+    "passed": 307,
+    "failed": 0,
+    "skipped": 0,
+    "activeSources": 15,
+    "resultBundle": "/tmp/stillview-final-polish-release-tests-2026-10-12.xcresult"
+  },
+  "debugBuild": "passed, including user helper",
+  "releaseArchive": "passed, CODE_SIGNING_ALLOWED=NO",
+  "lint": {
+    "errors": 0,
+    "existingWarnings": 1,
+    "warning": "PreferencesViewModel.swift:671 complexity16"
+  },
+  "archive": {
+    "path": "/tmp/stillview-final-polish-2026-10-12.xcarchive",
+    "executableSHA256": "cc6734aa94c2aece8802399d9d289f6a599e1b41ee0c067378d2ea3926f9caae",
+    "currentWhatsNewBundled": true,
+    "privacyManifestBundled": true,
+    "appIconBundled": true,
+    "DEBUGSnapshotHelperExcluded": true
+  },
+  "nativeArtifact": {
+    "path": "/tmp/stillview-final-polish-native-2026-10-12/StillView - Simple Image Viewer.app",
+    "executableSHA256": "3b628e41af93a02cebedd7962b758312184feb02c3446c4eb06c998f083d1898",
+    "signature": "ad hoc",
+    "strictVerification": "passed",
+    "entitlements": [
+      "app-sandbox",
+      "files.user-selected.read-write",
+      "files.bookmarks.app-scope"
+    ],
+    "observation": "launch process and restored-window accessibility tree observed; Help menu opened",
+    "interactionBoundary": "subsequent native actions failed with stale-element errors; screenshots unavailable; no completed current visual/keyboard/WhatsNew walkthrough claimed"
+  },
+  "metadataFields": [
+    {
+      "field": "Subtitle",
+      "size": 29,
+      "unit": "characters",
+      "limit": 30
+    },
+    {
+      "field": "Promotional text",
+      "size": 160,
+      "unit": "characters",
+      "limit": 170
+    },
+    {
+      "field": "Description",
+      "size": 2590,
+      "unit": "characters",
+      "limit": 4000
+    },
+    {
+      "field": "Keywords",
+      "size": 97,
+      "unit": "UTF-8 bytes",
+      "limit": 100
+    },
+    {
+      "field": "What\u2019s New",
+      "size": 1417,
+      "unit": "characters",
+      "limit": 4000
+    },
+    {
+      "field": "Review notes",
+      "size": 3939,
+      "characters": 3927,
+      "unit": "UTF-8 bytes",
+      "limit": 4000
+    }
+  ],
+  "hostedCI": {
+    "commit": "3fb4803d6a448ce18160eb4933c68b8bfcde5e09",
+    "CI": "success",
+    "CIURL": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/38258267674",
+    "buildAndTest": "success",
+    "buildAndTestURL": "https://github.com/vscarpenter/SimpleImageViewer/actions/runs/38258267715",
+    "codeQL": "explicitly paused"
+  },
+  "boundaries": [
+    "no distribution-signed Organizer validation or App Store Connect inspection",
+    "build45 uniqueness and selected Store build unverified",
+    "no new live inference/accuracy evaluation",
+    "no current full native screenshot, VoiceOver, appearance, SMB/cloud/offline provider verification",
+    "no commits, push, upload or website publication"
+  ]
+}

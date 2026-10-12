@@ -26,7 +26,7 @@ Distraction-free image viewer
 ### Promotional text
 
 ```
-Apple Intelligence describes your photos and reads their text, entirely on your Mac. Browse any folder in Single, Strip, or Grid view. No account and no tracking.
+Browse folders and subfolders in Single, Strip, or Grid. Apple Intelligence describes images; Vision extracts text with AI Insights off. No account or tracking.
 ```
 
 ### Description
@@ -35,7 +35,7 @@ Apple Intelligence describes your photos and reads their text, entirely on your 
 StillView is a native macOS image viewer for browsing local folders of photos and screenshots. No account is required. Image viewing and analysis work on your Mac.
 
 BROWSE YOUR IMAGES
-Open a folder and move through its images with arrow keys. Include subfolders to see every image together, then filter by branch in the folder tree or search by name. StillView reopens your last folder where you left off. Zoom, inspect at actual size, or fit an image to the window. Use fullscreen for a closer look.
+Open a folder and move through its images with arrow keys. Include subfolders to see supported images together, then filter a branch and its descendants in the folder tree or search by name or relative path. Refresh Folder (⌘R) picks up changes and keeps the selected file when it remains available. StillView restores your last accessible folder where you left off. Zoom, inspect at actual size, or fit an image to the window. Use fullscreen for a closer look.
 
 THREE VIEWING MODES
 Single keeps your attention on one image. Strip adds a docked filmstrip for navigation. Grid displays thumbnails with density and sorting controls. The Info inspector shows file details, dimensions, color information, and available EXIF camera metadata.
@@ -44,7 +44,7 @@ SUPPORTED FORMATS
 JPEG, PNG, GIF, HEIF/HEIC, WebP, TIFF, and BMP. Animated GIF and WebP display their first frame only; multipage TIFF displays its first image. SVG and PDF are not supported.
 
 ON-DEVICE INSIGHTS
-AI Insights gives Apple Intelligence the selected image to describe its visible content on your Mac. Read a concise description and notable details, copy the description, or expand original recognized text. Text extraction also works with Insights off. Generated descriptions and OCR may contain errors. The app does not identify people.
+AI Insights gives Apple Intelligence the selected image to describe its visible content on your Mac. Read a concise description or copy its summary. Extract text uses Vision independently, even with AI Insights off or Apple Intelligence unavailable. Read or copy recognized words separately from the description; that text remains available if a description fails. Generated descriptions and OCR may contain errors, and partial text extraction is marked. The app does not identify people.
 
 Insights requires an Apple Intelligence eligible Mac, Apple Intelligence enabled in System Settings, and its on-device model ready. Enable Insights in the app, then choose Analyze image. Images, recognized text, metadata, and results stay on this Mac.
 
@@ -63,28 +63,32 @@ Requires macOS 27 or later and Apple silicon. AI Insights additionally requires 
 photo,browser,folder,gallery,slideshow,JPEG,HEIC,WebP,thumbnail,EXIF,metadata,OCR,offline,privacy
 ```
 
-The app name and subtitle already carry "image" and "viewer," and the Mac App Store implies macOS, so those words are left out of the 100-character limit.
+The app name and subtitle already carry "image" and "viewer," and the Mac App Store implies macOS, so those words are left out of the 100-byte keyword limit.
 
 ### What’s New
 
 ```
 BROWSE SUBFOLDERS
-• Choose View > Include Subfolders to see every image in a folder and its subfolders together.
-• A collapsible folder tree filters by branch, and search finds images by name or path.
-• Refresh Folder (⌘R) picks up changes without reopening the folder.
+• Choose View > Include Subfolders to see supported images in a folder and its subfolders together.
+• A collapsible folder tree filters a branch and its descendants, and search finds images by name or relative path.
+• Refresh Folder (⌘R) picks up changes and keeps the selected file when it is still available.
 
 PICK UP WHERE YOU LEFT OFF
-• StillView reopens your last folder with the same image, sort, subfolder setting, filter, and search.
+• StillView restores your last accessible folder, selected image when available, sort, subfolder setting, filter, and search.
 
 TEXT AND INSIGHTS
-• Extract and copy text in an image even when AI Insights is off.
+• Extract and copy text even when AI Insights is off or Apple Intelligence is unavailable.
 • Recognized text stays available if a description fails.
-• Descriptions are shorter, and tall documents get a sharper text pass.
+• Descriptions are shorter, and tall documents use a higher-resolution text pass. Recognition may still contain errors or be partial.
+• Check Again refreshes Apple Intelligence model readiness.
 
 ALSO IN THIS RELEASE
 • Up and Down move by row in Grid, and Return opens the selected image.
 • Large folders show images while they are still being scanned.
-• Recent folders keep their access, even on a disconnected drive.
+• Folder switching recovers from canceled scans, and copying images runs in the background.
+• Include Subfolders stays in sync between menus after a canceled scan.
+• Trashed images stay out of older scan results, and Open Folder… can reopen a closed main window.
+• Saved folder permissions are better preserved, and disconnected folders stay in the recent list.
 • Creation-time sorting is now labeled Date Created.
 ```
 
@@ -99,7 +103,7 @@ ALSO IN THIS RELEASE
 | Privacy Policy URL | https://stillviewapp.com/privacy.html |
 | Website Terms of Use | https://stillviewapp.com/terms.html |
 
-Both pages returned HTTPS 200 on September 15, 2026, with a September 15 effective date and the Foundation Models description of AI Insights from `docs/reviews/2026-09-15-macos27-launch-readiness.md`. The privacy URL in App Store Connect matches. The website Terms URL is recorded for reference, not as confirmation of an App Store Connect EULA selection.
+The September 15, 2026 review recorded HTTPS 200 responses, the pages' September 15 effective date, and a matching privacy URL in App Store Connect; see `docs/reviews/2026-09-15-macos27-launch-readiness.md`. Recheck these pages and the App Store Connect fields for 5.1. The website Terms URL is recorded for reference, not as confirmation of an App Store Connect EULA selection.
 
 ## App Privacy and review information
 
@@ -111,7 +115,9 @@ The project declares `ITSAppUsesNonExemptEncryption = NO`. Recheck the export-co
 
 ## Screenshots and reviewer notes
 
-The 5.0.0 set remains accurate for 5.1. Consider adding a Grid capture with Include Subfolders and the folder tree visible, since that is the headline 5.1 feature. Otherwise reuse the 5.0.0 set from `marketing/screenshots-5.0.0/appstore-captioned/` (or the clean `appstore/` set, not both): eight 2880×1800 PNGs captured on September 15, 2026, covering Single, Insights with a real on-device result, Grid, Strip, Info, 100% zoom, and the Shortcuts reference. Both pages of `marketing/screenshots-5.0.0/README.md` list the order and captions.
+Capture a fresh 5.1.0 set using `marketing/screenshots-5.1.0/README.md`. Descriptions, toolbar labels, Grid selection, recursive browsing, and independent text extraction changed, so the older set should not stand in for current screenshots. The 5.1 kit contains a ten-frame shot list, demo library, captions, and capture scripts; this document does not confirm that those captures have been generated. Use either the clean or captioned set in the listed order, and verify each screenshot against the submission build.
+
+The eight 2880×1800 PNGs from September 15, 2026 remain archived in `marketing/screenshots-5.0.0/` as the historical 5.0 set.
 
 Paste [AppStoreReviewNotes.md](AppStoreReviewNotes.md) into App Review Information → Notes. The app has no sign-in or demo credentials. Reviewers can use a local image folder.
 
