@@ -1,0 +1,11 @@
+PR 27 Codex P2 regression RED on parent 272d119 with inert callback scaffold.
+Release compiled and executed 11 tests. Four new behavior assertions failed; automatic restore/refresh/scope negative control passed.
+
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/FileSystemServiceTests.swift:1550: error: -[StillView___Simple_Image_Viewer_Tests.SessionRestorationWorkerRegressionTests test_duplicatePickerRequest_notifiesExplicitIntentOnceBeforePresentation] : XCTAssertEqual failed: ("0") is not equal to ("1")
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/FileSystemServiceTests.swift:1498: error: -[StillView___Simple_Image_Viewer_Tests.SessionRestorationWorkerRegressionTests test_unavailableRecentIntent_discardsHeldStartupEvenWhenNoScanStarts] : XCTAssertNil failed: "(folderURL: file:///Users/fixture/offline-provider/, imageIndex: 7)" - An unavailable explicit choice must still supersede the automatic folder
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/FileSystemServiceTests.swift:1434: error: -[StillView___Simple_Image_Viewer_Tests.SessionRestorationWorkerRegressionTests test_welcomePickerIntentAndCancel_discardHeldStartupRestoration] : XCTAssertNil failed: "(folderURL: file:///Users/fixture/offline-provider/, imageIndex: 7)" - Opening the welcome picker must supersede startup before a folder is selected
+/Users/vinnycarpenter/Projects/SimpleImageViewer/StillView - Simple Image Viewer Tests/Services/FileSystemServiceTests.swift:1472: error: -[StillView___Simple_Image_Viewer_Tests.SessionRestorationWorkerRegressionTests test_welcomeRecentIntent_beforeFirstBatchDiscardsHeldStartupRestoration] : XCTAssertNil failed: "(folderURL: file:///Users/fixture/offline-provider/, imageIndex: 7)" - Startup must not win while the chosen recent folder is still scanning
+	 Executed 11 tests, with 4 failures (0 unexpected) in 0.352 (0.355) seconds
+	 Executed 11 tests, with 4 failures (0 unexpected) in 0.352 (0.355) seconds
+	 Executed 11 tests, with 4 failures (0 unexpected) in 0.352 (0.356) seconds
+** TEST FAILED **

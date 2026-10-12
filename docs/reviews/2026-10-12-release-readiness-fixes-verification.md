@@ -2,6 +2,8 @@
 
 Implemented the approved bookmark, Folder Selection menu and stale-Insights corrections against `3fb4803d6a448ce18160eb4933c68b8bfcde5e09`. Functional source commit: `a79e1cf7eeddbbb2142effb6ef7e23c84c1555b1`. Release identity remains **5.1.0 (45)** on macOS 27 / Apple silicon.
 
+The later [PR 27 Codex review follow-up](2026-10-12-pr27-codex-review-followup.md) corrects a remaining explicit-folder-choice cancellation path and records **340 passing tests**. The 335-test results and archive below remain the original verification snapshot.
+
 ## Delivered behavior
 
 - Legacy grants remain available for later reconciliation after temporary resolution failure. Association uses standardized folder identity, never legacy array position. Removed/cleared eligibility cannot return on retry, fresh grants take precedence, and stale preference snapshots cannot erase recovered grants. Selecting an unavailable legacy recent folder retains its recovery record.

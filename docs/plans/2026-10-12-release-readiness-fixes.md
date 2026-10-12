@@ -19,3 +19,7 @@ The user's pre-existing DEBUG screenshot helper in `SimpleImageViewerApp.swift` 
 ## Completed local verification
 
 Behavior and release-copy changes are committed in `a79e1cf`. All 335 app-hosted Release tests pass; Debug build, unsigned Release archive, lint and test membership checks pass. Independent final source review is clear. Native observations include disabled Folder Selection commands, updated What’s New, recursive branch/search filtering, 47-line OCR with Insights off and sandboxed autosave restoration after restarting the verification copy. See the [verification report](../reviews/2026-10-12-release-readiness-fixes-verification.md) for evidence, preservation checks and remaining native/Store submission bounds. Push and PR delivery are authorized downstream steps; their live status is reported separately.
+
+## PR 27 review follow-up
+
+The user authorized checking the completed Codex reviews and fixing verified findings. One P2 exposed welcome/context/recent choices that bypassed restoration cancellation. `da2f495` centralizes explicit intent in the picker, with the scene's exact restoration manager injected during StateObject initialization; automatic restore/Refresh/scope operations stay separate. Five additional regressions bring the full passing suite to 340. Debug build, unsigned Release archive, lint, membership and independent source review pass. See the [follow-up verification](../reviews/2026-10-12-pr27-codex-review-followup.md).
