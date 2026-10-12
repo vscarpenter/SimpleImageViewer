@@ -4,6 +4,8 @@ Reviewed October 12, 2026 against `3fb4803d6a448ce18160eb4933c68b8bfcde5e09`, in
 
 **Verdict: I recommend addressing the four source findings below before submission.** Local tests, build and packaging pass, but this is not a distribution-signed submission approval. Current native testing stopped at control/screenshot failures, so source-traced behavior is distinguished from runtime reproduction.
 
+**Approved follow-up:** the source findings were implemented and verified in the [release-readiness fixes report](2026-10-12-release-readiness-fixes-verification.md), including 335 passing tests and observed native menu, What’s New, recursive-filter and OCR checks. This review remains a historical snapshot of the original findings; the follow-up records its remaining native and submission limits separately.
+
 ## Findings to address before release
 
 ### P1 — Upgrade can discard an offline folder's durable grant

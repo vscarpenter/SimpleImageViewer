@@ -1,0 +1,58 @@
+Native Release verification copy, source a79e1cf, macOS 27.0.1.
+Path: /tmp/stillview-release-fixes-native-2026-10-12/StillView - Simple Image Viewer.app
+Ad hoc signed with existing sandbox/folder entitlements; strict verification passed.
+Observed through cua_repl accessibility and screenshots; excerpts below omit unrelated controls.
+
+After Back to Folder Selection, Image menu:
+  (disabled) Previous Image
+  (disabled) Next Image
+  (disabled) Start Slideshow
+  (disabled) Copy Image
+  (disabled) Copy Path
+  (disabled) Share…
+  (disabled) Reveal in Finder
+  (disabled) Move to Trash
+
+View menu while Folder Selection is visible:
+  (disabled) Single / Strip / Grid
+  (disabled) Show Inspector / Show AI Insights / Show Filename
+  (disabled) Zoom In / Zoom Out / Fit to Window / Actual Size
+  (disabled) Include Subfolders
+  (disabled) Refresh Folder
+After menu cancellation and Command-R: Folder selection view remains visible.
+
+Help → What's New:
+  What's New in version 5.1.0
+  New Features section, Contains 3 items
+  Improvements section, Contains 2 items
+  Bug Fixes section, Contains 3 items
+  More Reliable Folder Browsing / Preserved Folder Access / Insights Stay With the Image
+Scrolled to bottom; all latest bug-fix text visible; Close What's New button worked.
+
+Controlled fixture:
+  Including subfolders
+  All images (5)
+  Travel, 3 images including subfolders
+  Travel/Italy, 2 images including subfolders
+  Travel/Japan, 1 images including subfolders
+After selecting Italy: 1 of 2
+After query receipt: 1 of 1; image Description: receipt
+
+Settings Intelligence: AI Insights Value: off
+Inspector: Insights is turned off in StillView.
+Extract text: Reading text… / Cancel text extraction / Extract text disabled
+Completed: Text in image, 47 lines; Refresh text enabled
+Expanded text includes NORTH MARKET, RECEIPT 1042, SUBTOTAL $18.00,
+TAX $1.44, TOTAL $19.44, PAID VISA, THANK YOU.
+Copy text control exposed; clipboard contents were not tested.
+Enable Insights restored original on preference and retained the 47-line OCR result.
+
+Command-R on unchanged selected receipt: AX tree unchanged; 47-line result retained.
+Later menu Refresh activation returned stale-element errors and screenshot unavailable;
+do not treat this as proof of a completed menu-driven rescan.
+
+Temporary copy stopped by exact executable path and relaunched with cua.getApp.
+Restored: Folder StillView-Codex-Browsing-2026-10-11; Including subfolders;
+query receipt; image receipt; 1 of 1; All images (5).
+After expanding Travel: Travel/Italy row (selected), 2 images including subfolders.
+This proves saved autosave restoration after process restart, not a native Cmd-Q test.

@@ -1,0 +1,43 @@
+{
+  "version": "5.1.0",
+  "build": "45",
+  "fields": {
+    "Subtitle": {
+      "size": 29,
+      "limit": 30,
+      "unit": "characters"
+    },
+    "Promotional text": {
+      "size": 160,
+      "limit": 170,
+      "unit": "characters"
+    },
+    "Description": {
+      "size": 2590,
+      "limit": 4000,
+      "unit": "characters"
+    },
+    "Keywords": {
+      "size": 97,
+      "limit": 100,
+      "unit": "UTF-8 bytes"
+    },
+    "What\u2019s New": {
+      "size": 1724,
+      "limit": 4000,
+      "unit": "characters"
+    },
+    "Review Notes": {
+      "size": 3958,
+      "limit": 4000,
+      "unit": "UTF-8 bytes"
+    }
+  },
+  "bundledSections": 3,
+  "bundledItems": 8,
+  "releaseDate": "2026-10-11T12:00:00Z",
+  "limitsSource": [
+    "https://developer.apple.com/help/app-store-connect/reference/app-information/app-information/",
+    "https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information"
+  ]
+}

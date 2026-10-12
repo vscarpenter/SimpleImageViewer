@@ -15,3 +15,7 @@ The user approved fixing the bookmark, Folder Selection menu and stale-insights 
 Add regressions in existing active test sources before fixes, record RED and GREEN results, and serialize Xcode builds/tests. Run the full app-hosted suite, Debug/Release checks appropriate to the changes, lint and test membership validation. Inspect a rebuilt sandboxed app when native controls are available; do not replace a missing runtime check with a source claim. Obtain independent final integration review and verify the pushed SHA/PR checks separately from local results.
 
 The user's pre-existing DEBUG screenshot helper in `SimpleImageViewerApp.swift` must remain intact and uncommitted. Do not hand-edit the Xcode project, change entitlements, publish the website, upload an App Store build or merge the new PR.
+
+## Completed local verification
+
+Behavior and release-copy changes are committed in `a79e1cf`. All 335 app-hosted Release tests pass; Debug build, unsigned Release archive, lint and test membership checks pass. Independent final source review is clear. Native observations include disabled Folder Selection commands, updated What’s New, recursive branch/search filtering, 47-line OCR with Insights off and sandboxed autosave restoration after restarting the verification copy. See the [verification report](../reviews/2026-10-12-release-readiness-fixes-verification.md) for evidence, preservation checks and remaining native/Store submission bounds. Push and PR delivery are authorized downstream steps; their live status is reported separately.

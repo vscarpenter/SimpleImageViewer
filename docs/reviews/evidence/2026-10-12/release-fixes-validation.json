@@ -1,0 +1,30 @@
+{
+  "sourceCommit": "a79e1cf7eeddbbb2142effb6ef7e23c84c1555b1",
+  "os": "27.0.1",
+  "xcode": "27.0 (27A266a)",
+  "sdk": "macOS 27",
+  "version": "5.1.0",
+  "build": "45",
+  "minimumOS": "27.0",
+  "architectures": "arm64",
+  "debugBuild": "Passed",
+  "releaseArchive": "Passed (unsigned)",
+  "archivePath": "/tmp/stillview-release-fixes-2026-10-12.xcarchive",
+  "archiveExecutableSHA256": "eb365dca4c4f79f3508ab04d1eec3f0f037e9d08af550abeee4cd3f98b879fd6",
+  "bundledWhatsNewMatchesSource": true,
+  "bundledPrivacyManifestMatchesSource": true,
+  "debugHelperExcluded": {
+    "Save Window Snapshot @2x": true,
+    "DebugWindowSnapshot": true,
+    "CGWindowListCreateImage": true
+  },
+  "nativeBundlePath": "/tmp/stillview-release-fixes-native-2026-10-12/StillView - Simple Image Viewer.app",
+  "nativeExecutableSHA256": "abab832d791d03d7e530701ae13e7c8723351f7a8d9c35e353e88055ac689245",
+  "nativeSignature": "Ad hoc; hardened runtime; strict verification passed",
+  "nativeEntitlements": {
+    "com.apple.security.app-sandbox": true,
+    "com.apple.security.files.bookmarks.app-scope": true,
+    "com.apple.security.files.user-selected.read-write": true
+  },
+  "distributionSubmissionValidated": false
+}

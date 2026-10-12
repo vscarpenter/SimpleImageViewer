@@ -1,0 +1,42 @@
+{
+  "devicesAndConfigurations": [
+    {
+      "device": {
+        "architecture": "arm64",
+        "deviceName": "My Mac",
+        "modelName": "Mac mini",
+        "osBuildNumber": "26A434",
+        "osVersion": "27.0.1",
+        "platform": "macOS"
+      },
+      "expectedFailures": 0,
+      "failedTests": 0,
+      "passedTests": 51,
+      "skippedTests": 0,
+      "testPlanConfiguration": {
+        "configurationId": "1",
+        "configurationName": "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription": "StillView - Simple Image Viewer \u00b7 Built with macOS 27.0.1",
+  "expectedFailures": 0,
+  "failedTests": 0,
+  "finishTime": 1791817342.336,
+  "passedTests": 51,
+  "result": "Passed",
+  "runtimeWarnings": [],
+  "skippedTests": 0,
+  "startTime": 1791817310.395,
+  "statistics": [],
+  "testFailures": [],
+  "title": "Test - StillView - Simple Image Viewer",
+  "topInsights": [
+    {
+      "category": "Longest Test Runs",
+      "impact": "29% of duration",
+      "text": "1 longest test run with outlier durations exceeding 0.17s (three standard deviations)"
+    }
+  ],
+  "totalTestCount": 51
+}
