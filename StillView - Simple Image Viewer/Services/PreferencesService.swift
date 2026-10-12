@@ -5,7 +5,7 @@ import Combine
 import UniformTypeIdentifiers
 
 /// A recent folder and its own optional access grant, persisted as one ordered value.
-struct RecentFolderRecord: Codable, Equatable {
+struct RecentFolderRecord: Codable, Equatable, Sendable {
     let url: URL
     var bookmarkData: Data?
 }
@@ -13,7 +13,7 @@ struct RecentFolderRecord: Codable, Equatable {
 // MARK: - PreferencesService Protocol
 
 /// Protocol defining preferences management for StillView - Simple Image Viewer
-protocol PreferencesService {
+protocol PreferencesService: AnyObject {
     /// List of recently accessed folders (maximum 10 entries)
     var recentFolders: [URL] { get set }
 
@@ -66,6 +66,9 @@ protocol PreferencesService {
     
     /// Clear all recent folders
     func clearRecentFolders()
+
+    /// Explicitly revoke a folder's stored grant without removing its recent-folder row.
+    func clearFolderBookmark(for url: URL)
     
     /// Save all preferences to persistent storage
     func savePreferences()
@@ -83,6 +86,12 @@ protocol PreferencesService {
 }
 
 extension PreferencesService {
+    func clearFolderBookmark(for url: URL) {
+        recentFolderRecords = recentFolderRecords.map { record in
+            guard record.url.standardizedFileURL == url.standardizedFileURL else { return record }
+            return RecentFolderRecord(url: record.url, bookmarkData: nil)
+        }
+    }
     // Preserve compatibility with existing injected preferences implementations.
     var recentFolderRecords: [RecentFolderRecord] {
         get {
@@ -100,21 +109,32 @@ extension PreferencesService {
 }
 
 /// Default implementation using UserDefaults
-class DefaultPreferencesService: PreferencesService {
+class DefaultPreferencesService: PreferencesService, @unchecked Sendable {
     static let shared = DefaultPreferencesService()
     
     private let userDefaults: UserDefaults
+    private let legacyBookmarkResolver: @Sendable (Data, URL.BookmarkResolutionOptions) throws -> URL
+    private static let recentFolderLock = NSRecursiveLock()
+    private static let maximumPendingBookmarks = 100
     
     /// Initialize with custom UserDefaults (useful for testing)
     /// - Parameter userDefaults: The UserDefaults instance to use. Defaults to .standard
-    init(userDefaults: UserDefaults = .standard) {
+    init(userDefaults: UserDefaults = .standard,
+         legacyBookmarkResolver: @escaping @Sendable (Data, URL.BookmarkResolutionOptions) throws -> URL = { data, options in
+             var stale = false
+             return try URL(resolvingBookmarkData: data, options: options,
+                            relativeTo: nil, bookmarkDataIsStale: &stale)
+         }) {
         self.userDefaults = userDefaults
+        self.legacyBookmarkResolver = legacyBookmarkResolver
     }
     
     // MARK: - Keys for UserDefaults
     private enum Keys {
         static let recentFolders = "recentFolders"
         static let recentFolderRecords = "recentFolderRecords"
+        static let pendingLegacyFolderBookmarks = "pendingLegacyFolderBookmarks"
+        static let pendingLegacyFolderURLs = "pendingLegacyFolderURLs"
         static let windowFrame = "windowFrame"
         static let showFileName = "showFileName"
         static let showImageInfo = "showImageInfo"
@@ -145,44 +165,100 @@ class DefaultPreferencesService: PreferencesService {
 
     var recentFolderRecords: [RecentFolderRecord] {
         get {
-            if let data = userDefaults.data(forKey: Keys.recentFolderRecords),
-               let records = try? JSONDecoder().decode([RecentFolderRecord].self, from: data) {
-                return Self.normalizedRecords(records)
+            Self.recentFolderLock.withLock {
+                if let data = userDefaults.data(forKey: Keys.recentFolderRecords),
+                   let records = try? JSONDecoder().decode([RecentFolderRecord].self, from: data) {
+                    return Self.normalizedRecords(records)
+                }
+                return stageLegacyRecentFolders()
             }
-            let migrated = migrateLegacyRecentFolders()
-            self.recentFolderRecords = migrated
-            return migrated
         }
         set {
-            let records = Self.normalizedRecords(newValue)
-            guard let data = try? JSONEncoder().encode(records) else { return }
-            userDefaults.set(data, forKey: Keys.recentFolderRecords)
-            userDefaults.removeObject(forKey: Keys.recentFolders)
-            userDefaults.removeObject(forKey: Keys.folderBookmarks)
+            Self.recentFolderLock.withLock {
+                let existing = recentFolderRecords
+                // A UI getter/modify/set transaction can span worker reconciliation. Nil in an
+                // older surviving record must not erase a grant recovered in the meantime.
+                let records = Self.normalizedRecords(newValue).map { record in
+                    guard record.bookmarkData == nil,
+                          let grant = existing.first(where: {
+                              $0.url.standardizedFileURL == record.url.standardizedFileURL
+                          })?.bookmarkData else { return record }
+                    return RecentFolderRecord(url: record.url, bookmarkData: grant)
+                }
+                let identities = Set(records.map { $0.url.standardizedFileURL })
+                let eligible = pendingLegacyURLs().filter { identities.contains($0.standardizedFileURL) }
+                persistPendingBookmarks(pendingLegacyBookmarks(), eligibleURLs: eligible)
+                persistRecentFolderRecords(records)
+            }
         }
     }
 
-    /// Legacy bookmark arrays were sometimes saved from dictionary iteration. Resolve every grant
-    /// and match its actual folder, so a malformed length or order never gives another folder access.
-    private func migrateLegacyRecentFolders() -> [RecentFolderRecord] {
+    /// Stage opaque legacy grants without touching a filesystem or mounting a provider at launch.
+    /// Dictionary iteration made their original positions unreliable, so association is deferred.
+    private func stageLegacyRecentFolders() -> [RecentFolderRecord] {
         guard let data = userDefaults.data(forKey: Keys.recentFolders),
               let folders = try? NSKeyedUnarchiver.unarchivedObject(
                 ofClasses: [NSArray.self, NSURL.self], from: data) as? [URL] else { return [] }
         let bookmarks = userDefaults.array(forKey: Keys.folderBookmarks) as? [Data] ?? []
-        var grants: [URL: Data] = [:]
-        for bookmark in bookmarks where !bookmark.isEmpty {
-            var isStale = false
-            guard let resolved = try? URL(
-                resolvingBookmarkData: bookmark, options: [.withSecurityScope, .withoutUI],
-                relativeTo: nil, bookmarkDataIsStale: &isStale) else { continue }
-            let identity = resolved.standardizedFileURL
-            if folders.contains(where: { $0.standardizedFileURL == identity }) {
-                grants[identity] = bookmark
-            }
+        let records = Self.normalizedRecords(folders.map { RecentFolderRecord(url: $0, bookmarkData: nil) })
+        persistPendingBookmarks(pendingLegacyBookmarks() + bookmarks, eligibleURLs: records.map(\.url))
+        persistRecentFolderRecords(records)
+        return records
+    }
+
+    /// Call on a worker. Resolve each pending grant independently and associate it only with a
+    /// surviving eligible URL. Re-read live state after I/O so removal and fresh grants win races.
+    func reconcilePendingLegacyFolderBookmarks() {
+        let pending = Self.recentFolderLock.withLock {
+            _ = recentFolderRecords
+            return pendingLegacyBookmarks()
         }
-        return Self.normalizedRecords(folders.map {
-            RecentFolderRecord(url: $0, bookmarkData: grants[$0.standardizedFileURL])
-        })
+        let resolved = pending.compactMap { bookmark -> (Data, URL)? in
+            guard let url = try? legacyBookmarkResolver(bookmark, [.withSecurityScope, .withoutUI, .withoutMounting])
+            else { return nil }
+            return (bookmark, url.standardizedFileURL)
+        }
+        Self.recentFolderLock.withLock {
+            var records = recentFolderRecords
+            var remaining = pendingLegacyBookmarks()
+            let eligible = Set(pendingLegacyURLs().map(\.standardizedFileURL))
+            for (bookmark, identity) in resolved where remaining.contains(bookmark) && eligible.contains(identity) {
+                guard let index = records.firstIndex(where: { $0.url.standardizedFileURL == identity }) else { continue }
+                if records[index].bookmarkData == nil { records[index].bookmarkData = bookmark }
+                remaining.removeAll { $0 == bookmark }
+            }
+            persistPendingBookmarks(remaining, eligibleURLs: pendingLegacyURLs())
+            persistRecentFolderRecords(records)
+        }
+    }
+
+    private func pendingLegacyBookmarks() -> [Data] {
+        userDefaults.array(forKey: Keys.pendingLegacyFolderBookmarks) as? [Data] ?? []
+    }
+
+    private func pendingLegacyURLs() -> [URL] {
+        guard let data = userDefaults.data(forKey: Keys.pendingLegacyFolderURLs) else { return [] }
+        return (try? JSONDecoder().decode([URL].self, from: data)) ?? []
+    }
+
+    private func persistPendingBookmarks(_ bookmarks: [Data], eligibleURLs: [URL]) {
+        var seen: Set<Data> = []
+        let pending = Array(bookmarks.filter { !$0.isEmpty && seen.insert($0).inserted }
+            .prefix(Self.maximumPendingBookmarks))
+        guard !pending.isEmpty, !eligibleURLs.isEmpty, let data = try? JSONEncoder().encode(eligibleURLs) else {
+            userDefaults.removeObject(forKey: Keys.pendingLegacyFolderBookmarks)
+            userDefaults.removeObject(forKey: Keys.pendingLegacyFolderURLs)
+            return
+        }
+        userDefaults.set(pending, forKey: Keys.pendingLegacyFolderBookmarks)
+        userDefaults.set(data, forKey: Keys.pendingLegacyFolderURLs)
+    }
+
+    private func persistRecentFolderRecords(_ records: [RecentFolderRecord]) {
+        guard let data = try? JSONEncoder().encode(records) else { return }
+        userDefaults.set(data, forKey: Keys.recentFolderRecords)
+        userDefaults.removeObject(forKey: Keys.recentFolders)
+        userDefaults.removeObject(forKey: Keys.folderBookmarks)
     }
 
     private static func normalizedRecords(_ records: [RecentFolderRecord]) -> [RecentFolderRecord] {
@@ -264,9 +340,16 @@ class DefaultPreferencesService: PreferencesService {
             recentFolderRecords.map { $0.bookmarkData ?? Data() }
         }
         set {
-            recentFolderRecords = recentFolderRecords.enumerated().map { index, record in
-                let data = index < newValue.count ? newValue[index] : nil
-                return RecentFolderRecord(url: record.url, bookmarkData: data?.isEmpty == false ? data : nil)
+            Self.recentFolderLock.withLock {
+                let records = recentFolderRecords.enumerated().map { index, record in
+                    let data = index < newValue.count ? newValue[index] : nil
+                    return RecentFolderRecord(url: record.url, bookmarkData: data?.isEmpty == false ? data : nil)
+                }
+                let granted = Set(records.filter { $0.bookmarkData != nil }.map { $0.url.standardizedFileURL })
+                persistPendingBookmarks(pendingLegacyBookmarks(), eligibleURLs: pendingLegacyURLs().filter {
+                    granted.contains($0.standardizedFileURL)
+                })
+                persistRecentFolderRecords(records)
             }
         }
     }
@@ -385,7 +468,20 @@ class DefaultPreferencesService: PreferencesService {
     }
     
     func removeRecentFolder(_ url: URL) {
-        recentFolders.removeAll { $0 == url }
+        recentFolders.removeAll { $0.standardizedFileURL == url.standardizedFileURL }
+    }
+
+    func clearFolderBookmark(for url: URL) {
+        Self.recentFolderLock.withLock {
+            let records = recentFolderRecords.map { record in
+                guard record.url.standardizedFileURL == url.standardizedFileURL else { return record }
+                return RecentFolderRecord(url: record.url, bookmarkData: nil)
+            }
+            persistPendingBookmarks(pendingLegacyBookmarks(), eligibleURLs: pendingLegacyURLs().filter {
+                $0.standardizedFileURL != url.standardizedFileURL
+            })
+            persistRecentFolderRecords(records)
+        }
     }
     
     func clearRecentFolders() {

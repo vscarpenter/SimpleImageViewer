@@ -32,6 +32,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Window state for restoration
     internal var lastWindowFrame: NSRect = .zero
     private var hasSetupMenus: Bool = false
+    private var sessionRestorationTask: Task<Void, Never>?
     
     // MARK: - NSApplicationDelegate Methods
     
@@ -42,7 +43,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // this was delayed 2 s from SwiftUI's onAppear to dodge an unspecified startup
         // ordering issue; by the time applicationDidFinishLaunching fires, the sandbox is
         // fully initialized and bookmark resolution is safe without an arbitrary sleep.
-        SecurityScopedBookmarkManager.shared.restoreBookmarksOnLaunch()
+        Task { @MainActor in
+            await Task.detached(priority: .utility) {
+                DefaultPreferencesService.shared.reconcilePendingLegacyFolderBookmarks()
+            }.value
+            await SecurityScopedBookmarkManager.shared.restoreBookmarksOnLaunchAsync()
+        }
 
         // Delay menu setup to ensure main window is available
         DispatchQueue.main.async {
@@ -230,22 +236,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     /// Try to restore the previous session state
     @MainActor private func tryRestorePreviousSession() {
-        guard windowStateManager.hasValidPreviousSession(),
-              let sessionData = windowStateManager.restorePreviousSession() else {
-            return
+        sessionRestorationTask?.cancel()
+        guard windowStateManager.hasValidPreviousSession() else { return }
+        let window = mainWindow
+        let generation = windowStateManager.sessionRestorationToken
+        sessionRestorationTask = Task { @MainActor [weak self] in
+            guard let self, let sessionData = await windowStateManager.restorePreviousSession(expectedGeneration: generation),
+                  !Task.isCancelled, mainWindow === window else { return }
+            NotificationCenter.default.post(name: .restoreWindowState, object: nil, userInfo: [
+                "folderURL": sessionData.folderURL, "imageIndex": sessionData.imageIndex
+            ])
         }
-        
-        // Post notification to restore the folder and image state
-        let userInfo: [String: Any] = [
-            "folderURL": sessionData.folderURL,
-            "imageIndex": sessionData.imageIndex
-        ]
-        
-        NotificationCenter.default.post(
-            name: .restoreWindowState,
-            object: nil,
-            userInfo: userInfo
-        )
     }
 }
 

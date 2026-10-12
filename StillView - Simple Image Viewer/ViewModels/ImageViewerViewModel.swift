@@ -64,6 +64,7 @@ class ImageViewerViewModel: ObservableObject {
     @Published private(set) var isEnhancedProcessingEnabled: Bool = false
     @Published private(set) var isAIInsightsAvailable: Bool = false
     @Published private(set) var imageInsightAvailability: ImageInsightAvailability = .unavailable(.unknown)
+    @Published private(set) var isPreparingImageInsight = false
     let imageInsightViewModel: ImageInsightViewModel
     
     // MARK: - Computed Properties
@@ -110,6 +111,11 @@ class ImageViewerViewModel: ObservableObject {
     private nonisolated static let projectionQueue = DispatchQueue(label: "com.vinny.stillview.collection", qos: .userInitiated)
     private var pendingRestoredImagePath: String?
     private var insightInputTask: Task<Void, Never>?
+    private var insightInputPreparationID: UUID?
+    private var insightInputPreparationURL: URL?
+    private var insightInputPreparationLoadID: UUID?
+    private var insightInputPreparationGenerates = false
+    @Published private var hasValidatedInsightInput = false
     private var preparedInsightURL: URL?
     private let usesDefaultInsightInputProvider: Bool
     private var cancellables = Set<AnyCancellable>()
@@ -134,6 +140,7 @@ class ImageViewerViewModel: ObservableObject {
     private let enhancedSecurity = EnhancedSecurityService.shared
     private let insightAvailabilityProvider: () -> ImageInsightAvailability
     private let insightInputProvider: (ImageFile) -> ImageInsightInput
+    private let insightInputPreparation: ((ImageFile) async -> ImageInsightInput)?
     private var systemInsightAvailability: ImageInsightAvailability = .unavailable(.unknown)
     private var currentImageRevision: ImageRevision?
 
@@ -159,6 +166,7 @@ class ImageViewerViewModel: ObservableObject {
          expectedImageSizeLoader: ((URL) async -> CGSize?)? = nil,
          insightAvailabilityProvider: (() -> ImageInsightAvailability)? = nil,
          insightInputProvider: ((ImageFile) -> ImageInsightInput)? = nil,
+         insightInputPreparation: ((ImageFile) async -> ImageInsightInput)? = nil,
          trashService: (any ImageTrashService)? = nil) {
         self.imageLoaderService = imageLoaderService
         self.imageEnhancer = imageEnhancer ?? { image in
@@ -183,7 +191,8 @@ class ImageViewerViewModel: ObservableObject {
         self.trashService = trashService ?? SystemImageTrashService()
         self.insightAvailabilityProvider = insightAvailabilityProvider ?? AppleIntelligenceInsightsService.shared.availability
         self.insightInputProvider = insightInputProvider ?? AppleIntelligenceInsightsService.shared.makeInput
-        self.usesDefaultInsightInputProvider = insightInputProvider == nil
+        self.insightInputPreparation = insightInputPreparation
+        self.usesDefaultInsightInputProvider = insightInputProvider == nil || insightInputPreparation != nil
         self.imageInsightViewModel = ImageInsightViewModel(service: imageInsightService)
         self.isAIAnalysisEnabled = preferencesService.enableAIAnalysis
         self.isEnhancedProcessingEnabled = preferencesService.enableImageEnhancements
@@ -460,7 +469,14 @@ class ImageViewerViewModel: ObservableObject {
         }
         if previousFile?.url != file.url || previousFile?.size != file.size
             || previousFile?.modificationDate != file.modificationDate || currentImage == nil && !isLoading {
-            if previousFile?.url == file.url { imageLoaderService.clearCache() }
+            if previousFile?.url == file.url {
+                imageLoaderService.clearCache()
+                if previousFile?.size != file.size || previousFile?.modificationDate != file.modificationDate {
+                    let revision = ImageRevision(url: file.url, byteCount: file.size,
+                                                 modificationDate: file.modificationDate)
+                    if currentImageRevision != revision { invalidateImageInsights(for: revision) }
+                }
+            }
             loadCurrentImage()
         }
     }
@@ -631,6 +647,19 @@ class ImageViewerViewModel: ObservableObject {
 
     var canGenerateImageInsight: Bool {
         isAIAnalysisEnabled && imageInsightAvailability.isAvailable && currentImageFile != nil
+            && !isPreparingImageInsight
+    }
+
+    var canPresentImageInsightContent: Bool {
+        hasValidatedInsightInput && !isPreparingImageInsight && currentImageFile != nil
+            && preparedInsightURL == currentImageFile?.url
+    }
+
+    var canExtractImageText: Bool {
+        guard currentImageFile != nil, !isPreparingImageInsight else { return false }
+        if case .generating = imageInsightViewModel.state { return false }
+        if case .extracting = imageInsightViewModel.textState { return false }
+        return true
     }
     
     /// Check if AI Insights is supported by the system (independent of user preference)
@@ -644,6 +673,9 @@ class ImageViewerViewModel: ObservableObject {
         isAIAnalysisEnabled = preferencesService.enableAIAnalysis
         imageInsightAvailability = isAIAnalysisEnabled ? systemInsightAvailability : .unavailable(.appDisabled)
         isAIInsightsAvailable = imageInsightAvailability.isAvailable
+        if !isAIInsightsAvailable && insightInputPreparationGenerates {
+            cancelInsightInputPreparation()
+        }
         imageInsightViewModel.updateAvailability(imageInsightAvailability)
     }
 
@@ -659,19 +691,22 @@ class ImageViewerViewModel: ObservableObject {
     }
 
     func extractImageText() {
-        guard currentImageFile != nil else { return }
+        guard canExtractImageText else { return }
         prepareImageInsightForCurrentImage(extractAfterPreparing: true)
     }
 
     func cancelImageInsightGeneration() {
-        insightInputTask?.cancel()
-        insightInputTask = nil
+        cancelInsightInputPreparation()
         imageInsightViewModel.cancelGeneration()
     }
 
     func cancelImageTextExtraction() {
-        insightInputTask?.cancel()
-        insightInputTask = nil
+        cancelInsightInputPreparation()
+        imageInsightViewModel.cancelTextExtraction()
+    }
+
+    func cancelImageInsightPreparation() {
+        cancelImageInsightGeneration()
         imageInsightViewModel.cancelTextExtraction()
     }
     
@@ -766,6 +801,9 @@ class ImageViewerViewModel: ObservableObject {
 
     /// Reset AI Insights state when ending a session
     private func resetAIInsightsForSessionEnd() {
+        cancelInsightInputPreparation()
+        hasValidatedInsightInput = false
+        preparedInsightURL = nil
         currentImageRevision = nil
         imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
         Logger.info("AI Insights state reset for session end")
@@ -775,31 +813,53 @@ class ImageViewerViewModel: ObservableObject {
         reloadIfChanged: Bool = true, generateAfterPreparing: Bool = false, extractAfterPreparing: Bool = false
     ) {
         updateAIInsightsAvailability()
-        insightInputTask?.cancel()
-        insightInputTask = nil
         guard let imageFile = currentImageFile else {
+            cancelInsightInputPreparation()
+            hasValidatedInsightInput = false
             currentImageRevision = nil
             preparedInsightURL = nil
             imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
             return
         }
 
+        // Repeated actions and app activation must not restart the same pending check or lose its intent.
+        if isPreparingImageInsight, insightInputPreparationURL == imageFile.url,
+           insightInputPreparationLoadID == currentImageRequestID { return }
+        cancelInsightInputPreparation()
+
         // Keep injected providers synchronous for deterministic lifecycle tests.
         // Production metadata and file-provider reads must not block navigation.
         if usesDefaultInsightInputProvider {
+            hasValidatedInsightInput = false
             if preparedInsightURL != imageFile.url {
                 imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
             }
             let provider = insightInputProvider
+            let preparation = insightInputPreparation
             let root = currentFolderURL
+            let preparationID = UUID()
+            let loadID = currentImageRequestID
+            insightInputPreparationID = preparationID
+            insightInputPreparationURL = imageFile.url
+            insightInputPreparationLoadID = loadID
+            insightInputPreparationGenerates = generateAfterPreparing
+            isPreparingImageInsight = true
             insightInputTask = Task { [weak self] in
-                let worker = Task.detached(priority: .utility) {
-                    let access = root?.startAccessingSecurityScopedResource() ?? false
-                    defer { if access { root?.stopAccessingSecurityScopedResource() } }
-                    return provider(imageFile)
+                guard !Task.isCancelled else { return }
+                let input: ImageInsightInput
+                if let preparation {
+                    input = await preparation(imageFile)
+                } else {
+                    let worker = Task.detached(priority: .utility) {
+                        let access = root?.startAccessingSecurityScopedResource() ?? false
+                        defer { if access { root?.stopAccessingSecurityScopedResource() } }
+                        return provider(imageFile)
+                    }
+                    input = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
                 }
-                let input = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
-                guard !Task.isCancelled, let self, self.currentImageFile?.url == imageFile.url else { return }
+                guard !Task.isCancelled, let self, self.insightInputPreparationID == preparationID,
+                      self.currentImageFile?.url == imageFile.url, self.currentImageRequestID == loadID else { return }
+                self.finishInsightInputPreparation()
                 guard self.acceptInsightInput(input, for: imageFile, reloadIfChanged: reloadIfChanged) else { return }
                 if generateAfterPreparing && self.canGenerateImageInsight { self.imageInsightViewModel.generate() }
                 if extractAfterPreparing { self.imageInsightViewModel.extractText() }
@@ -812,6 +872,22 @@ class ImageViewerViewModel: ObservableObject {
         }
     }
 
+    private func cancelInsightInputPreparation() {
+        // Invalidate first; a canceled metadata read may still finish after a newer request starts.
+        insightInputPreparationID = nil
+        insightInputTask?.cancel()
+        finishInsightInputPreparation()
+    }
+
+    private func finishInsightInputPreparation() {
+        insightInputPreparationID = nil
+        insightInputPreparationURL = nil
+        insightInputPreparationLoadID = nil
+        insightInputPreparationGenerates = false
+        insightInputTask = nil
+        isPreparingImageInsight = false
+    }
+
     /// Returns false when an external edit triggered a reload, so callers skip work on the stale input.
     private func acceptInsightInput(_ input: ImageInsightInput, for imageFile: ImageFile,
                                     reloadIfChanged: Bool) -> Bool {
@@ -820,13 +896,22 @@ class ImageViewerViewModel: ObservableObject {
         if reloadIfChanged, let previousRevision = currentImageRevision,
            previousRevision.url == revision.url, previousRevision != revision {
             // The stage and Insights must refer to the same file revision after an external edit.
+            invalidateImageInsights(for: revision)
             loadCurrentImage()
             return false
         }
         currentImageRevision = revision
         preparedInsightURL = imageFile.url
         imageInsightViewModel.prepareForImage(input, availability: imageInsightAvailability)
+        hasValidatedInsightInput = true
         return true
+    }
+
+    private func invalidateImageInsights(for revision: ImageRevision) {
+        hasValidatedInsightInput = false
+        preparedInsightURL = nil
+        imageInsightViewModel.invalidateCurrentImage()
+        currentImageRevision = revision
     }
 
     private func cancelActiveImageLoad() {
@@ -858,6 +943,9 @@ class ImageViewerViewModel: ObservableObject {
         isLoading = false
         loadingProgress = 0
         guard let imageFile = currentImageFile else {
+            cancelInsightInputPreparation()
+            hasValidatedInsightInput = false
+            preparedInsightURL = nil
             currentImageRevision = nil
             imageInsightViewModel.prepareForImage(nil, availability: imageInsightAvailability)
             return

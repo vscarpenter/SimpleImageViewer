@@ -11,7 +11,7 @@ BASIC NAVIGATION
 2. Use Single, Strip, and Grid in the toolbar to switch viewing modes.
 3. In Grid, click a thumbnail to select it, then double-click or press Enter to open it in Single. The density slider resizes thumbnails.
 4. Open the inspector and choose Info for metadata or Insights for local image analysis.
-5. ⌘O opens another folder. Canceling the picker keeps the current collection. B with the viewer focused, or File > Back to Folder Selection, returns to the welcome screen.
+5. ⌘O opens another folder; canceling keeps the collection. File > Back to Folder Selection returns to the welcome screen and disables image commands.
 6. Viewer shortcuts apply when the viewer has focus. Controls, text fields, dialogs, and other windows keep their usual keys. Settings > Shortcuts lists the commands.
 
 SUBFOLDERS AND SESSIONS (NEW IN 5.1)
@@ -27,10 +27,10 @@ On an Apple Intelligence eligible Mac running macOS 27 or later:
 2. Open a local image folder, select an image, and open the inspector's Insights tab (⌘I while the viewer has focus).
 3. If the feature is off in StillView, choose Enable Insights, or enable it in Settings > Intelligence.
 4. Choose Analyze image for a concise title and summary. Copy description copies the summary. Expand Text in image to read or copy recognized words.
-5. Extract text runs Vision OCR on its own, even with Insights off or Apple Intelligence unavailable.
+5. Extract text runs Vision independently, even with Insights off. Image preparation shows progress and Cancel.
 6. Try a scene photo, a sign or screenshot with text, and a portrait. Apple Intelligence describes visible content; Vision supplies the OCR text. The app does not identify people.
 
-Descriptions use Apple's on-device Foundation Models; Vision supplies text without model rewriting. Both may contain errors; partial extraction is marked. A failed description keeps extracted text, and a failed refresh keeps its previous result. Check Again refreshes model readiness.
+Descriptions use on-device Foundation Models; Vision supplies text without model rewriting. Both may contain errors; partial extraction is marked. Failed descriptions retain OCR; failed refreshes of unchanged images keep prior results. Edited-image reloads clear old Insights. Check Again refreshes model readiness.
 
 On an ineligible Mac, with Apple Intelligence disabled, or while its model is preparing, the panel explains why and can open System Settings. Viewing and text extraction remain available.
 

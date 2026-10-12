@@ -90,6 +90,9 @@ ALSO IN THIS RELEASE
 • Trashed images stay out of older scan results, and Open Folder… can reopen a closed main window.
 • Saved folder permissions are better preserved, and disconnected folders stay in the recent list.
 • Creation-time sorting is now labeled Date Created.
+• Folder selection disables hidden-image commands while preserving your last selection.
+• Saved folder permissions recover safely after temporary disconnection, and unavailable folders no longer block startup.
+• Changed images clear previous Insights during a reload, and image preparation can be canceled.
 ```
 
 5.0.0 (44) was submitted on September 15, 2026, with the rebuilt AI Insights, so this text covers only what changed after it.

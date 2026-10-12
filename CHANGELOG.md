@@ -21,6 +21,11 @@
 - Apply folder sidebar selections after the current view update, and discard a pending selection if its root folder has changed.
 - Let Open Folder… and Back to Folder Selection reopen a hidden main window when no browsing scene is focused.
 
+- Preserve unresolved legacy folder grants for safe retry; keep recovered grants through concurrent recent-list edits and respect explicit removal.
+- Resolve and validate automatic saved sessions off the main actor without mounting volumes; cancel queued or in-flight restoration on explicit navigation.
+- Disable image, subfolder and refresh commands on Folder Selection while retaining the saved collection.
+- Invalidate previous description/OCR before externally changed pixels reload, including Refresh Folder; make image preparation cancelable and reject stale completions.
+
 ## 5.0.0 (44)
 
 - Require macOS 27 and Apple silicon, with no older-OS compatibility path.

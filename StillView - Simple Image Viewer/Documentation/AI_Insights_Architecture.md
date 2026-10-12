@@ -20,7 +20,7 @@ Extract text is a separate manual Vision action, available with AI Insights disa
 
 Import FoundationModels directly and target macOS 27 everywhere. There is no older-OS or category-template inference fallback. Apple Intelligence may still be disabled, preparing its model, unavailable for a locale, or temporarily unable to answer. Explain those states and offer recovery.
 
-The view model retains one active generation identity, rejects stale completions, cancels on navigation/panel close, and caches a bounded set of image revisions. A failed refresh preserves the previous result with an error. Model variant and prompt version participate in cache identity so earlier analyses cannot masquerade as results from an updated model/prompt.
+The view model retains one active generation identity, rejects stale completions, cancels on navigation/panel close, and caches a bounded set of image revisions. Metadata preparation has its own request identity, visible progress and cancellation; description, OCR and copy controls remain hidden until the selected file identity is verified. A known changed revision clears old evidence before replacement loading, including folder Refresh. A failed description refresh of an unchanged image preserves its previous result and OCR with an error. Model variant and prompt version participate in cache identity so earlier analyses cannot masquerade as results from an updated model/prompt.
 
 ## Presentation
 

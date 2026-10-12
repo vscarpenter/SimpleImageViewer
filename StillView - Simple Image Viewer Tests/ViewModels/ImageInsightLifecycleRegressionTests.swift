@@ -679,6 +679,341 @@ final class ImageInsightAccessRegressionTests: XCTestCase {
 }
 
 @MainActor
+final class AsyncImageInsightPreparationRegressionTests: XCTestCase {
+    func test_changedRevisionClearsDescriptionAndTextBeforeDelayedReplacementInput() async {
+        let replacementStarted = expectation(description: "Replacement input is still pending")
+        let fixture = await readyFixture(onPreparation: { index in
+            if index == 3 { replacementStarted.fulfill() }
+        })
+        await seedInsight(fixture)
+        let replacement = NSImage(size: NSSize(width: 200, height: 160))
+        fixture.imageLoader.image = replacement
+
+        NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+        await drainMainQueue()
+        await fixture.preparation.complete(2, modified: AsyncInsightValues.modified.addingTimeInterval(1))
+        await fulfillment(of: [replacementStarted], timeout: 1)
+        await drainMainQueue()
+
+        XCTAssertTrue(fixture.model.currentImage === replacement)
+        XCTAssertNil(fixture.model.imageInsightViewModel.result)
+        XCTAssertNil(fixture.model.imageInsightViewModel.textResult)
+        XCTAssertTrue(fixture.model.isPreparingImageInsight)
+        XCTAssertFalse(fixture.model.canPresentImageInsightContent)
+        XCTAssertFalse(fixture.model.canGenerateImageInsight)
+        XCTAssertFalse(fixture.model.canExtractImageText)
+        await fixture.finish()
+    }
+
+    func test_pendingPreparationMasksCopyContentAndRejectsRepeatedActions() async {
+        let fixture = await readyFixture()
+        await seedInsight(fixture)
+
+        fixture.model.generateImageInsight()
+        XCTAssertTrue(fixture.model.isPreparingImageInsight, "Preparation must be published before metadata finishes")
+        XCTAssertFalse(fixture.model.canPresentImageInsightContent)
+        XCTAssertFalse(fixture.model.canGenerateImageInsight)
+        XCTAssertFalse(fixture.model.canExtractImageText)
+        fixture.model.generateImageInsight()
+        fixture.model.extractImageText()
+        await drainMainQueue()
+
+        let preparationCount = await fixture.preparation.requestCount
+        XCTAssertEqual(preparationCount, 3, "Repeated actions must not restart the held metadata request")
+        XCTAssertEqual(fixture.model.imageInsightViewModel.result, AsyncInsightValues.result)
+        XCTAssertEqual(fixture.model.imageInsightViewModel.textResult, AsyncInsightValues.text)
+        let heldGenerationCount = await fixture.service.generationCount
+        let heldTextCount = await fixture.service.textCount
+        XCTAssertEqual(heldGenerationCount, 1)
+        XCTAssertEqual(heldTextCount, 0)
+        await fixture.preparation.complete(2)
+        await drainMainQueue()
+        let refreshedGenerationCount = await fixture.service.generationCount
+        let refreshedTextCount = await fixture.service.textCount
+        XCTAssertEqual(refreshedGenerationCount, 2)
+        XCTAssertEqual(refreshedTextCount, 0)
+        await fixture.finish()
+    }
+
+    func test_cancelledPreparationCannotGenerateOrClearNewerTextPreparation() async {
+        let fixture = await readyFixture()
+        fixture.model.generateImageInsight()
+        await drainMainQueue()
+        fixture.model.cancelImageInsightGeneration()
+        XCTAssertFalse(fixture.model.isPreparingImageInsight)
+        XCTAssertTrue(fixture.model.canGenerateImageInsight)
+        XCTAssertTrue(fixture.model.canExtractImageText)
+        XCTAssertFalse(fixture.model.canPresentImageInsightContent, "Canceled validation must not expose unchecked content")
+
+        fixture.model.extractImageText()
+        await drainMainQueue()
+        await fixture.preparation.complete(1)
+        await drainMainQueue()
+        XCTAssertTrue(fixture.model.isPreparingImageInsight, "An old completion must not clear the new Cancel handle")
+        let generationCount = await fixture.service.generationCount
+        let earlyTextCount = await fixture.service.textCount
+        XCTAssertEqual(generationCount, 0)
+        XCTAssertEqual(earlyTextCount, 0)
+
+        fixture.model.cancelImageTextExtraction()
+        await fixture.preparation.complete(2)
+        await drainMainQueue()
+        let canceledTextCount = await fixture.service.textCount
+        XCTAssertEqual(canceledTextCount, 0)
+        XCTAssertFalse(fixture.model.isPreparingImageInsight)
+        fixture.model.extractImageText()
+        await drainMainQueue()
+        await fixture.preparation.complete(3)
+        await drainMainQueue()
+        XCTAssertFalse(fixture.model.isPreparingImageInsight)
+        let textCount = await fixture.service.textCount
+        XCTAssertEqual(textCount, 1)
+        await fixture.service.completeText(0, with: .success(AsyncInsightValues.text))
+        await drainMainQueue()
+        XCTAssertEqual(fixture.model.imageInsightViewModel.textResult, AsyncInsightValues.text)
+        XCTAssertTrue(fixture.model.canPresentImageInsightContent)
+        await fixture.finish()
+    }
+
+    func test_unchangedAsyncRefreshRetainsAcceptedTextAndDescriptionAfterFailure() async {
+        let fixture = await readyFixture()
+        await seedInsight(fixture)
+        fixture.model.generateImageInsight()
+        await drainMainQueue()
+        XCTAssertFalse(fixture.model.canPresentImageInsightContent)
+
+        await fixture.preparation.complete(2)
+        await drainMainQueue()
+        XCTAssertTrue(fixture.model.canPresentImageInsightContent)
+        XCTAssertEqual(fixture.model.imageInsightViewModel.state, .generating)
+        XCTAssertEqual(fixture.model.imageInsightViewModel.result, AsyncInsightValues.result)
+        XCTAssertEqual(fixture.model.imageInsightViewModel.textResult, AsyncInsightValues.text)
+        await fixture.service.completeGeneration(1, with: .failure(ImageInsightError.invalidGeneratedContent))
+        await drainMainQueue()
+
+        XCTAssertEqual(fixture.model.imageInsightViewModel.state, .result(AsyncInsightValues.result))
+        XCTAssertEqual(fixture.model.imageInsightViewModel.textResult, AsyncInsightValues.text)
+        XCTAssertNotNil(fixture.model.imageInsightViewModel.generationError)
+        await fixture.finish()
+    }
+
+    func test_disabledInsightsTextPreparationIsCancelableAndRemainsIndependent() async {
+        let fixture = await readyFixture(enabled: false)
+        fixture.model.extractImageText()
+        await drainMainQueue()
+        XCTAssertTrue(fixture.model.isPreparingImageInsight)
+        XCTAssertFalse(fixture.model.canExtractImageText)
+        fixture.model.cancelImageTextExtraction()
+        await fixture.preparation.complete(1)
+        await drainMainQueue()
+        let canceledTextCount = await fixture.service.textCount
+        XCTAssertEqual(canceledTextCount, 0)
+        XCTAssertFalse(fixture.model.isPreparingImageInsight)
+        XCTAssertTrue(fixture.model.canExtractImageText)
+
+        fixture.model.extractImageText()
+        await drainMainQueue()
+        await fixture.preparation.complete(2)
+        await drainMainQueue()
+        await fixture.service.completeText(0, with: .success(AsyncInsightValues.text))
+        await drainMainQueue()
+        XCTAssertEqual(fixture.model.imageInsightAvailability, .unavailable(.appDisabled))
+        XCTAssertEqual(fixture.model.imageInsightViewModel.textResult, AsyncInsightValues.text)
+        let generationCount = await fixture.service.generationCount
+        XCTAssertEqual(generationCount, 0)
+        await fixture.finish()
+    }
+
+    func test_folderRefreshInvalidatesSameURLEvidenceBeforeReplacementInput() async {
+        let fixture = await readyFixture()
+        await seedInsight(fixture)
+        guard let file = fixture.model.currentImageFile else {
+            XCTFail("Fixture image is missing")
+            await fixture.finish()
+            return
+        }
+        let replacement = ImageFile(url: file.url, name: file.name, type: file.type, size: 1025,
+                                    creationDate: file.creationDate,
+                                    modificationDate: AsyncInsightValues.modified.addingTimeInterval(1))
+
+        fixture.model.loadFolderContent(FolderContent(folderURL: file.url.deletingLastPathComponent(),
+                                                     imageFiles: [replacement]))
+
+        XCTAssertNil(fixture.model.imageInsightViewModel.result)
+        XCTAssertNil(fixture.model.imageInsightViewModel.textResult)
+        XCTAssertFalse(fixture.model.canPresentImageInsightContent)
+        XCTAssertTrue(fixture.model.isPreparingImageInsight)
+        await drainMainQueue()
+        await fixture.finish()
+    }
+
+    func test_disablingAIWhileTextPreparationIsPendingPreservesExtractionIntent() async {
+        let fixture = await readyFixture()
+        fixture.model.extractImageText()
+        await drainMainQueue()
+
+        fixture.preferences.enableAIAnalysis = false
+        await drainMainQueue()
+        let preparationCount = await fixture.preparation.requestCount
+        XCTAssertEqual(preparationCount, 2)
+        XCTAssertTrue(fixture.model.isPreparingImageInsight)
+        await fixture.preparation.complete(1)
+        await drainMainQueue()
+        let textCount = await fixture.service.textCount
+        XCTAssertEqual(textCount, 1)
+        await fixture.service.completeText(0, with: .success(AsyncInsightValues.text))
+        await drainMainQueue()
+        XCTAssertEqual(fixture.model.imageInsightViewModel.textResult, AsyncInsightValues.text)
+        let generationCount = await fixture.service.generationCount
+        XCTAssertEqual(generationCount, 0)
+        await fixture.finish()
+    }
+
+    private func readyFixture(
+        enabled: Bool = true, onPreparation: @escaping @Sendable (Int) -> Void = { _ in }
+    ) async -> AsyncInsightViewerFixture {
+        let started = expectation(description: "Initial async input")
+        let fixture = AsyncInsightViewerFixture(enabled: enabled, onPreparation: { index in
+            if index == 0 { started.fulfill() }
+            onPreparation(index)
+        })
+        await fulfillment(of: [started], timeout: 1)
+        await fixture.preparation.complete(0)
+        await drainMainQueue()
+        return fixture
+    }
+
+    private func seedInsight(_ fixture: AsyncInsightViewerFixture) async {
+        fixture.model.generateImageInsight()
+        await drainMainQueue()
+        await fixture.preparation.complete(1)
+        await drainMainQueue()
+        await fixture.service.completeGeneration(0, with: .success(AsyncInsightValues.result))
+        await drainMainQueue()
+        XCTAssertEqual(fixture.model.imageInsightViewModel.result, AsyncInsightValues.result)
+        XCTAssertEqual(fixture.model.imageInsightViewModel.textResult, AsyncInsightValues.text)
+    }
+
+    private func drainMainQueue() async {
+        for _ in 0..<8 {
+            await Task.yield()
+            await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
+        }
+    }
+}
+
+private enum AsyncInsightValues {
+    static let modified = Date(timeIntervalSince1970: 1_700_000_000)
+    static let result = ImageInsightResult(title: "Original image", summary: "Original visible content.",
+                                          usefulDetails: [], tags: [], limitations: [])
+    static let text = ImagePerceptionResult(textObservations: [.init(text: "ORIGINAL TEXT", confidence: 0.9)])
+}
+
+@MainActor
+private final class AsyncInsightViewerFixture {
+    let preferences: InsightLifecyclePreferences
+    let preparation: ControlledInsightInputPreparation
+    let service = AsyncPreparationInsightService()
+    let imageLoader = InsightLifecycleImageLoader()
+    let model: ImageViewerViewModel
+
+    init(enabled: Bool, onPreparation: @escaping @Sendable (Int) -> Void) {
+        let preparation = ControlledInsightInputPreparation(onRequest: onPreparation)
+        self.preparation = preparation
+        let preferences = InsightLifecyclePreferences()
+        self.preferences = preferences
+        preferences.enableAIAnalysis = enabled
+        model = ImageViewerViewModel(
+            imageLoaderService: imageLoader, preferencesService: preferences, imageInsightService: service,
+            expectedImageSizeLoader: { _ in nil }, insightAvailabilityProvider: { .available },
+            insightInputPreparation: { file in await preparation.input(for: file) }
+        )
+        model.inspectorVisible = true
+        model.inspectorTab = .insights
+        let url = URL(fileURLWithPath: "/tmp/insight-async/photo.jpg")
+        let file = ImageFile(url: url, name: "photo.jpg", type: .jpeg, size: 1024,
+                             creationDate: .distantPast, modificationDate: .distantPast)
+        model.loadFolderContent(FolderContent(folderURL: url.deletingLastPathComponent(), imageFiles: [file]))
+    }
+
+    func finish() async {
+        model.cancelImageInsightGeneration()
+        model.cancelImageTextExtraction()
+        await preparation.finishAll()
+        await service.finishAll()
+    }
+}
+
+private actor ControlledInsightInputPreparation {
+    private var requests: [Int: (ImageFile, CheckedContinuation<ImageInsightInput, Never>)] = [:]
+    private let onRequest: @Sendable (Int) -> Void
+    private(set) var requestCount = 0
+
+    init(onRequest: @escaping @Sendable (Int) -> Void) { self.onRequest = onRequest }
+
+    func input(for file: ImageFile) async -> ImageInsightInput {
+        let index = requestCount
+        requestCount += 1
+        return await withCheckedContinuation { continuation in
+            requests[index] = (file, continuation)
+            onRequest(index)
+        }
+    }
+
+    func complete(_ index: Int, modified: Date = AsyncInsightValues.modified) {
+        guard let (file, continuation) = requests.removeValue(forKey: index) else {
+            XCTFail("Expected delayed metadata request \(index)")
+            return
+        }
+        continuation.resume(returning: ImageInsightInput(
+            fileType: "JPEG", dimensions: "100 × 80", fileSize: "1 KB", imageURL: file.url,
+            fileByteCount: file.size, fileModificationDate: modified
+        ))
+    }
+
+    func finishAll() { for index in requests.keys { complete(index) } }
+}
+
+private actor AsyncPreparationInsightService: ImageInsightGenerating {
+    private var generations: [Int: CheckedContinuation<ImageInsightResult, Error>] = [:]
+    private var texts: [Int: CheckedContinuation<ImagePerceptionResult, Error>] = [:]
+    private(set) var generationCount = 0
+    private(set) var textCount = 0
+
+    func generateInsight(for input: ImageInsightInput) async throws -> ImageInsightResult {
+        try await generateInsight(for: input, onTextRecognized: { _ in })
+    }
+
+    func generateInsight(
+        for input: ImageInsightInput, onTextRecognized: @escaping ImageTextRecognitionHandler
+    ) async throws -> ImageInsightResult {
+        let index = generationCount
+        generationCount += 1
+        await onTextRecognized(AsyncInsightValues.text)
+        return try await withCheckedThrowingContinuation { generations[index] = $0 }
+    }
+
+    func extractText(for input: ImageInsightInput) async throws -> ImagePerceptionResult {
+        let index = textCount
+        textCount += 1
+        return try await withCheckedThrowingContinuation { texts[index] = $0 }
+    }
+
+    func completeGeneration(_ index: Int, with result: Result<ImageInsightResult, Error>) {
+        generations.removeValue(forKey: index)?.resume(with: result)
+    }
+
+    func completeText(_ index: Int, with result: Result<ImagePerceptionResult, Error>) {
+        texts.removeValue(forKey: index)?.resume(with: result)
+    }
+
+    func finishAll() {
+        for index in generations.keys { completeGeneration(index, with: .failure(CancellationError())) }
+        for index in texts.keys { completeText(index, with: .failure(CancellationError())) }
+    }
+}
+
+@MainActor
 private final class InsightViewerFixture {
     let preferences: InsightLifecyclePreferences
     let context: InsightViewerContext

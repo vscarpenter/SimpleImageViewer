@@ -45,7 +45,17 @@
       "items": [
         {
           "title": "More Reliable Folder Browsing",
-          "description": "Folder menus agree after canceled scans, and switching folders recovers from slow scans. Trashed images stay out of older scan results. Saved folder permissions are better preserved, and Open Folder… can reopen a closed window.",
+          "description": "Folder switching and canceled scans recover more reliably, and trashed images stay out of older scan results. Returning to folder selection disables image commands while keeping your last selection.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Preserved Folder Access",
+          "description": "Saved folder permissions can recover after a temporary disconnection during an update. Unavailable folders no longer block startup, and choosing another folder cancels an older restoration.",
+          "isHighlighted": false
+        },
+        {
+          "title": "Insights Stay With the Image",
+          "description": "Changed images no longer show their previous description or text during a reload. Image preparation shows progress and can be canceled before analysis or text extraction starts.",
           "isHighlighted": false
         }
       ]

@@ -129,7 +129,8 @@ class FolderSelectionViewModel: ObservableObject {
               let bookmarkData = record.bookmarkData else {
             guard FileManager.default.fileExists(atPath: url.path) else {
                 currentError = .folderNotFound(url)
-                removeRecentFolder(url)
+                // An unavailable provider may still have a legacy grant pending reconciliation.
+                // Keep the recent record until the user explicitly removes it or clears the list.
                 return
             }
             handleFolderSelection(url)
